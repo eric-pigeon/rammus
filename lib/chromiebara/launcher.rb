@@ -1,7 +1,7 @@
 module Chromiebara
   class Launcher
-    def self.launch(headless: true, user_data_dir: nil, args: [])
-      # tmpdir = Dir.mktmpdir
+    def self.launch(headless: true, args: [])
+      tmpdir = Dir.mktmpdir
 
       chrome_arguments = DEFAULT_ARGS
       if (headless)
@@ -13,6 +13,7 @@ module Chromiebara
       end
       # TODO support pipe as well
       chrome_arguments.push('--remote-debugging-port=0')
+      chrome_arguments.push("-user-data-dir=#{tmpdir}")
       stderr_out, stderr_in = IO.pipe
       puts chrome_arguments.join(' ')
       pid = Process.spawn(executable_path, *chrome_arguments, 2 => stderr_in)
@@ -24,7 +25,7 @@ module Chromiebara
       client = ChromeClient.new(ws_client)
 
       Browser.new(client: client).tap do |browser|
-        ObjectSpace.define_finalizer(browser, Launcher.process_killer(pid))
+        ObjectSpace.define_finalizer(browser, Launcher.process_killer(pid, tmpdir))
       end
     end
 
@@ -32,7 +33,6 @@ module Chromiebara
 
       DEFAULT_ARGS = [
         '--disable-background-networking',
-        '--enable-features=NetworkService,NetworkServiceInProcess',
         '--disable-background-timer-throttling',
         '--disable-backgrounding-occluded-windows',
         '--disable-breakpad',
@@ -45,54 +45,24 @@ module Chromiebara
         '--disable-features=site-per-process,TranslateUI,BlinkGenPropertyTrees',
         '--disable-hang-monitor',
         '--disable-ipc-flooding-protection',
+        '--disable-infobars',
         '--disable-popup-blocking',
         '--disable-prompt-on-repost',
         '--disable-renderer-backgrounding',
         '--disable-sync',
         '--force-color-profile=srgb',
+        '--disable-session-crashed-bubble',
         '--metrics-recording-only',
         '--no-first-run',
+        '--safebrowsing-disable-auto-update',
         '--enable-automation',
         '--password-store=basic',
         '--use-mock-keychain',
+        '--keep-alive-for-test',
       ]
 
       def self.executable_path
         "/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome"
-      end
-
-      def self.command
-        [
-          "/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome",
-          '--disable-background-networking',
-          '--enable-features=NetworkService,NetworkServiceInProcess',
-          '--disable-background-timer-throttling',
-          '--disable-backgrounding-occluded-windows',
-          '--disable-breakpad',
-          '--disable-client-side-phishing-detection',
-          '--disable-default-apps',
-          '--disable-dev-shm-usage',
-          '--disable-extensions',
-          '--disable-features=site-per-process,TranslateUI,BlinkGenPropertyTrees',
-          '--disable-hang-monitor',
-          '--disable-ipc-flooding-protection',
-          '--disable-popup-blocking',
-          '--disable-prompt-on-repost',
-          '--disable-renderer-backgrounding',
-          '--disable-sync',
-          '--force-color-profile=srgb',
-          '--metrics-recording-only',
-          '--no-first-run',
-          '--safebrowsing-disable-auto-update',
-          '--enable-automation',
-          '--password-store=basic',
-          '--use-mock-keychain',
-          '--headless',
-          '--hide-scrollbars',
-          '--mute-audio',
-          "--headless",
-          "--remote-debugging-port=0"
-        ]
       end
 
       # Returns a proc, that when called will attempt to kill the given process.
