@@ -7,6 +7,8 @@ module Chromiebara
   require 'chromiebara/protocol'
   require 'chromiebara/driver'
   require 'chromiebara/browser'
+  require 'chromiebara/web_socket_client'
+  require 'chromiebara/chrome_client'
 end
 
 
