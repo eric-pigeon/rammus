@@ -14,8 +14,8 @@ module Chromiebara
       # TODO support pipe as well
       chrome_arguments.push('--remote-debugging-port=0')
       chrome_arguments.push("-user-data-dir=#{tmpdir}")
+
       stderr_out, stderr_in = IO.pipe
-      puts chrome_arguments.join(' ')
       pid = Process.spawn(executable_path, *chrome_arguments, 2 => stderr_in)
       stderr_in.close
 

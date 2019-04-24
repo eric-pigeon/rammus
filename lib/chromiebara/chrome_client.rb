@@ -1,5 +1,14 @@
 module Chromiebara
   class ChromeClient
+    class CommandError < StandardError
+      attr_reader :code
+
+      def initialize(code:, message:)
+        @code = code
+        super message
+      end
+    end
+
     attr_reader :web_socket
 
     def initialize(web_socket)
@@ -7,7 +16,12 @@ module Chromiebara
       @last_id = 0
     end
 
-    # @ param [Hash] command
+    # @param [Hash] command
+    #
+    # @raise [CommandError]
+    #
+    # @return [Hash]
+    #
     def command(command)
       command = command.merge(id: next_command_id).to_json
 
@@ -16,7 +30,13 @@ module Chromiebara
       @web_socket.send_message command
       message = @web_socket.read_message
       puts message
-      message
+      response = JSON.parse(message)
+
+      if response.has_key? "error"
+        raise CommandError.new code: response["error"]["code"], message: response["error"]["message"]
+      end
+
+      response["result"] || response["error"]
     end
 
     private
