@@ -11,6 +11,8 @@ module Chromiebara
 
     attr_reader :web_socket
 
+    # @param Chromiebara::WebSocketClient web_socket
+    #
     def initialize(web_socket)
       @web_socket = web_socket
       @last_id = 0
@@ -23,20 +25,32 @@ module Chromiebara
     # @return [Hash]
     #
     def command(command)
-      command = command.merge(id: next_command_id).to_json
+      comamnd_id = next_command_id
+      command = command.merge(id: comamnd_id).to_json
 
       # TODO
       puts "#{Time.now.to_i}: sending msg: #{command}"
-      @web_socket.send_message command
-      message = @web_socket.read_message
-      puts message
-      response = JSON.parse(message)
+      response = @web_socket.send_message command_id: comamnd_id, command: command
+      response.await
 
-      if response.has_key? "error"
-        raise CommandError.new code: response["error"]["code"], message: response["error"]["message"]
-      end
+      # message = @web_socket.read_message
+      # puts message
+      # response = JSON.parse(message)
 
-      response["result"] || response["error"]
+      # if response.has_key? "error"
+      #   raise CommandError.new code: response["error"]["code"], message: response["error"]["message"]
+      # end
+
+      # response["result"] || response["error"]
+    end
+
+    def async_command(command)
+      comamnd_id = next_command_id
+      command = command.merge(id: comamnd_id).to_json
+
+      # TODO
+      puts "#{Time.now.to_i}: sending msg: #{command}"
+      @web_socket.send_message command_id: comamnd_id, command: command
     end
 
     private

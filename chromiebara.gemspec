@@ -37,6 +37,7 @@ Gem::Specification.new do |spec|
 
   spec.add_runtime_dependency 'capybara'
   spec.add_runtime_dependency "childprocess"
+  spec.add_runtime_dependency 'concurrent-ruby'
   spec.add_runtime_dependency 'websocket-driver', '>=0.6.5'
 
   spec.add_development_dependency "bundler", "~> 2.0"

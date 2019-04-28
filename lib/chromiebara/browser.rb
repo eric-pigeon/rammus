@@ -9,6 +9,7 @@ module Chromiebara
       @client = client
       @contexts = {}
       @default_context = BrowserContext.new(client: client, browser: self)
+      client.command Protocol::Target.set_discover_targets discover: true
     end
 
     # Creates a new incognito browser context. This won't share cookies/cache
@@ -18,7 +19,7 @@ module Chromiebara
     #
     def create_context
       response = client.command(Protocol::Target.create_browser_context)
-      context_id = response['browserContextId']
+      context_id = response['result']['browserContextId']
 
       BrowserContext.new(client: client, id: context_id, browser: self).tap do |context|
         @contexts[context_id] = context

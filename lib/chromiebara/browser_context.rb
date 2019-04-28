@@ -17,5 +17,17 @@ module Chromiebara
       raise UncloseableContext unless id
       browser.delete_context(self)
     end
+
+    def new_page
+      client.command(Protocol::Target.create_target(url: 'about:blank', browser_context_id: id))
+    end
+
+    # browserContext.clearPermissionOverrides()
+    # browserContext.isIncognito()
+    # browserContext.newPage()
+    # browserContext.overridePermissions(origin, permissions)
+    # browserContext.pages()
+    # browserContext.targets()
+    # browserContext.waitForTarget(predicate[, options])
   end
 end
