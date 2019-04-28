@@ -13,7 +13,7 @@ module Chromiebara
         expect(@browser.browser_contexts.size).to eq 1
 
         response = @browser.client.command Protocol::Target.get_browser_contexts
-        expect(response["browserContextIds"].size).to eq 0
+        expect(response["result"]["browserContextIds"].size).to eq 0
       end
 
       it 'fails without an id' do
@@ -22,6 +22,20 @@ module Chromiebara
         expect do
           context.close
         end.to raise_error BrowserContext::UncloseableContext
+      end
+    end
+
+    describe '#new_page' do
+      it 'creates a page' do
+        context = @browser.default_context
+        @browser.client.command Protocol::Target.get_browser_contexts
+
+        _page = context.new_page
+
+        # TODO
+        # while true
+        #   puts context.client.web_socket.read_message
+        # end
       end
     end
 

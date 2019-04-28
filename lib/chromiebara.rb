@@ -10,6 +10,7 @@ module Chromiebara
   require 'chromiebara/browser_context'
   require 'chromiebara/web_socket_client'
   require 'chromiebara/chrome_client'
+  require 'chromiebara/response'
 end
 
 

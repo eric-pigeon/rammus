@@ -33,10 +33,10 @@ module Chromiebara
         expect(@browser.browser_contexts.size).to eq 1
 
         response = @browser.client.command Protocol::Target.get_browser_contexts
-        expect(response["browserContextIds"].size).to eq 0
+        expect(response["result"]["browserContextIds"].size).to eq 0
       end
 
-      it 'raises an error if the context does not exist' do
+      xit 'raises an error if the context does not exist' do
         context = BrowserContext.new(client: @browser.client, browser: @browser, id: "FAKEID")
 
         # TODO should raise a specific error here?
