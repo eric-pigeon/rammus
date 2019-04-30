@@ -19,9 +19,22 @@ module Chromiebara
       it 'fails without an id' do
         context = @browser.default_context
 
-        expect do
-          context.close
-        end.to raise_error BrowserContext::UncloseableContext
+        expect { context.close }.to raise_error BrowserContext::UncloseableContext
+      end
+
+      it 'closes all children targets' do
+        expect(@browser.pages.size).to eq 1
+
+        context = @browser.create_context
+        _page = context.new_page
+
+        expect(@browser.pages.size).to eq 2
+        expect(context.pages.size).to eq 1
+
+        context.close
+
+        expect(@browser.pages.size).to eq 1
+        expect(@browser.targets.select { |target| target.type == "page" }.size).to eq 1
       end
     end
 
@@ -36,16 +49,16 @@ module Chromiebara
       end
     end
 
-    # it('should close all belonging targets once closing context', async function({browser, server}) {
-    #   expect((await browser.pages()).length).toBe(1);
+    describe '#pages' do
+      xit 'returns all open pages' do
+        pending 'todo'
+      end
+    end
 
-    #   const context = await browser.createIncognitoBrowserContext();
-    #   await context.newPage();
-    #   expect((await browser.pages()).length).toBe(2);
-    #   expect((await context.pages()).length).toBe(1);
-
-    #   await context.close();
-    #   expect((await browser.pages()).length).toBe(1);
-    # });
+    describe '#targets' do
+      xit 'returns all targets' do
+        pending 'todo'
+      end
+    end
   end
 end

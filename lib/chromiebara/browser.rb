@@ -11,6 +11,7 @@ module Chromiebara
       @default_context = BrowserContext.new(client: client, browser: self)
       @_targets = {}
       client.on('Target.targetCreated', method(:target_created))
+      client.on('Target.targetDestroyed', method(:target_destroyed))
       client.command Protocol::Target.set_discover_targets discover: true
     end
 
@@ -76,7 +77,7 @@ module Chromiebara
         target_info = event["targetInfo"]
         browser_context_id = target_info["browserContextId"]
         context = if browser_context_id && @contexts.has_key?(browser_context_id)
-                    @_contexts[browserContextId]
+                    @contexts[browser_context_id]
                   else
                     default_context
                   end
@@ -90,6 +91,17 @@ module Chromiebara
         # if (await target._initializedPromise) {
         #   this.emit(Events.Browser.TargetCreated, target);
         #   context.emit(Events.BrowserContext.TargetCreated, target);
+        # }
+      end
+
+      def target_destroyed(event)
+        # target = @_targets[event["targetId"]]
+        # target._initializedCallback(false);
+        @_targets.delete(event["targetId"])
+        # target._closedCallback();
+        # if (await target._initializedPromise) {
+        #   this.emit(Events.Browser.TargetDestroyed, target);
+        #   target.browserContext().emit(Events.BrowserContext.TargetDestroyed, target);
         # }
       end
   end
