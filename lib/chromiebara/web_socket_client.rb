@@ -9,7 +9,8 @@ module Chromiebara
       @socket = Socket.new(url)
       @driver = ::WebSocket::Driver.client(@socket)
       @status = :closed
-      @_callbacks = {}
+      @_command_callbacks = {}
+      @_event_callbacks = Hash.new { |h, k| h[k] = [] }
       @listener_thread = nil
       @command_mutex = Mutex.new
 
@@ -20,11 +21,25 @@ module Chromiebara
 
     def send_message(command_id:, command:)
       @command_mutex.synchronize do
-        response = Response.new
-        @_callbacks[command_id] = response
-        driver.text command
-        response
+        Response.new.tap do |response|
+          @_command_callbacks[command_id] = response
+          driver.text command
+        end
       end
+    end
+
+    # @param [String] event
+    # @param [Callable]
+    #
+    def on(event, callable)
+      @_event_callbacks[event] << callable
+    end
+
+    # @param [String] event
+    # @[aram [Hash] data
+    #
+    def emit(event, data)
+      @_event_callbacks[event].each { |callable| callable.call data }
     end
 
     private
@@ -35,9 +50,11 @@ module Chromiebara
 
           puts message
           if message["id"]
-            if callback = @_callbacks.delete(message["id"])
+            if callback = @_command_callbacks.delete(message["id"])
               callback.resolve message
             end
+          else
+            emit(message["method"], message["params"])
           end
         end
 

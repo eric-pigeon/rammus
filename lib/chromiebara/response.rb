@@ -1,19 +1,22 @@
 module Chromiebara
   class Response
-    TIMEOUT = 5
-
     def initialize
       @mutex = Mutex.new
       @cv = ConditionVariable.new
       @value = nil
     end
 
-    def await
+    def await(timeout = 2)
+      deadline = current_time + timeout
+
       @mutex.synchronize do
-        # TODO better timeout
-        @cv.wait(@mutex, TIMEOUT)
-        raise 'TIMEDOUT' if @value.nil?
-        @value
+        loop do
+          return @value unless @value.nil?
+
+          to_wait = deadline - current_time
+          raise Timeout::Error, "Timed out waiting for response" if to_wait <= 0
+          @cv.wait(@mutex, to_wait)
+        end
       end
     end
 
@@ -23,5 +26,11 @@ module Chromiebara
         @cv.broadcast
       end
     end
+
+    private
+
+      def current_time
+        Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      end
   end
 end

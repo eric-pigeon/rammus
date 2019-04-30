@@ -9,6 +9,8 @@ module Chromiebara
       @client = client
       @contexts = {}
       @default_context = BrowserContext.new(client: client, browser: self)
+      @_targets = {}
+      client.on('Target.targetCreated', method(:target_created))
       client.command Protocol::Target.set_discover_targets discover: true
     end
 
@@ -35,11 +37,60 @@ module Chromiebara
       [default_context, *@contexts.values]
     end
 
-    # TODO
+    # TODO document this
     def delete_context(context)
       _response = client.command(Protocol::Target.dispose_browser_context(browser_context_id: context.id))
       @contexts.delete(context.id)
       true
     end
+
+    # An array of all pages inside the Browser. In case of multiple browser
+    # contexts, the method will return an array with all the pages in all
+    # browser contexts. Non visible pages, such as "background_page", will not
+    # be listed here.
+    #
+    # @return [Array<Chromiebara::Page>]
+    #
+    def pages
+      browser_contexts.flat_map(&:pages)
+    end
+
+    # An array of all active targets inside the Browser. In case of multiple
+    # browser contexts, the method will return an array with all the targets in
+    # all browser contexts.
+    #
+    # @return [Array<Chromiebara::Target>]
+    #
+    def targets
+      # return Array.from(this._targets.values()).filter(target => target._isInitialized);
+      @_targets.values
+    end
+
+    def target
+      #     return this.targets().find(target => target.type() === 'browser');
+    end
+
+    private
+
+      def target_created(event)
+        target_info = event["targetInfo"]
+        browser_context_id = target_info["browserContextId"]
+        context = if browser_context_id && @contexts.has_key?(browser_context_id)
+                    @_contexts[browserContextId]
+                  else
+                    default_context
+                  end
+
+        # const target = new Target(targetInfo, context, () => this._connection.createSession(targetInfo), this._ignoreHTTPSErrors, this._defaultViewport, this._screenshotTaskQueue);
+        target = Target.new(target_info, context)
+
+        # assert(!this._targets.has(event.targetInfo.targetId), 'Target should not exist before targetCreated');
+        @_targets[target_info["targetId"]] = target
+
+        # if (await target._initializedPromise) {
+        #   this.emit(Events.Browser.TargetCreated, target);
+        #   context.emit(Events.BrowserContext.TargetCreated, target);
+        # }
+      end
   end
 end
