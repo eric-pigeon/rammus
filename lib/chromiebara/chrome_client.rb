@@ -53,6 +53,13 @@ module Chromiebara
       @web_socket.send_message command_id: comamnd_id, command: command
     end
 
+    # @param [String] event
+    # @param [Callable]
+    #
+    def on(event, callable)
+      web_socket.on event, callable
+    end
+
     private
 
       def next_command_id

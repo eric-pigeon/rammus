@@ -22,6 +22,27 @@ module Chromiebara
       client.command(Protocol::Target.create_target(url: 'about:blank', browser_context_id: id))
     end
 
+    # An array of all open pages. Non visible pages, such as "background_page",
+    # will not be listed here. You can find them using target.page().
+    # An array of all pages inside the browser context.
+    #
+    # @return [Array<Chromiebara::Page>]
+    #
+    def pages
+      targets
+        .select { |target| target.type == :page }
+        .map(&:page)
+      # return pages.filter(page => !!page);
+    end
+
+    # An array of all active targets inside the browser context.
+    #
+    # @return [Array<Chromiebara::Target>]
+    #
+    def targets
+      browser.targets.select { |target| target.browser_context == self }
+    end
+
     # browserContext.clearPermissionOverrides()
     # browserContext.isIncognito()
     # browserContext.newPage()
