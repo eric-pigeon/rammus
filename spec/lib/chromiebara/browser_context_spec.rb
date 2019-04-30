@@ -28,10 +28,11 @@ module Chromiebara
     describe '#new_page' do
       it 'creates a page' do
         expect(@browser.pages.size).to eq 1
-        # context = @browser.default_context
-        # @browser.client.command Protocol::Target.get_browser_contexts
+        context = @browser.default_context
 
         _page = context.new_page
+
+        expect(@browser.pages.size).to eq 2
       end
     end
 

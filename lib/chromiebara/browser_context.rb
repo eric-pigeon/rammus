@@ -30,7 +30,7 @@ module Chromiebara
     #
     def pages
       targets
-        .select { |target| target.type == :page }
+        .select { |target| target.type == "page" }
         .map(&:page)
       # return pages.filter(page => !!page);
     end
