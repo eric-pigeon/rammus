@@ -1,2 +1,4 @@
 .byebug_history
 spec/examples.txt
+.yardoc/
+doc/

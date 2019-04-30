@@ -12,4 +12,6 @@ module Chromiebara
   require 'chromiebara/chrome_client'
   require 'chromiebara/response'
   require 'chromiebara/target'
+  require 'chromiebara/page'
+  require 'chromiebara/cdp_session'
 end

@@ -82,7 +82,7 @@ module Chromiebara
                   end
 
         # const target = new Target(targetInfo, context, () => this._connection.createSession(targetInfo), this._ignoreHTTPSErrors, this._defaultViewport, this._screenshotTaskQueue);
-        target = Target.new(target_info, context)
+        target = Target.new(target_info, context, client)
 
         # assert(!this._targets.has(event.targetInfo.targetId), 'Target should not exist before targetCreated');
         @_targets[target_info["targetId"]] = target
