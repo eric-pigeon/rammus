@@ -2,12 +2,9 @@ module Chromiebara
   class Target
     attr_reader :target_info, :browser_context
 
-    # @param {!Protocol.Target.TargetInfo} targetInfo
-    # @param {!Puppeteer.BrowserContext} browserContext
-    # @param {!function():!Promise<!Puppeteer.CDPSession>} sessionFactory
-    # @param {boolean} ignoreHTTPSErrors
-    # @param {?Puppeteer.Viewport} defaultViewport
-    # @param {!Puppeteer.TaskQueue} screenshotTaskQueue
+    # @param [Hash] target_info
+    # @param [Chromiebara::BrowserContext] browser_context
+    # @param [Chromiebara::ChromeClient] client
     #
     def initialize(target_info, browser_context, client)
       @target_info = target_info
@@ -28,6 +25,9 @@ module Chromiebara
     #       .then(client => Page.create(client, this, this._ignoreHTTPSErrors, this._defaultViewport, this._screenshotTaskQueue));
     # }
     # return this._pagePromise;
+    end
+
+    def session
     end
 
     # Identifies what kind of target this is. Can be "page", "background_page",

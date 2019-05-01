@@ -1,3 +1,5 @@
+require 'timeout'
+
 module Chromiebara
   class Response
     def initialize

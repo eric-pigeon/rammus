@@ -33,10 +33,6 @@ module Chromiebara
       response = @web_socket.send_message command_id: comamnd_id, command: command
       response.await
 
-      # message = @web_socket.read_message
-      # puts message
-      # response = JSON.parse(message)
-
       # if response.has_key? "error"
       #   raise CommandError.new code: response["error"]["code"], message: response["error"]["message"]
       # end
@@ -58,6 +54,13 @@ module Chromiebara
     #
     def on(event, callable)
       web_socket.on event, callable
+    end
+
+    # @param [Hash] target_info
+    #
+    # @return [Chromiebara::CDPSession]
+    #
+    def create_session(target_info)
     end
 
     private

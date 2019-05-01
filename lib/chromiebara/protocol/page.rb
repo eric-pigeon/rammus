@@ -4,7 +4,7 @@ module Chromiebara
       extend self
 
       # Deprecated, please use addScriptToEvaluateOnNewDocument instead.
-      # 
+      #
       #
       def add_script_to_evaluate_on_load(script_source:)
         {
@@ -14,7 +14,7 @@ module Chromiebara
       end
 
       # Evaluates given script in every frame upon creation (before loading frame's scripts).
-      # 
+      #
       # @param world_name [String] If specified, creates an isolated world with the given name and evaluates given script in it. This world name will be used as the ExecutionContextDescription::name when the corresponding event is emitted.
       #
       def add_script_to_evaluate_on_new_document(source:, world_name: nil)
@@ -25,7 +25,7 @@ module Chromiebara
       end
 
       # Brings page to front (activates tab).
-      # 
+      #
       #
       def bring_to_front
         {
@@ -34,7 +34,7 @@ module Chromiebara
       end
 
       # Capture page screenshot.
-      # 
+      #
       # @param format [String] Image compression format (defaults to png).
       # @param quality [Integer] Compression quality from range [0..100] (jpeg only).
       # @param clip [Viewport] Capture the screenshot of a given region only.
@@ -49,7 +49,7 @@ module Chromiebara
 
       # Returns a snapshot of the page as a string. For MHTML format, the serialization includes
       # iframes, shadow DOM, external resources, and element-inline styles.
-      # 
+      #
       # @param format [String] Format (defaults to mhtml).
       #
       def capture_snapshot(format: nil)
@@ -60,7 +60,7 @@ module Chromiebara
       end
 
       # Clears the overriden device metrics.
-      # 
+      #
       #
       def clear_device_metrics_override
         {
@@ -69,7 +69,7 @@ module Chromiebara
       end
 
       # Clears the overridden Device Orientation.
-      # 
+      #
       #
       def clear_device_orientation_override
         {
@@ -78,7 +78,7 @@ module Chromiebara
       end
 
       # Clears the overriden Geolocation Position and Error.
-      # 
+      #
       #
       def clear_geolocation_override
         {
@@ -87,7 +87,7 @@ module Chromiebara
       end
 
       # Creates an isolated world for the given frame.
-      # 
+      #
       # @param frame_id [Frameid] Id of the frame in which the isolated world should be created.
       # @param world_name [String] An optional name which is reported in the Execution Context.
       # @param grant_univeral_access [Boolean] Whether or not universal access should be granted to the isolated world. This is a powerful option, use with caution.
@@ -100,7 +100,7 @@ module Chromiebara
       end
 
       # Deletes browser cookie with given name, domain and path.
-      # 
+      #
       # @param cookie_name [String] Name of the cookie to remove.
       # @param url [String] URL to match cooke domain and path.
       #
@@ -112,7 +112,7 @@ module Chromiebara
       end
 
       # Disables page domain notifications.
-      # 
+      #
       #
       def disable
         {
@@ -121,7 +121,7 @@ module Chromiebara
       end
 
       # Enables page domain notifications.
-      # 
+      #
       #
       def enable
         {
@@ -130,7 +130,7 @@ module Chromiebara
       end
 
 
-      # 
+      #
       #
       def get_app_manifest
         {
@@ -140,7 +140,7 @@ module Chromiebara
 
       # Returns all browser cookies. Depending on the backend support, will return detailed cookie
       # information in the `cookies` field.
-      # 
+      #
       #
       def get_cookies
         {
@@ -149,7 +149,7 @@ module Chromiebara
       end
 
       # Returns present frame tree structure.
-      # 
+      #
       #
       def get_frame_tree
         {
@@ -158,7 +158,7 @@ module Chromiebara
       end
 
       # Returns metrics relating to the layouting of the page, such as viewport bounds/scale.
-      # 
+      #
       #
       def get_layout_metrics
         {
@@ -167,7 +167,7 @@ module Chromiebara
       end
 
       # Returns navigation history for the current page.
-      # 
+      #
       #
       def get_navigation_history
         {
@@ -176,7 +176,7 @@ module Chromiebara
       end
 
       # Resets navigation history for the current page.
-      # 
+      #
       #
       def reset_navigation_history
         {
@@ -185,7 +185,7 @@ module Chromiebara
       end
 
       # Returns content of the given resource.
-      # 
+      #
       # @param frame_id [Frameid] Frame id to get resource for.
       # @param url [String] URL of the resource to get content for.
       #
@@ -197,7 +197,7 @@ module Chromiebara
       end
 
       # Returns present frame / resource tree structure.
-      # 
+      #
       #
       def get_resource_tree
         {
@@ -206,7 +206,7 @@ module Chromiebara
       end
 
       # Accepts or dismisses a JavaScript initiated dialog (alert, confirm, prompt, or onbeforeunload).
-      # 
+      #
       # @param accept [Boolean] Whether to accept or dismiss the dialog.
       # @param prompt_text [String] The text to enter into the dialog prompt before accepting. Used only if this is a prompt dialog.
       #
@@ -218,7 +218,7 @@ module Chromiebara
       end
 
       # Navigates current page to the given URL.
-      # 
+      #
       # @param url [String] URL to navigate the page to.
       # @param referrer [String] Referrer URL.
       # @param transition_type [Transitiontype] Intended transition type.
@@ -232,7 +232,7 @@ module Chromiebara
       end
 
       # Navigates current page to the given history entry.
-      # 
+      #
       # @param entry_id [Integer] Unique id of the entry to navigate to.
       #
       def navigate_to_history_entry(entry_id:)
@@ -243,7 +243,7 @@ module Chromiebara
       end
 
       # Print page as PDF.
-      # 
+      #
       # @param landscape [Boolean] Paper orientation. Defaults to false.
       # @param display_header_footer [Boolean] Display header and footer. Defaults to false.
       # @param print_background [Boolean] Print background graphics. Defaults to false.
@@ -268,7 +268,7 @@ module Chromiebara
       end
 
       # Reloads given page optionally ignoring the cache.
-      # 
+      #
       # @param ignore_cache [Boolean] If true, browser cache is ignored (as if the user pressed Shift+refresh).
       # @param script_to_evaluate_on_load [String] If set, the script will be injected into all frames of the inspected page after reload. Argument will be ignored if reloading dataURL origin.
       #
@@ -280,7 +280,7 @@ module Chromiebara
       end
 
       # Deprecated, please use removeScriptToEvaluateOnNewDocument instead.
-      # 
+      #
       #
       def remove_script_to_evaluate_on_load(identifier:)
         {
@@ -290,7 +290,7 @@ module Chromiebara
       end
 
       # Removes given script from the list.
-      # 
+      #
       #
       def remove_script_to_evaluate_on_new_document(identifier:)
         {
@@ -300,7 +300,7 @@ module Chromiebara
       end
 
       # Acknowledges that a screencast frame has been received by the frontend.
-      # 
+      #
       # @param session_id [Integer] Frame number.
       #
       def screencast_frame_ack(session_id:)
@@ -311,7 +311,7 @@ module Chromiebara
       end
 
       # Searches for given string in resource content.
-      # 
+      #
       # @param frame_id [Frameid] Frame id for resource to search in.
       # @param url [String] URL of the resource to search in.
       # @param query [String] String to search for.
@@ -326,7 +326,7 @@ module Chromiebara
       end
 
       # Enable Chrome's experimental ad filter on all sites.
-      # 
+      #
       # @param enabled [Boolean] Whether to block ads.
       #
       def set_ad_blocking_enabled(enabled:)
@@ -337,7 +337,7 @@ module Chromiebara
       end
 
       # Enable page Content Security Policy by-passing.
-      # 
+      #
       # @param enabled [Boolean] Whether to bypass page CSP.
       #
       def set_bypass_csp(enabled:)
@@ -350,7 +350,7 @@ module Chromiebara
       # Overrides the values of device screen dimensions (window.screen.width, window.screen.height,
       # window.innerWidth, window.innerHeight, and "device-width"/"device-height"-related CSS media
       # query results).
-      # 
+      #
       # @param width [Integer] Overriding width value in pixels (minimum 0, maximum 10000000). 0 disables the override.
       # @param height [Integer] Overriding height value in pixels (minimum 0, maximum 10000000). 0 disables the override.
       # @param device_scale_factor [Number] Overriding device scale factor value. 0 disables the override.
@@ -372,7 +372,7 @@ module Chromiebara
       end
 
       # Overrides the Device Orientation.
-      # 
+      #
       # @param alpha [Number] Mock alpha
       # @param beta [Number] Mock beta
       # @param gamma [Number] Mock gamma
@@ -385,7 +385,7 @@ module Chromiebara
       end
 
       # Set generic font families.
-      # 
+      #
       # @param font_families [Fontfamilies] Specifies font families to set. If a font family is not specified, it won't be changed.
       #
       def set_font_families(font_families:)
@@ -396,7 +396,7 @@ module Chromiebara
       end
 
       # Set default font sizes.
-      # 
+      #
       # @param font_sizes [Fontsizes] Specifies font sizes to set. If a font size is not specified, it won't be changed.
       #
       def set_font_sizes(font_sizes:)
@@ -407,7 +407,7 @@ module Chromiebara
       end
 
       # Sets given markup as the document's HTML.
-      # 
+      #
       # @param frame_id [Frameid] Frame id to set HTML for.
       # @param html [String] HTML content to set.
       #
@@ -419,7 +419,7 @@ module Chromiebara
       end
 
       # Set the behavior when downloading a file.
-      # 
+      #
       # @param behavior [String] Whether to allow all or deny all download requests, or use default Chrome behavior if available (otherwise deny).
       # @param download_path [String] The default path to save downloaded files to. This is requred if behavior is set to 'allow'
       #
@@ -432,7 +432,7 @@ module Chromiebara
 
       # Overrides the Geolocation Position or Error. Omitting any of the parameters emulates position
       # unavailable.
-      # 
+      #
       # @param latitude [Number] Mock latitude
       # @param longitude [Number] Mock longitude
       # @param accuracy [Number] Mock accuracy
@@ -445,7 +445,7 @@ module Chromiebara
       end
 
       # Controls whether page will emit lifecycle events.
-      # 
+      #
       # @param enabled [Boolean] If true, starts emitting lifecycle events.
       #
       def set_lifecycle_events_enabled(enabled:)
@@ -456,7 +456,7 @@ module Chromiebara
       end
 
       # Toggles mouse event-based touch event emulation.
-      # 
+      #
       # @param enabled [Boolean] Whether the touch event emulation should be enabled.
       # @param configuration [String] Touch/gesture events configuration. Default: current platform.
       #
@@ -468,7 +468,7 @@ module Chromiebara
       end
 
       # Starts sending each frame using the `screencastFrame` event.
-      # 
+      #
       # @param format [String] Image compression format.
       # @param quality [Integer] Compression quality from range [0..100].
       # @param max_width [Integer] Maximum screenshot width.
@@ -483,7 +483,7 @@ module Chromiebara
       end
 
       # Force the page stop all navigations and pending resource fetches.
-      # 
+      #
       #
       def stop_loading
         {
@@ -492,7 +492,7 @@ module Chromiebara
       end
 
       # Crashes renderer on the IO thread, generates minidumps.
-      # 
+      #
       #
       def crash
         {
@@ -501,7 +501,7 @@ module Chromiebara
       end
 
       # Tries to close page, running its beforeunload hooks, if any.
-      # 
+      #
       #
       def close
         {
@@ -512,7 +512,7 @@ module Chromiebara
       # Tries to update the web lifecycle state of the page.
       # It will transition the page to the given state according to:
       # https://github.com/WICG/web-lifecycle/
-      # 
+      #
       # @param state [String] Target lifecycle state
       #
       def set_web_lifecycle_state(state:)
@@ -523,7 +523,7 @@ module Chromiebara
       end
 
       # Stops sending each frame in the `screencastFrame`.
-      # 
+      #
       #
       def stop_screencast
         {
@@ -532,7 +532,7 @@ module Chromiebara
       end
 
       # Forces compilation cache to be generated for every subresource script.
-      # 
+      #
       #
       def set_produce_compilation_cache(enabled:)
         {
@@ -543,7 +543,7 @@ module Chromiebara
 
       # Seeds compilation cache for given url. Compilation cache does not survive
       # cross-process navigation.
-      # 
+      #
       # @param data [Binary] Base64-encoded data
       #
       def add_compilation_cache(url:, data:)
@@ -554,7 +554,7 @@ module Chromiebara
       end
 
       # Clears seeded compilation cache.
-      # 
+      #
       #
       def clear_compilation_cache
         {
@@ -563,7 +563,7 @@ module Chromiebara
       end
 
       # Generates a report for testing.
-      # 
+      #
       # @param message [String] Message to be displayed in the report.
       # @param group [String] Specifies the endpoint group to deliver the report to.
       #
@@ -575,7 +575,7 @@ module Chromiebara
       end
 
       # Pauses page execution. Can be resumed using generic Runtime.runIfWaitingForDebugger.
-      # 
+      #
       #
       def wait_for_debugger
         {

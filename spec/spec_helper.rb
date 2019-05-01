@@ -2,19 +2,25 @@ require 'chromiebara'
 require 'support/test_app'
 require 'byebug'
 
-Capybara.register_driver :chromiebara do |app|
-  # debug = !ENV['DEBUG'].nil?
-  options = {
-  #   logger: TestSessions.logger,
-  #   inspector: debug,
-  #   debug: debug,
-  #   headless: true
-  }
-
-  Chromiebara::Driver.new(app, options)
+module SeverHelper
+  extend RSpec::SharedContext
+  let(:server) do
+    OpenStruct.new(
+      empty_page: 'http://localhost:4567/empty'
+    )
+  end
 end
 
 RSpec.configure do |config|
+  config.include SeverHelper
+
+  config.before(:suite) do
+    @_app = Thread.new { TestApp.run! }
+  end
+
+  config.after(:suite) do
+    TestApp.stop!
+  end
   # rspec-expectations config goes here. You can use an alternate
   # assertion/expectation library such as wrong or the stdlib/minitest
   # assertions if you prefer.

@@ -73,6 +73,15 @@ module Chromiebara
       #     return this.targets().find(target => target.type() === 'browser');
     end
 
+    # TODO document
+    #
+    def create_page_in_context(context_id)
+      response = client.command(Protocol::Target.create_target(url: 'about:blank', browser_context_id: context_id))
+      target_id = response.dig("result", "targetId")
+      target = @_targets.fetch(target_id)
+      target.page
+    end
+
     private
 
       def target_created(event)
