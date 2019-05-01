@@ -1,3 +1,5 @@
+require 'forwardable'
+
 module Chromiebara
   class Browser
     extend Forwardable
