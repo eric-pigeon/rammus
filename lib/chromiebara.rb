@@ -13,4 +13,5 @@ module Chromiebara
   require 'chromiebara/page'
   require 'chromiebara/cdp_session'
   require 'chromiebara/frame'
+  require 'chromiebara/frame_manager'
 end

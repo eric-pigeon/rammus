@@ -4,7 +4,7 @@ module Chromiebara
       extend self
 
       # Continues execution until specific location is reached.
-      # 
+      #
       # @param location [Location] Location to continue to.
       #
       def continue_to_location(location:, target_call_frames: nil)
@@ -15,7 +15,7 @@ module Chromiebara
       end
 
       # Disables debugger for given page.
-      # 
+      #
       #
       def disable
         {
@@ -25,7 +25,7 @@ module Chromiebara
 
       # Enables debugger for the given page. Clients should not assume that the debugging has been
       # enabled until the result for this command is received.
-      # 
+      #
       #
       def enable
         {
@@ -34,7 +34,7 @@ module Chromiebara
       end
 
       # Evaluates expression on a given call frame.
-      # 
+      #
       # @param call_frame_id [Callframeid] Call frame identifier to evaluate on.
       # @param expression [String] Expression to evaluate.
       # @param object_group [String] String object group name to put result into (allows rapid releasing resulting object handles using `releaseObjectGroup`).
@@ -54,7 +54,7 @@ module Chromiebara
 
       # Returns possible locations for breakpoint. scriptId in start and end range locations should be
       # the same.
-      # 
+      #
       # @param start [Location] Start of range to search possible breakpoint locations in.
       # @param end [Location] End of range to search possible breakpoint locations in (excluding). When not specified, end of scripts is used as end of range.
       # @param restrict_to_function [Boolean] Only consider locations which are in the same (non-nested) function as start.
@@ -67,7 +67,7 @@ module Chromiebara
       end
 
       # Returns source for the script with given id.
-      # 
+      #
       # @param script_id [Runtime.scriptid] Id of the script to get source for.
       #
       def get_script_source(script_id:)
@@ -78,7 +78,7 @@ module Chromiebara
       end
 
       # Returns stack trace with given `stackTraceId`.
-      # 
+      #
       #
       def get_stack_trace(stack_trace_id:)
         {
@@ -88,7 +88,7 @@ module Chromiebara
       end
 
       # Stops on the next JavaScript statement.
-      # 
+      #
       #
       def pause
         {
@@ -97,7 +97,7 @@ module Chromiebara
       end
 
 
-      # 
+      #
       # @param parent_stack_trace_id [Runtime.stacktraceid] Debugger will pause when async call with given stack trace is started.
       #
       def pause_on_async_call(parent_stack_trace_id:)
@@ -108,7 +108,7 @@ module Chromiebara
       end
 
       # Removes JavaScript breakpoint.
-      # 
+      #
       #
       def remove_breakpoint(breakpoint_id:)
         {
@@ -118,7 +118,7 @@ module Chromiebara
       end
 
       # Restarts particular call frame from the beginning.
-      # 
+      #
       # @param call_frame_id [Callframeid] Call frame identifier to evaluate on.
       #
       def restart_frame(call_frame_id:)
@@ -129,7 +129,7 @@ module Chromiebara
       end
 
       # Resumes JavaScript execution.
-      # 
+      #
       #
       def resume
         {
@@ -138,7 +138,7 @@ module Chromiebara
       end
 
       # Searches for given string in script content.
-      # 
+      #
       # @param script_id [Runtime.scriptid] Id of the script to search in.
       # @param query [String] String to search for.
       # @param case_sensitive [Boolean] If true, search is case sensitive.
@@ -152,7 +152,7 @@ module Chromiebara
       end
 
       # Enables or disables async call stacks tracking.
-      # 
+      #
       # @param max_depth [Integer] Maximum depth of async call stacks. Setting to `0` will effectively disable collecting async call stacks (default).
       #
       def set_async_call_stack_depth(max_depth:)
@@ -165,7 +165,7 @@ module Chromiebara
       # Replace previous blackbox patterns with passed ones. Forces backend to skip stepping/pausing in
       # scripts with url matching one of the patterns. VM will try to leave blackboxed script by
       # performing 'step in' several times, finally resorting to 'step out' if unsuccessful.
-      # 
+      #
       # @param patterns [Array] Array of regexps that will be used to check script url for blackbox state.
       #
       def set_blackbox_patterns(patterns:)
@@ -179,7 +179,7 @@ module Chromiebara
       # scripts by performing 'step in' several times, finally resorting to 'step out' if unsuccessful.
       # Positions array contains positions where blackbox state is changed. First interval isn't
       # blackboxed. Array should be sorted.
-      # 
+      #
       # @param script_id [Runtime.scriptid] Id of the script.
       #
       def set_blackboxed_ranges(script_id:, positions:)
@@ -190,7 +190,7 @@ module Chromiebara
       end
 
       # Sets JavaScript breakpoint at a given location.
-      # 
+      #
       # @param location [Location] Location to set breakpoint in.
       # @param condition [String] Expression to use as a breakpoint condition. When specified, debugger will only stop on the breakpoint if this expression evaluates to true.
       #
@@ -205,7 +205,7 @@ module Chromiebara
       # command is issued, all existing parsed scripts will have breakpoints resolved and returned in
       # `locations` property. Further matching script parsing will result in subsequent
       # `breakpointResolved` events issued. This logical breakpoint will survive page reloads.
-      # 
+      #
       # @param line_number [Integer] Line number to set breakpoint at.
       # @param url [String] URL of the resources to set breakpoint on.
       # @param url_regex [String] Regex pattern for the URLs of the resources to set breakpoints on. Either `url` or `urlRegex` must be specified.
@@ -223,7 +223,7 @@ module Chromiebara
       # Sets JavaScript breakpoint before each call to the given function.
       # If another function was created from the same source as a given one,
       # calling it will also trigger the breakpoint.
-      # 
+      #
       # @param object_id [Runtime.remoteobjectid] Function object id.
       # @param condition [String] Expression to use as a breakpoint condition. When specified, debugger will stop on the breakpoint if this expression evaluates to true.
       #
@@ -235,7 +235,7 @@ module Chromiebara
       end
 
       # Activates / deactivates all breakpoints on the page.
-      # 
+      #
       # @param active [Boolean] New value for breakpoints active state.
       #
       def set_breakpoints_active(active:)
@@ -247,7 +247,7 @@ module Chromiebara
 
       # Defines pause on exceptions state. Can be set to stop on all exceptions, uncaught exceptions or
       # no exceptions. Initial pause on exceptions state is `none`.
-      # 
+      #
       # @param state [String] Pause on exceptions mode.
       #
       def set_pause_on_exceptions(state:)
@@ -258,7 +258,7 @@ module Chromiebara
       end
 
       # Changes return value in top frame. Available only at return break position.
-      # 
+      #
       # @param new_value [Runtime.callargument] New return value.
       #
       def set_return_value(new_value:)
@@ -269,7 +269,7 @@ module Chromiebara
       end
 
       # Edits JavaScript source live.
-      # 
+      #
       # @param script_id [Runtime.scriptid] Id of the script to edit.
       # @param script_source [String] New content of the script.
       # @param dry_run [Boolean] If true the change will not actually be applied. Dry run may be used to get result description without actually modifying the code.
@@ -282,7 +282,7 @@ module Chromiebara
       end
 
       # Makes page not interrupt on any pauses (breakpoint, exception, dom exception etc).
-      # 
+      #
       # @param skip [Boolean] New value for skip pauses state.
       #
       def set_skip_all_pauses(skip:)
@@ -294,7 +294,7 @@ module Chromiebara
 
       # Changes value of variable in a callframe. Object-based scopes are not supported and must be
       # mutated manually.
-      # 
+      #
       # @param scope_number [Integer] 0-based number of scope as was listed in scope chain. Only 'local', 'closure' and 'catch' scope types are allowed. Other scopes could be manipulated manually.
       # @param variable_name [String] Variable name.
       # @param new_value [Runtime.callargument] New variable value.
@@ -308,7 +308,7 @@ module Chromiebara
       end
 
       # Steps into the function call.
-      # 
+      #
       # @param break_on_async_call [Boolean] Debugger will issue additional Debugger.paused notification if any async task is scheduled before next pause.
       #
       def step_into(break_on_async_call: nil)
@@ -319,7 +319,7 @@ module Chromiebara
       end
 
       # Steps out of the function call.
-      # 
+      #
       #
       def step_out
         {
@@ -328,7 +328,7 @@ module Chromiebara
       end
 
       # Steps over the statement.
-      # 
+      #
       #
       def step_over
         {

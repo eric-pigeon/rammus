@@ -29,7 +29,7 @@ module Chromiebara
     end
 
     # @param [String] event
-    # @param [Callable]
+    # @param [Callable] callable
     #
     def on(event, callable)
       @_event_callbacks[event] << callable
@@ -87,6 +87,7 @@ module Chromiebara
       end
   end
 
+  # @!visibility private
   class Socket
     attr_reader :url
 

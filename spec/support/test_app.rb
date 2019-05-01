@@ -4,6 +4,6 @@ require 'rack'
 require 'yaml'
 
 class TestApp < Sinatra::Base
-  get 'empty' do
+  get '/empty' do
   end
 end

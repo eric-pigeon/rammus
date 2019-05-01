@@ -18,8 +18,12 @@ module Chromiebara
       browser.delete_context(self)
     end
 
+    # Creates a new page in the browser context.
+    #
+    # @return [Chromiebara::Page]
+    #
     def new_page
-      client.command(Protocol::Target.create_target(url: 'about:blank', browser_context_id: id))
+      browser.create_page_in_context(self.id)
     end
 
     # An array of all open pages. Non visible pages, such as "background_page",
@@ -45,10 +49,7 @@ module Chromiebara
 
     # browserContext.clearPermissionOverrides()
     # browserContext.isIncognito()
-    # browserContext.newPage()
     # browserContext.overridePermissions(origin, permissions)
-    # browserContext.pages()
-    # browserContext.targets()
     # browserContext.waitForTarget(predicate[, options])
   end
 end
