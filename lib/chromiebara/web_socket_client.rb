@@ -4,15 +4,14 @@ require 'socket'
 module Chromiebara
   class WebSocketClient
     attr_reader :driver, :status
+    attr_accessor :on_message
 
     def initialize(url)
       @socket = Socket.new(url)
       @driver = ::WebSocket::Driver.client(@socket)
       @status = :closed
-      @_command_callbacks = {}
-      @_event_callbacks = Hash.new { |h, k| h[k] = [] }
+      @on_message = nil
       @listener_thread = nil
-      @command_mutex = Mutex.new
 
       setup_driver
       start_driver
@@ -20,55 +19,21 @@ module Chromiebara
     end
 
     def send_message(command_id:, command:)
-      @command_mutex.synchronize do
-        Response.new.tap do |response|
-          @_command_callbacks[command_id] = response
-          driver.text command
-        end
-      end
-    end
-
-    # @param [String] event
-    # @param [Callable] callable
-    #
-    def on(event, callable)
-      @_event_callbacks[event] << callable
-    end
-
-    # @param [String] event
-    # @[aram [Hash] data
-    #
-    def emit(event, data)
-      @_event_callbacks[event].each { |callable| callable.call data }
+      driver.text command
     end
 
     private
 
       def setup_driver
-        driver.on(:message) do |e|
-          message = JSON.parse e.data
-
-          puts message
-          if message["id"]
-            if callback = @_command_callbacks.delete(message["id"])
-              callback.resolve message
-            end
-          else
-            emit(message["method"], message["params"])
-          end
+        driver.on(:message) do |event|
+          on_message.call event.data if on_message
         end
 
-        driver.on(:error) do |e|
-          raise e.message
-        end
+        driver.on(:error) { |e| raise e.message }
 
-        driver.on(:close) do |_e|
-          @status = :closed
-        end
+        driver.on(:close) { |_e| @status = :closed }
 
-        driver.on(:open) do |_e|
-          @status = :open
-        end
+        driver.on(:open) { |_e| @status = :open }
       end
 
       def start_driver
@@ -83,7 +48,7 @@ module Chromiebara
       def start_listener_thread
         @listener_thread = Thread.new do
           loop { parse_input }
-        end.abort_on_exception = true
+        end.tap { |thread| thread.abort_on_exception = true }
       end
   end
 

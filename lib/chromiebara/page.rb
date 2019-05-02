@@ -2,12 +2,13 @@ module Chromiebara
   class Page
     extend Forwardable
 
+    attr_reader :target
+    delegate [:session] => :target
     delegate [:url] => :main_frame
 
-    def initialize(client, target)
-      @client = client
+    def initialize(target)
       @target = target
-      @_frameManager = FrameManager.new(client, self)
+      @_frameManager = FrameManager.new(session, self)
     end
 
     def main_frame

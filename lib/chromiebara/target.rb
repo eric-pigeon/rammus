@@ -19,15 +19,11 @@ module Chromiebara
     def page
       return unless type == "page" || type == "background_page"
 
-      @_page ||= Page.new(@_client, self)
-    # if ((this._targetInfo.type === 'page' || this._targetInfo.type === 'background_page') && !this._pagePromise) {
-    #   this._pagePromise = this._sessionFactory()
-    #       .then(client => Page.create(client, this, this._ignoreHTTPSErrors, this._defaultViewport, this._screenshotTaskQueue));
-    # }
-    # return this._pagePromise;
+      @_page ||= Page.new(self)
     end
 
     def session
+      @_session ||= @_client.create_session target_info
     end
 
     # Identifies what kind of target this is. Can be "page", "background_page",
