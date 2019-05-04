@@ -33,7 +33,7 @@ module Chromiebara
         expect(@browser.browser_contexts.size).to eq 1
 
         response = @browser.client.command Protocol::Target.get_browser_contexts
-        expect(response["result"]["browserContextIds"].size).to eq 0
+        expect(response["browserContextIds"].size).to eq 0
       end
 
       xit 'raises an error if the context does not exist' do
@@ -43,6 +43,23 @@ module Chromiebara
         expect do
           @browser.delete_context context
         end.to raise_error "Failed to find context with id FAKEID"
+      end
+    end
+
+    describe '#target' do
+      it 'retuns the target for the browser' do
+        # TODO figure out why there are 2 browser targets when launching
+        target = @browser.target
+
+        expect(target.type).to eq "browser"
+      end
+    end
+
+    describe '#version' do
+      it 'returns the browser version' do
+        version = @browser.version
+
+        expect(version).to be_a Hash
       end
     end
   end

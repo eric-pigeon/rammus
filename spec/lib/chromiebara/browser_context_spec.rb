@@ -13,7 +13,7 @@ module Chromiebara
         expect(@browser.browser_contexts.size).to eq 1
 
         response = @browser.client.command Protocol::Target.get_browser_contexts
-        expect(response["result"]["browserContextIds"].size).to eq 0
+        expect(response["browserContextIds"].size).to eq 0
       end
 
       it 'fails without an id' do

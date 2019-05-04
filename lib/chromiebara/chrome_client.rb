@@ -18,9 +18,9 @@ module Chromiebara
       web_socket.on_message = method :on_message
       @_sessions = {}
       @last_id = 0
+      @command_mutex = Mutex.new
       @_command_callbacks = {}
       @_event_callbacks = Hash.new { |h, k| h[k] = [] }
-      @command_mutex = Mutex.new
     end
 
     # @param [Hash] command
@@ -36,11 +36,24 @@ module Chromiebara
 
         Response.new.tap do |resp|
           @_command_callbacks[comamnd_id] = resp
-          puts "#{Time.now.to_i}: sending msg: #{command}"
-          web_socket.send_message command_id: comamnd_id, command: command
+          ProtocolLogger.puts_command command
+          web_socket.send_message command: command
         end
       end
       response.await
+    end
+
+    # @return [Integer] command_id
+    #
+    def _raw_send(command)
+      @command_mutex.synchronize do
+        comamnd_id = next_command_id
+        command = command.merge(id: comamnd_id).to_json
+
+        ProtocolLogger.puts_command command
+        web_socket.send_message command: command
+        comamnd_id
+      end
     end
 
     # @param [String] event
@@ -57,7 +70,7 @@ module Chromiebara
     def create_session(target_info)
       response = command Protocol::Target.attach_to_target target_id: target_info["targetId"], flatten: true
 
-      session_id = response.dig "result", "sessionId"
+      session_id = response["sessionId"]
 
       @_sessions.fetch session_id
     end
@@ -80,17 +93,21 @@ module Chromiebara
       def on_message(message)
         message = JSON.parse message
 
-        puts message
-
         if message["method"] === 'Target.attachedToTarget'
+          ProtocolLogger.puts_event message
           session_id = message.dig "params", "sessionId"
           session = CDPSession.new(self, message.dig("targetInfo", "type"), session_id)
           @_sessions[session_id] = session
+        elsif message["sessionId"]
+          ProtocolLogger.puts_event message
+          @_sessions.fetch(message["sessionId"]).send(:on_message, message)
         elsif message["id"]
+          ProtocolLogger.puts_command_response message
           if callback = @_command_callbacks.delete(message["id"])
-            callback.resolve message
+            callback.resolve message["result"]
           end
         else
+          ProtocolLogger.puts_event message
           emit(message["method"], message["params"])
         end
       end
