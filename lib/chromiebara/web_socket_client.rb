@@ -18,7 +18,7 @@ module Chromiebara
       start_listener_thread
     end
 
-    def send_message(command_id:, command:)
+    def send_message(command:)
       driver.text command
     end
 

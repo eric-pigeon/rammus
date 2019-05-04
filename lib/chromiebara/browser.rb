@@ -14,6 +14,7 @@ module Chromiebara
       @_targets = {}
       client.on('Target.targetCreated', method(:target_created))
       client.on('Target.targetDestroyed', method(:target_destroyed))
+      client.on('Target.targetInfoChanged', method(:target_info_changed))
       client.command Protocol::Target.set_discover_targets discover: true
     end
 
@@ -24,7 +25,7 @@ module Chromiebara
     #
     def create_context
       response = client.command(Protocol::Target.create_browser_context)
-      context_id = response['result']['browserContextId']
+      context_id = response['browserContextId']
 
       BrowserContext.new(client: client, id: context_id, browser: self).tap do |context|
         @contexts[context_id] = context
@@ -65,21 +66,34 @@ module Chromiebara
     # @return [Array<Chromiebara::Target>]
     #
     def targets
-      # return Array.from(this._targets.values()).filter(target => target._isInitialized);
-      @_targets.values
+      @_targets.values.select(&:initialized)
     end
 
+    # The target associated with the browser.
+    #
+    # @return [Chromiebara::Target]
+    #
     def target
-      #     return this.targets().find(target => target.type() === 'browser');
+      targets.detect { |target| target.type == "browser" }
     end
 
-    # TODO document
+    # Creates a new page in the browser context
+    #
+    # @return [Chromiebara::Page]
     #
     def create_page_in_context(context_id)
       response = client.command(Protocol::Target.create_target(url: 'about:blank', browser_context_id: context_id))
-      target_id = response.dig "result", "targetId"
+      target_id = response["targetId"]
       target = @_targets.fetch target_id
       target.page
+    end
+
+    # The browsers version information
+    #
+    # @return [Hash]
+    #
+    def version
+      client.command Protocol::Browser.get_version
     end
 
     private
@@ -114,6 +128,19 @@ module Chromiebara
         #   this.emit(Events.Browser.TargetDestroyed, target);
         #   target.browserContext().emit(Events.BrowserContext.TargetDestroyed, target);
         # }
+      end
+
+      def target_info_changed(event)
+        target = @_targets.fetch event.dig("targetInfo", "targetId")
+        previous_url = target.url
+        was_initialized = target.initialized
+        target.send(:target_info_changed, event["targetInfo"])
+        # target._targetInfoChanged(event.targetInfo);
+
+        if was_initialized && previous_url != target.url
+          # this.emit(Events.Browser.TargetChanged, target);
+          # target.browserContext().emit(Events.BrowserContext.TargetChanged, target);
+        end
       end
   end
 end

@@ -14,4 +14,5 @@ module Chromiebara
   require 'chromiebara/cdp_session'
   require 'chromiebara/frame'
   require 'chromiebara/frame_manager'
+  require 'chromiebara/protocol_logger'
 end
