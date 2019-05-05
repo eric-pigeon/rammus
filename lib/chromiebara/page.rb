@@ -8,9 +8,11 @@ module Chromiebara
     def initialize(target)
       @target = target
       @_frame_manager = FrameManager.new(client, self)
-      # client.send('Target.setAutoAttach', {autoAttach: true, waitForDebuggerOnStart: false, flatten: true}),
-      # client.send('Performance.enable', {}),
-      # client.send('Log.enable', {}),
+      client.command Protocol::Target.set_auto_attach auto_attach: true, wait_for_debugger_on_start: false, flatten: true
+      client.command Protocol::Performance.enable
+      client.command Protocol::Log.enable
+      # if (defaultViewport)
+        # await page.setViewport(defaultViewport);
     end
 
     def client

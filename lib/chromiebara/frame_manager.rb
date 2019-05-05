@@ -15,7 +15,7 @@ module Chromiebara
         handle_frame_tree frame_tree["frameTree"]
       end
       client.command Protocol::Page.set_lifecycle_events_enabled enabled: true
-      # response = client.command Protocol::Runtime.enable
+      client.command Protocol::Runtime.enable
     end
 
     # @return [Chromiebara::Frame]
@@ -63,12 +63,12 @@ module Chromiebara
             # Initial main frame navigation.
             frame = Frame.new self, client, nil, frame_payload["id"]
           end
-        #     this._frames.set(framePayload.id, frame);
+          @_frames[frame_payload['id']] = frame
           @_main_frame = frame;
         end
 
-        #   // Update frame payload.
-        #   frame._navigated(framePayload);
+        # Update frame payload.
+        frame.send(:navigated, frame_payload);
 
         #   this.emit(Events.FrameManager.FrameNavigated, frame);
       end
