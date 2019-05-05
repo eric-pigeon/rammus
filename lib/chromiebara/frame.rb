@@ -12,6 +12,7 @@ module Chromiebara
       @_url = ''
       @id = id
       @_detached = false
+      @name = ''
 
       # this._loaderId = '';
       # /** @type {!Set<string>} */
@@ -295,15 +296,16 @@ module Chromiebara
   #   return this._secondaryWorld.title();
   # }
 
-  # /**
-  #  * @param {!Protocol.Page.Frame} framePayload
-  #  */
-  # _navigated(framePayload) {
-  #   this._name = framePayload.name;
-  #   // TODO(lushnikov): remove this once requestInterception has loaderId exposed.
-  #   this._navigationURL = framePayload.url;
-  #   this._url = framePayload.url;
-  # }
+  private
+
+    # @param [Hash] frame_payload Protocol.Page.Frame
+    #
+    def navigated(frame_payload)
+      @name = frame_payload["name"]
+      # TODO(lushnikov): remove this once requestInterception has loaderId exposed.
+      # this._navigationURL = framePayload.url;
+      @_url = frame_payload["url"]
+    end
 
   # /**
   #  * @param {string} url
