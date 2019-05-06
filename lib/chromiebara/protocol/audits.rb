@@ -5,7 +5,7 @@ module Chromiebara
 
       # Returns the response body and size if it were re-encoded with the specified settings. Only
       # applies to images.
-      # 
+      #
       # @param request_id [Network.requestid] Identifier of the network request to get content for.
       # @param encoding [String] The encoding to use.
       # @param quality [Number] The quality of the encoding (0-1). (defaults to 1)

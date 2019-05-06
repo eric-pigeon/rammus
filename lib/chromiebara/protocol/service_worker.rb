@@ -3,9 +3,6 @@ module Chromiebara
     module ServiceWorker
       extend self
 
-
-      # 
-      #
       def deliver_push_message(origin:, registration_id:, data:)
         {
           method: "ServiceWorker.deliverPushMessage",
@@ -13,18 +10,12 @@ module Chromiebara
         }
       end
 
-
-      # 
-      #
       def disable
         {
           method: "ServiceWorker.disable"
         }
       end
 
-
-      # 
-      #
       def dispatch_sync_event(origin:, registration_id:, tag:, last_chance:)
         {
           method: "ServiceWorker.dispatchSyncEvent",
@@ -32,18 +23,12 @@ module Chromiebara
         }
       end
 
-
-      # 
-      #
       def enable
         {
           method: "ServiceWorker.enable"
         }
       end
 
-
-      # 
-      #
       def inspect_worker(version_id:)
         {
           method: "ServiceWorker.inspectWorker",
@@ -51,9 +36,6 @@ module Chromiebara
         }
       end
 
-
-      # 
-      #
       def set_force_update_on_page_load(force_update_on_page_load:)
         {
           method: "ServiceWorker.setForceUpdateOnPageLoad",
@@ -61,9 +43,6 @@ module Chromiebara
         }
       end
 
-
-      # 
-      #
       def skip_waiting(scope_url:)
         {
           method: "ServiceWorker.skipWaiting",
@@ -71,9 +50,6 @@ module Chromiebara
         }
       end
 
-
-      # 
-      #
       def start_worker(scope_url:)
         {
           method: "ServiceWorker.startWorker",
@@ -81,18 +57,12 @@ module Chromiebara
         }
       end
 
-
-      # 
-      #
       def stop_all_workers
         {
           method: "ServiceWorker.stopAllWorkers"
         }
       end
 
-
-      # 
-      #
       def stop_worker(version_id:)
         {
           method: "ServiceWorker.stopWorker",
@@ -100,9 +70,6 @@ module Chromiebara
         }
       end
 
-
-      # 
-      #
       def unregister(scope_url:)
         {
           method: "ServiceWorker.unregister",
@@ -110,9 +77,6 @@ module Chromiebara
         }
       end
 
-
-      # 
-      #
       def update_registration(scope_url:)
         {
           method: "ServiceWorker.updateRegistration",

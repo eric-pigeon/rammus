@@ -4,7 +4,6 @@ module Chromiebara
       extend self
 
       # Disables animation domain notifications.
-      # 
       #
       def disable
         {
@@ -13,7 +12,6 @@ module Chromiebara
       end
 
       # Enables animation domain notifications.
-      # 
       #
       def enable
         {
@@ -22,7 +20,7 @@ module Chromiebara
       end
 
       # Returns the current time of the an animation.
-      # 
+      #
       # @param id [String] Id of animation.
       #
       def get_current_time(id:)
@@ -33,7 +31,6 @@ module Chromiebara
       end
 
       # Gets the playback rate of the document timeline.
-      # 
       #
       def get_playback_rate
         {
@@ -42,7 +39,7 @@ module Chromiebara
       end
 
       # Releases a set of animations to no longer be manipulated.
-      # 
+      #
       # @param animations [Array] List of animation ids to seek.
       #
       def release_animations(animations:)
@@ -53,7 +50,7 @@ module Chromiebara
       end
 
       # Gets the remote object of the Animation.
-      # 
+      #
       # @param animation_id [String] Animation id.
       #
       def resolve_animation(animation_id:)
@@ -64,7 +61,7 @@ module Chromiebara
       end
 
       # Seek a set of animations to a particular time within each animation.
-      # 
+      #
       # @param animations [Array] List of animation ids to seek.
       # @param current_time [Number] Set the current time of each animation.
       #
@@ -76,7 +73,7 @@ module Chromiebara
       end
 
       # Sets the paused state of a set of animations.
-      # 
+      #
       # @param animations [Array] Animations to set the pause state of.
       # @param paused [Boolean] Paused state to set to.
       #
@@ -88,7 +85,7 @@ module Chromiebara
       end
 
       # Sets the playback rate of the document timeline.
-      # 
+      #
       # @param playback_rate [Number] Playback rate for animations on page
       #
       def set_playback_rate(playback_rate:)
@@ -99,7 +96,7 @@ module Chromiebara
       end
 
       # Sets the timing of an animation node.
-      # 
+      #
       # @param animation_id [String] Animation id.
       # @param duration [Number] Duration of the animation.
       # @param delay [Number] Delay of the animation.

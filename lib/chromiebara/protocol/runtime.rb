@@ -4,7 +4,7 @@ module Chromiebara
       extend self
 
       # Add handler to promise with given promise object id.
-      # 
+      #
       # @param promise_object_id [Remoteobjectid] Identifier of the promise.
       # @param return_by_value [Boolean] Whether the result is expected to be a JSON object that should be sent by value.
       # @param generate_preview [Boolean] Whether preview should be generated for the result.
@@ -18,7 +18,7 @@ module Chromiebara
 
       # Calls function with given declaration on the given object. Object group of the result is
       # inherited from the target object.
-      # 
+      #
       # @param function_declaration [String] Declaration of the function to call.
       # @param object_id [Remoteobjectid] Identifier of the object to call function on. Either objectId or executionContextId should be specified.
       # @param arguments [Array] Call arguments. All call arguments must belong to the same JavaScript world as the target object.
@@ -38,7 +38,7 @@ module Chromiebara
       end
 
       # Compiles expression.
-      # 
+      #
       # @param expression [String] Expression to compile.
       # @param source_url [String] Source url to be set for the script.
       # @param persist_script [Boolean] Specifies whether the compiled script should be persisted.
@@ -52,7 +52,6 @@ module Chromiebara
       end
 
       # Disables reporting of execution contexts creation.
-      # 
       #
       def disable
         {
@@ -61,7 +60,6 @@ module Chromiebara
       end
 
       # Discards collected exceptions and console API calls.
-      # 
       #
       def discard_console_entries
         {
@@ -72,7 +70,6 @@ module Chromiebara
       # Enables reporting of execution contexts creation by means of `executionContextCreated` event.
       # When the reporting gets enabled the event will be sent immediately for each existing execution
       # context.
-      # 
       #
       def enable
         {
@@ -81,7 +78,7 @@ module Chromiebara
       end
 
       # Evaluates expression on global object.
-      # 
+      #
       # @param expression [String] Expression to evaluate.
       # @param object_group [String] Symbolic group name that can be used to release multiple objects.
       # @param include_command_line_api [Boolean] Determines whether Command Line API should be available during the evaluation.
@@ -102,7 +99,6 @@ module Chromiebara
       end
 
       # Returns the isolate id.
-      # 
       #
       def get_isolate_id
         {
@@ -112,7 +108,6 @@ module Chromiebara
 
       # Returns the JavaScript heap usage.
       # It is the total usage of the corresponding isolate not scoped to a particular Runtime.
-      # 
       #
       def get_heap_usage
         {
@@ -122,7 +117,7 @@ module Chromiebara
 
       # Returns properties of a given object. Object group of the result is inherited from the target
       # object.
-      # 
+      #
       # @param object_id [Remoteobjectid] Identifier of the object to return properties for.
       # @param own_properties [Boolean] If true, returns properties belonging only to the element itself, not to its prototype chain.
       # @param accessor_properties_only [Boolean] If true, returns accessor properties (with getter/setter) only; internal properties are not returned either.
@@ -136,7 +131,7 @@ module Chromiebara
       end
 
       # Returns all let, const and class variables from global scope.
-      # 
+      #
       # @param execution_context_id [Executioncontextid] Specifies in which execution context to lookup global scope variables.
       #
       def global_lexical_scope_names(execution_context_id: nil)
@@ -146,8 +141,6 @@ module Chromiebara
         }
       end
 
-
-      # 
       # @param prototype_object_id [Remoteobjectid] Identifier of the prototype to return objects for.
       # @param object_group [String] Symbolic group name that can be used to release the results.
       #
@@ -159,7 +152,7 @@ module Chromiebara
       end
 
       # Releases remote object with given id.
-      # 
+      #
       # @param object_id [Remoteobjectid] Identifier of the object to release.
       #
       def release_object(object_id:)
@@ -170,7 +163,7 @@ module Chromiebara
       end
 
       # Releases all remote objects that belong to a given group.
-      # 
+      #
       # @param object_group [String] Symbolic object group name.
       #
       def release_object_group(object_group:)
@@ -181,7 +174,6 @@ module Chromiebara
       end
 
       # Tells inspected instance to run if it was waiting for debugger to attach.
-      # 
       #
       def run_if_waiting_for_debugger
         {
@@ -190,7 +182,7 @@ module Chromiebara
       end
 
       # Runs script with given id in a given context.
-      # 
+      #
       # @param script_id [Scriptid] Id of the script to run.
       # @param execution_context_id [Executioncontextid] Specifies in which execution context to perform script run. If the parameter is omitted the evaluation will be performed in the context of the inspected page.
       # @param object_group [String] Symbolic group name that can be used to release multiple objects.
@@ -208,7 +200,7 @@ module Chromiebara
       end
 
       # Enables or disables async call stacks tracking.
-      # 
+      #
       # @param max_depth [Integer] Maximum depth of async call stacks. Setting to `0` will effectively disable collecting async call stacks (default).
       #
       def set_async_call_stack_depth(max_depth:)
@@ -218,9 +210,6 @@ module Chromiebara
         }
       end
 
-
-      # 
-      #
       def set_custom_object_formatter_enabled(enabled:)
         {
           method: "Runtime.setCustomObjectFormatterEnabled",
@@ -228,9 +217,6 @@ module Chromiebara
         }
       end
 
-
-      # 
-      #
       def set_max_call_stack_size_to_capture(size:)
         {
           method: "Runtime.setMaxCallStackSizeToCapture",
@@ -240,7 +226,6 @@ module Chromiebara
 
       # Terminate current or next JavaScript execution.
       # Will cancel the termination when the outer-most script execution ends.
-      # 
       #
       def terminate_execution
         {
@@ -256,7 +241,6 @@ module Chromiebara
       # Binding function takes exactly one argument, this argument should be string,
       # in case of any other input, function throws an exception.
       # Each binding function call produces Runtime.bindingCalled notification.
-      # 
       #
       def add_binding(name:, execution_context_id: nil)
         {
@@ -267,7 +251,6 @@ module Chromiebara
 
       # This method does not remove binding function from global object but
       # unsubscribes current runtime agent from Runtime.bindingCalled notifications.
-      # 
       #
       def remove_binding(name:)
         {

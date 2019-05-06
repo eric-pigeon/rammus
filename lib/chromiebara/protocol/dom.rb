@@ -4,7 +4,7 @@ module Chromiebara
       extend self
 
       # Collects class names for the node with given id and all of it's child nodes.
-      # 
+      #
       # @param node_id [Nodeid] Id of the node to collect class names.
       #
       def collect_class_names_from_subtree(node_id:)
@@ -16,7 +16,7 @@ module Chromiebara
 
       # Creates a deep copy of the specified node and places it into the target container before the
       # given anchor.
-      # 
+      #
       # @param node_id [Nodeid] Id of the node to copy.
       # @param target_node_id [Nodeid] Id of the element to drop the copy into.
       # @param insert_before_node_id [Nodeid] Drop the copy before this node (if absent, the copy becomes the last child of `targetNodeId`).
@@ -30,7 +30,7 @@ module Chromiebara
 
       # Describes node given its id, does not require domain to be enabled. Does not start tracking any
       # objects, can be used for automation.
-      # 
+      #
       # @param node_id [Nodeid] Identifier of the node.
       # @param backend_node_id [Backendnodeid] Identifier of the backend node.
       # @param object_id [Runtime.remoteobjectid] JavaScript object id of the node wrapper.
@@ -45,7 +45,6 @@ module Chromiebara
       end
 
       # Disables DOM agent for the given page.
-      # 
       #
       def disable
         {
@@ -55,7 +54,7 @@ module Chromiebara
 
       # Discards search results from the session with the given id. `getSearchResults` should no longer
       # be called for that search.
-      # 
+      #
       # @param search_id [String] Unique search session identifier.
       #
       def discard_search_results(search_id:)
@@ -66,7 +65,6 @@ module Chromiebara
       end
 
       # Enables DOM agent for the given page.
-      # 
       #
       def enable
         {
@@ -75,7 +73,7 @@ module Chromiebara
       end
 
       # Focuses the given element.
-      # 
+      #
       # @param node_id [Nodeid] Identifier of the node.
       # @param backend_node_id [Backendnodeid] Identifier of the backend node.
       # @param object_id [Runtime.remoteobjectid] JavaScript object id of the node wrapper.
@@ -88,7 +86,7 @@ module Chromiebara
       end
 
       # Returns attributes for the specified node.
-      # 
+      #
       # @param node_id [Nodeid] Id of the node to retrieve attibutes for.
       #
       def get_attributes(node_id:)
@@ -99,7 +97,7 @@ module Chromiebara
       end
 
       # Returns boxes for the given node.
-      # 
+      #
       # @param node_id [Nodeid] Identifier of the node.
       # @param backend_node_id [Backendnodeid] Identifier of the backend node.
       # @param object_id [Runtime.remoteobjectid] JavaScript object id of the node wrapper.
@@ -113,7 +111,7 @@ module Chromiebara
 
       # Returns quads that describe node position on the page. This method
       # might return multiple quads for inline nodes.
-      # 
+      #
       # @param node_id [Nodeid] Identifier of the node.
       # @param backend_node_id [Backendnodeid] Identifier of the backend node.
       # @param object_id [Runtime.remoteobjectid] JavaScript object id of the node wrapper.
@@ -126,7 +124,7 @@ module Chromiebara
       end
 
       # Returns the root DOM node (and optionally the subtree) to the caller.
-      # 
+      #
       # @param depth [Integer] The maximum depth at which children should be retrieved, defaults to 1. Use -1 for the entire subtree or provide an integer larger than 0.
       # @param pierce [Boolean] Whether or not iframes and shadow roots should be traversed when returning the subtree (default is false).
       #
@@ -138,7 +136,7 @@ module Chromiebara
       end
 
       # Returns the root DOM node (and optionally the subtree) to the caller.
-      # 
+      #
       # @param depth [Integer] The maximum depth at which children should be retrieved, defaults to 1. Use -1 for the entire subtree or provide an integer larger than 0.
       # @param pierce [Boolean] Whether or not iframes and shadow roots should be traversed when returning the subtree (default is false).
       #
@@ -151,7 +149,7 @@ module Chromiebara
 
       # Returns node id at given location. Depending on whether DOM domain is enabled, nodeId is
       # either returned or not.
-      # 
+      #
       # @param x [Integer] X coordinate.
       # @param y [Integer] Y coordinate.
       # @param include_user_agent_shadow_dom [Boolean] False to skip to the nearest non-UA shadow root ancestor (default: false).
@@ -164,7 +162,7 @@ module Chromiebara
       end
 
       # Returns node's HTML markup.
-      # 
+      #
       # @param node_id [Nodeid] Identifier of the node.
       # @param backend_node_id [Backendnodeid] Identifier of the backend node.
       # @param object_id [Runtime.remoteobjectid] JavaScript object id of the node wrapper.
@@ -177,7 +175,7 @@ module Chromiebara
       end
 
       # Returns the id of the nearest ancestor that is a relayout boundary.
-      # 
+      #
       # @param node_id [Nodeid] Id of the node.
       #
       def get_relayout_boundary(node_id:)
@@ -189,7 +187,7 @@ module Chromiebara
 
       # Returns search results from given `fromIndex` to given `toIndex` from the search with the given
       # identifier.
-      # 
+      #
       # @param search_id [String] Unique search session identifier.
       # @param from_index [Integer] Start index of the search result to be returned.
       # @param to_index [Integer] End index of the search result to be returned.
@@ -202,7 +200,6 @@ module Chromiebara
       end
 
       # Hides any highlight.
-      # 
       #
       def hide_highlight
         {
@@ -211,7 +208,6 @@ module Chromiebara
       end
 
       # Highlights DOM node.
-      # 
       #
       def highlight_node
         {
@@ -220,7 +216,6 @@ module Chromiebara
       end
 
       # Highlights given rectangle.
-      # 
       #
       def highlight_rect
         {
@@ -229,7 +224,6 @@ module Chromiebara
       end
 
       # Marks last undoable state.
-      # 
       #
       def mark_undoable_state
         {
@@ -238,7 +232,7 @@ module Chromiebara
       end
 
       # Moves node into the new container, places it before the given anchor.
-      # 
+      #
       # @param node_id [Nodeid] Id of the node to move.
       # @param target_node_id [Nodeid] Id of the element to drop the moved node into.
       # @param insert_before_node_id [Nodeid] Drop node before this one (if absent, the moved node becomes the last child of `targetNodeId`).
@@ -252,7 +246,7 @@ module Chromiebara
 
       # Searches for a given string in the DOM tree. Use `getSearchResults` to access search results or
       # `cancelSearch` to end this search session.
-      # 
+      #
       # @param query [String] Plain text or query selector or XPath search query.
       # @param include_user_agent_shadow_dom [Boolean] True to search in user agent shadow DOM.
       #
@@ -264,7 +258,7 @@ module Chromiebara
       end
 
       # Requests that the node is sent to the caller given its path. // FIXME, use XPath
-      # 
+      #
       # @param path [String] Path to node in the proprietary format.
       #
       def push_node_by_path_to_frontend(path:)
@@ -275,7 +269,7 @@ module Chromiebara
       end
 
       # Requests that a batch of nodes is sent to the caller given their backend node ids.
-      # 
+      #
       # @param backend_node_ids [Array] The array of backend node ids.
       #
       def push_nodes_by_backend_ids_to_frontend(backend_node_ids:)
@@ -286,7 +280,7 @@ module Chromiebara
       end
 
       # Executes `querySelector` on a given node.
-      # 
+      #
       # @param node_id [Nodeid] Id of the node to query upon.
       # @param selector [String] Selector string.
       #
@@ -298,7 +292,7 @@ module Chromiebara
       end
 
       # Executes `querySelectorAll` on a given node.
-      # 
+      #
       # @param node_id [Nodeid] Id of the node to query upon.
       # @param selector [String] Selector string.
       #
@@ -310,7 +304,6 @@ module Chromiebara
       end
 
       # Re-does the last undone action.
-      # 
       #
       def redo
         {
@@ -319,7 +312,7 @@ module Chromiebara
       end
 
       # Removes attribute with given name from an element with given id.
-      # 
+      #
       # @param node_id [Nodeid] Id of the element to remove attribute from.
       # @param name [String] Name of the attribute to remove.
       #
@@ -331,7 +324,7 @@ module Chromiebara
       end
 
       # Removes node with given id.
-      # 
+      #
       # @param node_id [Nodeid] Id of the node to remove.
       #
       def remove_node(node_id:)
@@ -344,7 +337,7 @@ module Chromiebara
       # Requests that children of the node with given id are returned to the caller in form of
       # `setChildNodes` events where not only immediate children are retrieved, but all children down to
       # the specified depth.
-      # 
+      #
       # @param node_id [Nodeid] Id of the node to get children for.
       # @param depth [Integer] The maximum depth at which children should be retrieved, defaults to 1. Use -1 for the entire subtree or provide an integer larger than 0.
       # @param pierce [Boolean] Whether or not iframes and shadow roots should be traversed when returning the sub-tree (default is false).
@@ -359,7 +352,7 @@ module Chromiebara
       # Requests that the node is sent to the caller given the JavaScript node object reference. All
       # nodes that form the path from the node to the root are also sent to the client as a series of
       # `setChildNodes` notifications.
-      # 
+      #
       # @param object_id [Runtime.remoteobjectid] JavaScript object id to convert into node.
       #
       def request_node(object_id:)
@@ -370,7 +363,7 @@ module Chromiebara
       end
 
       # Resolves the JavaScript node object for a given NodeId or BackendNodeId.
-      # 
+      #
       # @param node_id [Nodeid] Id of the node to resolve.
       # @param backend_node_id [Dom.backendnodeid] Backend identifier of the node to resolve.
       # @param object_group [String] Symbolic group name that can be used to release multiple objects.
@@ -384,7 +377,7 @@ module Chromiebara
       end
 
       # Sets attribute for an element with given id.
-      # 
+      #
       # @param node_id [Nodeid] Id of the element to set attribute for.
       # @param name [String] Attribute name.
       # @param value [String] Attribute value.
@@ -398,7 +391,7 @@ module Chromiebara
 
       # Sets attributes on element with given id. This method is useful when user edits some existing
       # attribute value and types in several attribute name/value pairs.
-      # 
+      #
       # @param node_id [Nodeid] Id of the element to set attributes for.
       # @param text [String] Text with a number of attributes. Will parse this text using HTML parser.
       # @param name [String] Attribute name to replace with new attributes derived from text in case text parsed successfully.
@@ -411,7 +404,7 @@ module Chromiebara
       end
 
       # Sets files for the given file input element.
-      # 
+      #
       # @param files [Array] Array of file paths to set.
       # @param node_id [Nodeid] Identifier of the node.
       # @param backend_node_id [Backendnodeid] Identifier of the backend node.
@@ -426,7 +419,7 @@ module Chromiebara
 
       # Returns file information for the given
       # File wrapper.
-      # 
+      #
       # @param object_id [Runtime.remoteobjectid] JavaScript object id of the node wrapper.
       #
       def get_file_info(object_id:)
@@ -438,7 +431,7 @@ module Chromiebara
 
       # Enables console to refer to the node with given id via $x (see Command Line API for more details
       # $x functions).
-      # 
+      #
       # @param node_id [Nodeid] DOM node id to be accessible by means of $x command line API.
       #
       def set_inspected_node(node_id:)
@@ -449,7 +442,7 @@ module Chromiebara
       end
 
       # Sets node name for a node with given id.
-      # 
+      #
       # @param node_id [Nodeid] Id of the node to set name for.
       # @param name [String] New node's name.
       #
@@ -461,7 +454,7 @@ module Chromiebara
       end
 
       # Sets node value for a node with given id.
-      # 
+      #
       # @param node_id [Nodeid] Id of the node to set value for.
       # @param value [String] New node's value.
       #
@@ -473,7 +466,7 @@ module Chromiebara
       end
 
       # Sets node HTML markup, returns new node id.
-      # 
+      #
       # @param node_id [Nodeid] Id of the node to set markup for.
       # @param outer_html [String] Outer HTML markup to set.
       #
@@ -485,7 +478,6 @@ module Chromiebara
       end
 
       # Undoes the last performed action.
-      # 
       #
       def undo
         {
@@ -494,7 +486,6 @@ module Chromiebara
       end
 
       # Returns iframe node that owns iframe with the given domain.
-      # 
       #
       def get_frame_owner(frame_id:)
         {

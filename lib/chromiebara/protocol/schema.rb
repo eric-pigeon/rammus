@@ -4,7 +4,6 @@ module Chromiebara
       extend self
 
       # Returns supported domains.
-      # 
       #
       def get_domains
         {

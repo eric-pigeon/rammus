@@ -5,7 +5,6 @@ module Chromiebara
 
       # Deprecated, please use addScriptToEvaluateOnNewDocument instead.
       #
-      #
       def add_script_to_evaluate_on_load(script_source:)
         {
           method: "Page.addScriptToEvaluateOnLoad",
@@ -25,7 +24,6 @@ module Chromiebara
       end
 
       # Brings page to front (activates tab).
-      #
       #
       def bring_to_front
         {
@@ -61,7 +59,6 @@ module Chromiebara
 
       # Clears the overriden device metrics.
       #
-      #
       def clear_device_metrics_override
         {
           method: "Page.clearDeviceMetricsOverride"
@@ -70,7 +67,6 @@ module Chromiebara
 
       # Clears the overridden Device Orientation.
       #
-      #
       def clear_device_orientation_override
         {
           method: "Page.clearDeviceOrientationOverride"
@@ -78,7 +74,6 @@ module Chromiebara
       end
 
       # Clears the overriden Geolocation Position and Error.
-      #
       #
       def clear_geolocation_override
         {
@@ -113,7 +108,6 @@ module Chromiebara
 
       # Disables page domain notifications.
       #
-      #
       def disable
         {
           method: "Page.disable"
@@ -122,16 +116,12 @@ module Chromiebara
 
       # Enables page domain notifications.
       #
-      #
       def enable
         {
           method: "Page.enable"
         }
       end
 
-
-      #
-      #
       def get_app_manifest
         {
           method: "Page.getAppManifest"
@@ -141,7 +131,6 @@ module Chromiebara
       # Returns all browser cookies. Depending on the backend support, will return detailed cookie
       # information in the `cookies` field.
       #
-      #
       def get_cookies
         {
           method: "Page.getCookies"
@@ -149,7 +138,6 @@ module Chromiebara
       end
 
       # Returns present frame tree structure.
-      #
       #
       def get_frame_tree
         {
@@ -159,7 +147,6 @@ module Chromiebara
 
       # Returns metrics relating to the layouting of the page, such as viewport bounds/scale.
       #
-      #
       def get_layout_metrics
         {
           method: "Page.getLayoutMetrics"
@@ -168,7 +155,6 @@ module Chromiebara
 
       # Returns navigation history for the current page.
       #
-      #
       def get_navigation_history
         {
           method: "Page.getNavigationHistory"
@@ -176,7 +162,6 @@ module Chromiebara
       end
 
       # Resets navigation history for the current page.
-      #
       #
       def reset_navigation_history
         {
@@ -197,7 +182,6 @@ module Chromiebara
       end
 
       # Returns present frame / resource tree structure.
-      #
       #
       def get_resource_tree
         {
@@ -281,7 +265,6 @@ module Chromiebara
 
       # Deprecated, please use removeScriptToEvaluateOnNewDocument instead.
       #
-      #
       def remove_script_to_evaluate_on_load(identifier:)
         {
           method: "Page.removeScriptToEvaluateOnLoad",
@@ -290,7 +273,6 @@ module Chromiebara
       end
 
       # Removes given script from the list.
-      #
       #
       def remove_script_to_evaluate_on_new_document(identifier:)
         {
@@ -484,7 +466,6 @@ module Chromiebara
 
       # Force the page stop all navigations and pending resource fetches.
       #
-      #
       def stop_loading
         {
           method: "Page.stopLoading"
@@ -493,7 +474,6 @@ module Chromiebara
 
       # Crashes renderer on the IO thread, generates minidumps.
       #
-      #
       def crash
         {
           method: "Page.crash"
@@ -501,7 +481,6 @@ module Chromiebara
       end
 
       # Tries to close page, running its beforeunload hooks, if any.
-      #
       #
       def close
         {
@@ -524,7 +503,6 @@ module Chromiebara
 
       # Stops sending each frame in the `screencastFrame`.
       #
-      #
       def stop_screencast
         {
           method: "Page.stopScreencast"
@@ -532,7 +510,6 @@ module Chromiebara
       end
 
       # Forces compilation cache to be generated for every subresource script.
-      #
       #
       def set_produce_compilation_cache(enabled:)
         {
@@ -555,7 +532,6 @@ module Chromiebara
 
       # Clears seeded compilation cache.
       #
-      #
       def clear_compilation_cache
         {
           method: "Page.clearCompilationCache"
@@ -575,7 +551,6 @@ module Chromiebara
       end
 
       # Pauses page execution. Can be resumed using generic Runtime.runIfWaitingForDebugger.
-      #
       #
       def wait_for_debugger
         {

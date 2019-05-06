@@ -8,12 +8,22 @@ template = <<-RUBY
 module Chromiebara
   module Protocol
     module <%= domain.name %>
-      extend self<% domain.commands.each do |command| %>
+      extend self\
+<% domain.commands.each do |command| -%>
 
-<% command.description.lines.each do |line| %>      # <%= line %><% end %>
-      # <% if command.has_parameter_descriptions? then %><% command.parameters_with_descriptions.each do |parameter| %>
-      # <%= parameter.yard_doc %><% end %><% end %>
+
+<% if command.description.size > 0 -%>
+<% command.description.lines.each do |line| -%>
+      # <%= line -%>
+<% end %>
       #
+<% end -%>
+<% if command.has_parameter_descriptions? -%>
+<% command.parameters_with_descriptions.each do |parameter| -%>
+      # <%= parameter.yard_doc %>
+<% end -%>
+      #
+<% end -%>
       def <%= underscore(command.name) %><%= command.parameters_header %>
         {
           method: "<%= domain.name %>.<%= command.name %>"<% if command.has_parameters? then %>,
@@ -38,11 +48,12 @@ Protocol = Struct.new(:domains) do
     new(json["domains"].map { |domain| Domain.from_json domain })
   end
 end
-Domain = Struct.new(:name, :commands) do
+Domain = Struct.new(:name, :commands, :events) do
   def self.from_json(json)
     new(
       json["domain"],
-      json["commands"].map { |command| Command.from_json command }
+      json["commands"].map { |command| Command.from_json command },
+      json.fetch("events",[]).map { |event| Event.from_json event }
     )
   end
 end
@@ -50,7 +61,7 @@ Command = Struct.new(:name, :parameters, :returns, :description, :experimental) 
   def self.from_json(json)
     new(
       json["name"],
-      json.fetch("parameters", []).map { |parameter| Parameter.from_json parameter },
+      json.fetch("parameters", []).map { |parameter| Parameter.from_json json["name"], parameter },
       [], # TODO returns
       json["description"] || "",
       json["experimental"]
@@ -85,15 +96,21 @@ Command = Struct.new(:name, :parameters, :returns, :description, :experimental) 
       .join(", ")
   end
 end
-Parameter = Struct.new(:name, :type, :optional, :experimental, :description) do
-  def self.from_json(json)
+Parameter = Struct.new(:command, :name, :type, :optional, :experimental, :description) do
+  def self.from_json(command, json)
     new(
+      command,
       json["name"],
       json["type"] || json["$ref"],
       json["optional"],
       json["experimental"],
       json["description"]
     )
+  end
+
+  def name
+    return self["name"] unless command == "getPossibleBreakpoints" && ["start", "end"].include?(self["name"])
+    "breakpoint_#{self["name"]}"
   end
 
   def has_description?
@@ -109,6 +126,13 @@ Parameter = Struct.new(:name, :type, :optional, :experimental, :description) do
 
   def yard_doc
     "@param #{underscore(name)} [#{type.capitalize}] #{description.strip.gsub(/\s+/, ' ')}"
+  end
+end
+Event = Struct.new(:name) do
+  def self.from_json(json)
+    new(
+      json["name"]
+    )
   end
 end
 
@@ -130,6 +154,6 @@ end
 
 protocol.domains.each do |domain|
   File.open("#{path}#{underscore(domain.name)}.rb", "w") do |domain_file|
-    domain_file.write ERB.new(template).result(binding)
+    domain_file.write ERB.new(template, trim_mode: "-<>").result(binding)
   end
 end

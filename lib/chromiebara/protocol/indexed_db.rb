@@ -4,7 +4,7 @@ module Chromiebara
       extend self
 
       # Clears all entries from an object store.
-      # 
+      #
       # @param security_origin [String] Security origin.
       # @param database_name [String] Database name.
       # @param object_store_name [String] Object store name.
@@ -17,7 +17,7 @@ module Chromiebara
       end
 
       # Deletes a database.
-      # 
+      #
       # @param security_origin [String] Security origin.
       # @param database_name [String] Database name.
       #
@@ -29,7 +29,7 @@ module Chromiebara
       end
 
       # Delete a range of entries from an object store
-      # 
+      #
       # @param key_range [Keyrange] Range of entry keys to delete
       #
       def delete_object_store_entries(security_origin:, database_name:, object_store_name:, key_range:)
@@ -40,7 +40,6 @@ module Chromiebara
       end
 
       # Disables events from backend.
-      # 
       #
       def disable
         {
@@ -49,7 +48,6 @@ module Chromiebara
       end
 
       # Enables events from backend.
-      # 
       #
       def enable
         {
@@ -58,7 +56,7 @@ module Chromiebara
       end
 
       # Requests data from object store or index.
-      # 
+      #
       # @param security_origin [String] Security origin.
       # @param database_name [String] Database name.
       # @param object_store_name [String] Object store name.
@@ -75,7 +73,7 @@ module Chromiebara
       end
 
       # Requests database with given name in given frame.
-      # 
+      #
       # @param security_origin [String] Security origin.
       # @param database_name [String] Database name.
       #
@@ -87,7 +85,7 @@ module Chromiebara
       end
 
       # Requests database names for given security origin.
-      # 
+      #
       # @param security_origin [String] Security origin.
       #
       def request_database_names(security_origin:)

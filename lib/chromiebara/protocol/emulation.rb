@@ -4,7 +4,6 @@ module Chromiebara
       extend self
 
       # Tells whether emulation is supported.
-      # 
       #
       def can_emulate
         {
@@ -13,7 +12,6 @@ module Chromiebara
       end
 
       # Clears the overriden device metrics.
-      # 
       #
       def clear_device_metrics_override
         {
@@ -22,7 +20,6 @@ module Chromiebara
       end
 
       # Clears the overriden Geolocation Position and Error.
-      # 
       #
       def clear_geolocation_override
         {
@@ -31,7 +28,6 @@ module Chromiebara
       end
 
       # Requests that page scale factor is reset to initial values.
-      # 
       #
       def reset_page_scale_factor
         {
@@ -40,7 +36,7 @@ module Chromiebara
       end
 
       # Enables or disables simulating a focused and active page.
-      # 
+      #
       # @param enabled [Boolean] Whether to enable to disable focus emulation.
       #
       def set_focus_emulation_enabled(enabled:)
@@ -51,7 +47,7 @@ module Chromiebara
       end
 
       # Enables CPU throttling to emulate slow CPUs.
-      # 
+      #
       # @param rate [Number] Throttling rate as a slowdown factor (1 is no throttle, 2 is 2x slowdown, etc).
       #
       def set_cpu_throttling_rate(rate:)
@@ -63,7 +59,7 @@ module Chromiebara
 
       # Sets or clears an override of the default background color of the frame. This override is used
       # if the content does not specify one.
-      # 
+      #
       # @param color [Dom.rgba] RGBA of the default background color. If not specified, any existing override will be cleared.
       #
       def set_default_background_color_override(color: nil)
@@ -76,7 +72,7 @@ module Chromiebara
       # Overrides the values of device screen dimensions (window.screen.width, window.screen.height,
       # window.innerWidth, window.innerHeight, and "device-width"/"device-height"-related CSS media
       # query results).
-      # 
+      #
       # @param width [Integer] Overriding width value in pixels (minimum 0, maximum 10000000). 0 disables the override.
       # @param height [Integer] Overriding height value in pixels (minimum 0, maximum 10000000). 0 disables the override.
       # @param device_scale_factor [Number] Overriding device scale factor value. 0 disables the override.
@@ -97,8 +93,6 @@ module Chromiebara
         }
       end
 
-
-      # 
       # @param hidden [Boolean] Whether scrollbars should be always hidden.
       #
       def set_scrollbars_hidden(hidden:)
@@ -108,8 +102,6 @@ module Chromiebara
         }
       end
 
-
-      # 
       # @param disabled [Boolean] Whether document.coookie API should be disabled.
       #
       def set_document_cookie_disabled(disabled:)
@@ -119,8 +111,6 @@ module Chromiebara
         }
       end
 
-
-      # 
       # @param enabled [Boolean] Whether touch emulation based on mouse input should be enabled.
       # @param configuration [String] Touch/gesture events configuration. Default: current platform.
       #
@@ -132,7 +122,7 @@ module Chromiebara
       end
 
       # Emulates the given media for CSS media queries.
-      # 
+      #
       # @param media [String] Media type to emulate. Empty string disables the override.
       #
       def set_emulated_media(media:)
@@ -144,7 +134,7 @@ module Chromiebara
 
       # Overrides the Geolocation Position or Error. Omitting any of the parameters emulates position
       # unavailable.
-      # 
+      #
       # @param latitude [Number] Mock latitude
       # @param longitude [Number] Mock longitude
       # @param accuracy [Number] Mock accuracy
@@ -157,7 +147,7 @@ module Chromiebara
       end
 
       # Overrides value returned by the javascript navigator object.
-      # 
+      #
       # @param platform [String] The platform navigator.platform should return.
       #
       def set_navigator_overrides(platform:)
@@ -168,7 +158,7 @@ module Chromiebara
       end
 
       # Sets a specified page scale factor.
-      # 
+      #
       # @param page_scale_factor [Number] Page scale factor.
       #
       def set_page_scale_factor(page_scale_factor:)
@@ -179,7 +169,7 @@ module Chromiebara
       end
 
       # Switches script execution in the page.
-      # 
+      #
       # @param value [Boolean] Whether script execution should be disabled in the page.
       #
       def set_script_execution_disabled(value:)
@@ -190,7 +180,7 @@ module Chromiebara
       end
 
       # Enables touch on platforms which do not support them.
-      # 
+      #
       # @param enabled [Boolean] Whether the touch event emulation should be enabled.
       # @param max_touch_points [Integer] Maximum touch points supported. Defaults to one.
       #
@@ -203,7 +193,7 @@ module Chromiebara
 
       # Turns on virtual time for all frames (replacing real-time with a synthetic time source) and sets
       # the current virtual time policy.  Note this supersedes any previous time budget.
-      # 
+      #
       # @param budget [Number] If set, after this many virtual milliseconds have elapsed virtual time will be paused and a virtualTimeBudgetExpired event is sent.
       # @param max_virtual_time_task_starvation_count [Integer] If set this specifies the maximum number of tasks that can be run before virtual is forced forwards to prevent deadlock.
       # @param wait_for_navigation [Boolean] If set the virtual time policy change should be deferred until any frame starts navigating. Note any previous deferred policy change is superseded.
@@ -219,7 +209,7 @@ module Chromiebara
       # Resizes the frame/viewport of the page. Note that this does not affect the frame's container
       # (e.g. browser window). Can be used to produce screenshots of the specified size. Not supported
       # on Android.
-      # 
+      #
       # @param width [Integer] Frame width (DIP).
       # @param height [Integer] Frame height (DIP).
       #
@@ -231,7 +221,7 @@ module Chromiebara
       end
 
       # Allows overriding user agent with the given string.
-      # 
+      #
       # @param user_agent [String] User agent to use.
       # @param accept_language [String] Browser langugage to emulate.
       # @param platform [String] The platform navigator.platform should return.

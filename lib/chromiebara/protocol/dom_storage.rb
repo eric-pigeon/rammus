@@ -3,9 +3,6 @@ module Chromiebara
     module DOMStorage
       extend self
 
-
-      # 
-      #
       def clear(storage_id:)
         {
           method: "DOMStorage.clear",
@@ -14,7 +11,6 @@ module Chromiebara
       end
 
       # Disables storage tracking, prevents storage events from being sent to the client.
-      # 
       #
       def disable
         {
@@ -23,7 +19,6 @@ module Chromiebara
       end
 
       # Enables storage tracking, storage events will now be delivered to the client.
-      # 
       #
       def enable
         {
@@ -31,9 +26,6 @@ module Chromiebara
         }
       end
 
-
-      # 
-      #
       def get_dom_storage_items(storage_id:)
         {
           method: "DOMStorage.getDOMStorageItems",
@@ -41,9 +33,6 @@ module Chromiebara
         }
       end
 
-
-      # 
-      #
       def remove_dom_storage_item(storage_id:, key:)
         {
           method: "DOMStorage.removeDOMStorageItem",
@@ -51,9 +40,6 @@ module Chromiebara
         }
       end
 
-
-      # 
-      #
       def set_dom_storage_item(storage_id:, key:, value:)
         {
           method: "DOMStorage.setDOMStorageItem",

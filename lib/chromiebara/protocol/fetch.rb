@@ -4,7 +4,6 @@ module Chromiebara
       extend self
 
       # Disables the fetch domain.
-      # 
       #
       def disable
         {
@@ -14,7 +13,7 @@ module Chromiebara
 
       # Enables issuing of requestPaused events. A request will be paused until client
       # calls one of failRequest, fulfillRequest or continueRequest/continueWithAuth.
-      # 
+      #
       # @param patterns [Array] If specified, only requests matching any of these patterns will produce fetchRequested event and will be paused until clients response. If not set, all requests will be affected.
       # @param handle_auth_requests [Boolean] If true, authRequired events will be issued and requests will be paused expecting a call to continueWithAuth.
       #
@@ -26,7 +25,7 @@ module Chromiebara
       end
 
       # Causes the request to fail with specified reason.
-      # 
+      #
       # @param request_id [Requestid] An id the client received in requestPaused event.
       # @param error_reason [Network.errorreason] Causes the request to fail with the given reason.
       #
@@ -38,7 +37,7 @@ module Chromiebara
       end
 
       # Provides response to the request.
-      # 
+      #
       # @param request_id [Requestid] An id the client received in requestPaused event.
       # @param response_code [Integer] An HTTP response code.
       # @param response_headers [Array] Response headers.
@@ -53,7 +52,7 @@ module Chromiebara
       end
 
       # Continues the request, optionally modifying some of its parameters.
-      # 
+      #
       # @param request_id [Requestid] An id the client received in requestPaused event.
       # @param url [String] If set, the request url will be modified in a way that's not observable by page.
       # @param method [String] If set, the request method is overridden.
@@ -68,7 +67,7 @@ module Chromiebara
       end
 
       # Continues a request supplying authChallengeResponse following authRequired event.
-      # 
+      #
       # @param request_id [Requestid] An id the client received in authRequired event.
       # @param auth_challenge_response [Authchallengeresponse] Response to with an authChallenge.
       #
@@ -85,7 +84,7 @@ module Chromiebara
       # takeResponseBodyForInterceptionAsStream. Calling other methods that
       # affect the request or disabling fetch domain before body is received
       # results in an undefined behavior.
-      # 
+      #
       # @param request_id [Requestid] Identifier for the intercepted request to get body for.
       #
       def get_response_body(request_id:)
@@ -105,7 +104,6 @@ module Chromiebara
       # This method is mutually exclusive with getResponseBody.
       # Calling other methods that affect the request or disabling fetch
       # domain before body is received results in an undefined behavior.
-      # 
       #
       def take_response_body_as_stream(request_id:)
         {

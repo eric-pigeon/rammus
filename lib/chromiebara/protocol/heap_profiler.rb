@@ -5,7 +5,7 @@ module Chromiebara
 
       # Enables console to refer to the node with given id via $x (see Command Line API for more details
       # $x functions).
-      # 
+      #
       # @param heap_object_id [Heapsnapshotobjectid] Heap snapshot object id to be accessible by means of $x command line API.
       #
       def add_inspected_heap_object(heap_object_id:)
@@ -15,35 +15,24 @@ module Chromiebara
         }
       end
 
-
-      # 
-      #
       def collect_garbage
         {
           method: "HeapProfiler.collectGarbage"
         }
       end
 
-
-      # 
-      #
       def disable
         {
           method: "HeapProfiler.disable"
         }
       end
 
-
-      # 
-      #
       def enable
         {
           method: "HeapProfiler.enable"
         }
       end
 
-
-      # 
       # @param object_id [Runtime.remoteobjectid] Identifier of the object to get heap object id for.
       #
       def get_heap_object_id(object_id:)
@@ -53,8 +42,6 @@ module Chromiebara
         }
       end
 
-
-      # 
       # @param object_group [String] Symbolic group name that can be used to release multiple objects.
       #
       def get_object_by_heap_object_id(object_id:, object_group: nil)
@@ -64,17 +51,12 @@ module Chromiebara
         }
       end
 
-
-      # 
-      #
       def get_sampling_profile
         {
           method: "HeapProfiler.getSamplingProfile"
         }
       end
 
-
-      # 
       # @param sampling_interval [Number] Average sample interval in bytes. Poisson distribution is used for the intervals. The default value is 32768 bytes.
       #
       def start_sampling(sampling_interval: nil)
@@ -84,9 +66,6 @@ module Chromiebara
         }
       end
 
-
-      # 
-      #
       def start_tracking_heap_objects(track_allocations: nil)
         {
           method: "HeapProfiler.startTrackingHeapObjects",
@@ -94,17 +73,12 @@ module Chromiebara
         }
       end
 
-
-      # 
-      #
       def stop_sampling
         {
           method: "HeapProfiler.stopSampling"
         }
       end
 
-
-      # 
       # @param report_progress [Boolean] If true 'reportHeapSnapshotProgress' events will be generated while snapshot is being taken when the tracking is stopped.
       #
       def stop_tracking_heap_objects(report_progress: nil)
@@ -114,8 +88,6 @@ module Chromiebara
         }
       end
 
-
-      # 
       # @param report_progress [Boolean] If true 'reportHeapSnapshotProgress' events will be generated while snapshot is being taken.
       #
       def take_heap_snapshot(report_progress: nil)

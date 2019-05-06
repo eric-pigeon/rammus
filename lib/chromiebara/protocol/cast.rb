@@ -8,7 +8,6 @@ module Chromiebara
       # |sinksUpdated| event is fired.
       # Also starts observing for issue messages. When an issue is added or removed,
       # an |issueUpdated| event is fired.
-      # 
       #
       def enable(presentation_url: nil)
         {
@@ -18,7 +17,6 @@ module Chromiebara
       end
 
       # Stops observing for sinks and issues.
-      # 
       #
       def disable
         {
@@ -28,7 +26,6 @@ module Chromiebara
 
       # Sets a sink to be used when the web page requests the browser to choose a
       # sink via Presentation API, Remote Playback API, or Cast SDK.
-      # 
       #
       def set_sink_to_use(sink_name:)
         {
@@ -38,7 +35,6 @@ module Chromiebara
       end
 
       # Starts mirroring the tab to the sink.
-      # 
       #
       def start_tab_mirroring(sink_name:)
         {
@@ -48,7 +44,6 @@ module Chromiebara
       end
 
       # Stops the active Cast session on the sink.
-      # 
       #
       def stop_casting(sink_name:)
         {

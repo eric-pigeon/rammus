@@ -4,7 +4,6 @@ module Chromiebara
       extend self
 
       # Disables domain notifications.
-      # 
       #
       def disable
         {
@@ -13,7 +12,6 @@ module Chromiebara
       end
 
       # Enables domain notifications.
-      # 
       #
       def enable
         {
@@ -22,7 +20,7 @@ module Chromiebara
       end
 
       # For testing.
-      # 
+      #
       # @param node_id [Dom.nodeid] Id of the node to get highlight object for.
       #
       def get_highlight_object_for_test(node_id:)
@@ -33,7 +31,6 @@ module Chromiebara
       end
 
       # Hides any highlight.
-      # 
       #
       def hide_highlight
         {
@@ -42,7 +39,7 @@ module Chromiebara
       end
 
       # Highlights owner element of the frame with given id.
-      # 
+      #
       # @param frame_id [Page.frameid] Identifier of the frame to highlight.
       # @param content_color [Dom.rgba] The content box highlight fill color (default: transparent).
       # @param content_outline_color [Dom.rgba] The content box highlight outline color (default: transparent).
@@ -56,7 +53,7 @@ module Chromiebara
 
       # Highlights DOM node with given id or with the given JavaScript object wrapper. Either nodeId or
       # objectId must be specified.
-      # 
+      #
       # @param highlight_config [Highlightconfig] A descriptor for the highlight appearance.
       # @param node_id [Dom.nodeid] Identifier of the node to highlight.
       # @param backend_node_id [Dom.backendnodeid] Identifier of the backend node to highlight.
@@ -71,7 +68,7 @@ module Chromiebara
       end
 
       # Highlights given quad. Coordinates are absolute with respect to the main frame viewport.
-      # 
+      #
       # @param quad [Dom.quad] Quad to highlight
       # @param color [Dom.rgba] The highlight fill color (default: transparent).
       # @param outline_color [Dom.rgba] The highlight outline color (default: transparent).
@@ -84,7 +81,7 @@ module Chromiebara
       end
 
       # Highlights given rectangle. Coordinates are absolute with respect to the main frame viewport.
-      # 
+      #
       # @param x [Integer] X coordinate
       # @param y [Integer] Y coordinate
       # @param width [Integer] Rectangle width
@@ -101,7 +98,7 @@ module Chromiebara
 
       # Enters the 'inspect' mode. In this mode, elements that user is hovering over are highlighted.
       # Backend then generates 'inspectNodeRequested' event upon element selection.
-      # 
+      #
       # @param mode [Inspectmode] Set an inspection mode.
       # @param highlight_config [Highlightconfig] A descriptor for the highlight appearance of hovered-over nodes. May be omitted if `enabled == false`.
       #
@@ -113,7 +110,7 @@ module Chromiebara
       end
 
       # Highlights owner element of all frames detected to be ads.
-      # 
+      #
       # @param show [Boolean] True for showing ad highlights
       #
       def set_show_ad_highlights(show:)
@@ -123,8 +120,6 @@ module Chromiebara
         }
       end
 
-
-      # 
       # @param message [String] The message to display, also triggers resume and step over controls.
       #
       def set_paused_in_debugger_message(message: nil)
@@ -135,7 +130,7 @@ module Chromiebara
       end
 
       # Requests that backend shows debug borders on layers
-      # 
+      #
       # @param show [Boolean] True for showing debug borders
       #
       def set_show_debug_borders(show:)
@@ -146,7 +141,7 @@ module Chromiebara
       end
 
       # Requests that backend shows the FPS counter
-      # 
+      #
       # @param show [Boolean] True for showing the FPS counter
       #
       def set_show_fps_counter(show:)
@@ -157,7 +152,7 @@ module Chromiebara
       end
 
       # Requests that backend shows paint rectangles
-      # 
+      #
       # @param result [Boolean] True for showing paint rectangles
       #
       def set_show_paint_rects(result:)
@@ -168,7 +163,7 @@ module Chromiebara
       end
 
       # Requests that backend shows scroll bottleneck rects
-      # 
+      #
       # @param show [Boolean] True for showing scroll bottleneck rects
       #
       def set_show_scroll_bottleneck_rects(show:)
@@ -179,7 +174,7 @@ module Chromiebara
       end
 
       # Requests that backend shows hit-test borders on layers
-      # 
+      #
       # @param show [Boolean] True for showing hit-test borders
       #
       def set_show_hit_test_borders(show:)
@@ -190,7 +185,7 @@ module Chromiebara
       end
 
       # Paints viewport size upon main frame resize.
-      # 
+      #
       # @param show [Boolean] Whether to paint size or not.
       #
       def set_show_viewport_size_on_resize(show:)
@@ -200,8 +195,6 @@ module Chromiebara
         }
       end
 
-
-      # 
       # @param suspended [Boolean] Whether overlay should be suspended and not consume any resources until resumed.
       #
       def set_suspended(suspended:)

@@ -3,18 +3,12 @@ module Chromiebara
     module Profiler
       extend self
 
-
-      # 
-      #
       def disable
         {
           method: "Profiler.disable"
         }
       end
 
-
-      # 
-      #
       def enable
         {
           method: "Profiler.enable"
@@ -23,7 +17,6 @@ module Chromiebara
 
       # Collect coverage data for the current isolate. The coverage data may be incomplete due to
       # garbage collection.
-      # 
       #
       def get_best_effort_coverage
         {
@@ -32,7 +25,7 @@ module Chromiebara
       end
 
       # Changes CPU profiler sampling interval. Must be called before CPU profiles recording started.
-      # 
+      #
       # @param interval [Integer] New sampling interval in microseconds.
       #
       def set_sampling_interval(interval:)
@@ -42,9 +35,6 @@ module Chromiebara
         }
       end
 
-
-      # 
-      #
       def start
         {
           method: "Profiler.start"
@@ -54,7 +44,7 @@ module Chromiebara
       # Enable precise code coverage. Coverage data for JavaScript executed before enabling precise code
       # coverage may be incomplete. Enabling prevents running optimized code and resets execution
       # counters.
-      # 
+      #
       # @param call_count [Boolean] Collect accurate call counts beyond simple 'covered' or 'not covered'.
       # @param detailed [Boolean] Collect block-based coverage.
       #
@@ -66,7 +56,6 @@ module Chromiebara
       end
 
       # Enable type profile.
-      # 
       #
       def start_type_profile
         {
@@ -74,9 +63,6 @@ module Chromiebara
         }
       end
 
-
-      # 
-      #
       def stop
         {
           method: "Profiler.stop"
@@ -85,7 +71,6 @@ module Chromiebara
 
       # Disable precise code coverage. Disabling releases unnecessary execution count records and allows
       # executing optimized code.
-      # 
       #
       def stop_precise_coverage
         {
@@ -94,7 +79,6 @@ module Chromiebara
       end
 
       # Disable type profile. Disabling releases type profile data collected so far.
-      # 
       #
       def stop_type_profile
         {
@@ -104,7 +88,6 @@ module Chromiebara
 
       # Collect coverage data for the current isolate, and resets execution counters. Precise code
       # coverage needs to have started.
-      # 
       #
       def take_precise_coverage
         {
@@ -113,7 +96,6 @@ module Chromiebara
       end
 
       # Collect type profile.
-      # 
       #
       def take_type_profile
         {

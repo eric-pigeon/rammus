@@ -4,7 +4,6 @@ module Chromiebara
       extend self
 
       # Disables DOM snapshot agent for the given page.
-      # 
       #
       def disable
         {
@@ -13,7 +12,6 @@ module Chromiebara
       end
 
       # Enables DOM snapshot agent for the given page.
-      # 
       #
       def enable
         {
@@ -25,7 +23,7 @@ module Chromiebara
       # template contents, and imported documents) in a flattened array, as well as layout and
       # white-listed computed style information for the nodes. Shadow DOM in the returned DOM tree is
       # flattened.
-      # 
+      #
       # @param computed_style_whitelist [Array] Whitelist of computed styles to return.
       # @param include_event_listeners [Boolean] Whether or not to retrieve details of DOM listeners (default false).
       # @param include_paint_order [Boolean] Whether to determine and include the paint order index of LayoutTreeNodes (default false).
@@ -42,7 +40,7 @@ module Chromiebara
       # template contents, and imported documents) in a flattened array, as well as layout and
       # white-listed computed style information for the nodes. Shadow DOM in the returned DOM tree is
       # flattened.
-      # 
+      #
       # @param computed_styles [Array] Whitelist of computed styles to return.
       #
       def capture_snapshot(computed_styles:)

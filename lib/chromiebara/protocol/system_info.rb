@@ -4,7 +4,6 @@ module Chromiebara
       extend self
 
       # Returns information about the system.
-      # 
       #
       def get_info
         {
@@ -13,7 +12,6 @@ module Chromiebara
       end
 
       # Returns information about all running processes.
-      # 
       #
       def get_process_info
         {

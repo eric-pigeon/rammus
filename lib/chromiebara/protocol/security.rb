@@ -4,7 +4,6 @@ module Chromiebara
       extend self
 
       # Disables tracking security state changes.
-      # 
       #
       def disable
         {
@@ -13,7 +12,6 @@ module Chromiebara
       end
 
       # Enables tracking security state changes.
-      # 
       #
       def enable
         {
@@ -22,7 +20,7 @@ module Chromiebara
       end
 
       # Enable/disable whether all certificate errors should be ignored.
-      # 
+      #
       # @param ignore [Boolean] If true, all certificate errors will be ignored.
       #
       def set_ignore_certificate_errors(ignore:)
@@ -33,7 +31,7 @@ module Chromiebara
       end
 
       # Handles a certificate error that fired a certificateError event.
-      # 
+      #
       # @param event_id [Integer] The ID of the event.
       # @param action [Certificateerroraction] The action to take on the certificate error.
       #
@@ -46,7 +44,7 @@ module Chromiebara
 
       # Enable/disable overriding certificate errors. If enabled, all certificate error events need to
       # be handled by the DevTools client and should be answered with `handleCertificateError` commands.
-      # 
+      #
       # @param override [Boolean] If true, certificate errors will be overridden.
       #
       def set_override_certificate_errors(override:)

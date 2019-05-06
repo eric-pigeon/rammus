@@ -4,7 +4,7 @@ module Chromiebara
       extend self
 
       # Dispatches a key event to the page.
-      # 
+      #
       # @param type [String] Type of the key event.
       # @param modifiers [Integer] Bit field representing pressed modifier keys. Alt=1, Ctrl=2, Meta/Command=4, Shift=8 (default: 0).
       # @param timestamp [Timesinceepoch] Time at which the event occurred.
@@ -29,7 +29,7 @@ module Chromiebara
 
       # This method emulates inserting text that doesn't come from a key press,
       # for example an emoji keyboard or an IME.
-      # 
+      #
       # @param text [String] The text to insert.
       #
       def insert_text(text:)
@@ -40,7 +40,7 @@ module Chromiebara
       end
 
       # Dispatches a mouse event to the page.
-      # 
+      #
       # @param type [String] Type of the mouse event.
       # @param x [Number] X coordinate of the event relative to the main frame's viewport in CSS pixels.
       # @param y [Number] Y coordinate of the event relative to the main frame's viewport in CSS pixels. 0 refers to the top of the viewport and Y increases as it proceeds towards the bottom of the viewport.
@@ -61,7 +61,7 @@ module Chromiebara
       end
 
       # Dispatches a touch event to the page.
-      # 
+      #
       # @param type [String] Type of the touch event. TouchEnd and TouchCancel must not contain any touch points, while TouchStart and TouchMove must contains at least one.
       # @param touch_points [Array] Active touch points on the touch device. One event per any changed point (compared to previous touch event in a sequence) is generated, emulating pressing/moving/releasing points one by one.
       # @param modifiers [Integer] Bit field representing pressed modifier keys. Alt=1, Ctrl=2, Meta/Command=4, Shift=8 (default: 0).
@@ -75,7 +75,7 @@ module Chromiebara
       end
 
       # Emulates touch event from the mouse event parameters.
-      # 
+      #
       # @param type [String] Type of the mouse event.
       # @param x [Integer] X coordinate of the mouse pointer in DIP.
       # @param y [Integer] Y coordinate of the mouse pointer in DIP.
@@ -94,7 +94,7 @@ module Chromiebara
       end
 
       # Ignores input events (useful while auditing page).
-      # 
+      #
       # @param ignore [Boolean] Ignores input events processing when set to true.
       #
       def set_ignore_input_events(ignore:)
@@ -105,7 +105,7 @@ module Chromiebara
       end
 
       # Synthesizes a pinch gesture over a time period by issuing appropriate touch events.
-      # 
+      #
       # @param x [Number] X coordinate of the start of the gesture in CSS pixels.
       # @param y [Number] Y coordinate of the start of the gesture in CSS pixels.
       # @param scale_factor [Number] Relative scale factor after zooming (>1.0 zooms in, <1.0 zooms out).
@@ -120,7 +120,7 @@ module Chromiebara
       end
 
       # Synthesizes a scroll gesture over a time period by issuing appropriate touch events.
-      # 
+      #
       # @param x [Number] X coordinate of the start of the gesture in CSS pixels.
       # @param y [Number] Y coordinate of the start of the gesture in CSS pixels.
       # @param x_distance [Number] The distance to scroll along the X axis (positive to scroll left).
@@ -142,7 +142,7 @@ module Chromiebara
       end
 
       # Synthesizes a tap gesture over a time period by issuing appropriate touch events.
-      # 
+      #
       # @param x [Number] X coordinate of the start of the gesture in CSS pixels.
       # @param y [Number] Y coordinate of the start of the gesture in CSS pixels.
       # @param duration [Integer] Duration between touchdown and touchup events in ms (default: 50).
