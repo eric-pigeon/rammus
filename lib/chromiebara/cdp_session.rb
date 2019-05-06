@@ -35,6 +35,7 @@ module Chromiebara
       #
       def on_message(message)
         if message["id"] && callback = @_command_callbacks.fetch(message["id"])
+          ProtocolLogger.puts_command_response message
           @_command_callbacks.delete message["id"]
           if message["error"]
             raise 'todo'
@@ -42,6 +43,7 @@ module Chromiebara
             callback.resolve message["result"]
           end
         else
+          ProtocolLogger.puts_event message
           # TODO
           # emit
           # this.emit(object.method, object.params);

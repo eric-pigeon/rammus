@@ -1,5 +1,7 @@
 module Chromiebara
   class Frame
+    attr_reader :id, :frame_manager
+
     # @param [Chromiebara::FrameManager] frame_manager
     # @param [Chromiebara::CPDSession] client
     # @param [Chromiebara::Frame, nil] parent_frame
@@ -28,14 +30,13 @@ module Chromiebara
       #   this._parentFrame._childFrames.add(this);
     end
 
-  # /**
-  #  * @param {string} url
-  #  * @param {!{referer?: string, timeout?: number, waitUntil?: string|!Array<string>}=} options
-  #  * @return {!Promise<?Puppeteer.Response>}
-  #  */
-  # async goto(url, options) {
-  #   return await this._frameManager.navigateFrame(this, url, options);
-  # }
+
+    # @param [String] url
+    # TODO
+    #
+    def goto(url, referrer: nil, timeout: nil, wait_until: nil)
+      frame_manager.navigate_frame self, url, referrer: referrer, timeout: timeout, wait_until: wait_until
+    end
 
   # /**
   #  * @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options

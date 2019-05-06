@@ -99,7 +99,6 @@ module Chromiebara
           session = CDPSession.new(self, message.dig("targetInfo", "type"), session_id)
           @_sessions[session_id] = session
         elsif message["sessionId"]
-          ProtocolLogger.puts_event message
           @_sessions.fetch(message["sessionId"]).send(:on_message, message)
         elsif message["id"]
           ProtocolLogger.puts_command_response message
