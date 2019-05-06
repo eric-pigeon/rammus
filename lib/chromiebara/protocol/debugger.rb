@@ -16,7 +16,6 @@ module Chromiebara
 
       # Disables debugger for given page.
       #
-      #
       def disable
         {
           method: "Debugger.disable"
@@ -25,7 +24,6 @@ module Chromiebara
 
       # Enables debugger for the given page. Clients should not assume that the debugging has been
       # enabled until the result for this command is received.
-      #
       #
       def enable
         {
@@ -55,14 +53,14 @@ module Chromiebara
       # Returns possible locations for breakpoint. scriptId in start and end range locations should be
       # the same.
       #
-      # @param start [Location] Start of range to search possible breakpoint locations in.
-      # @param end [Location] End of range to search possible breakpoint locations in (excluding). When not specified, end of scripts is used as end of range.
+      # @param breakpoint_start [Location] Start of range to search possible breakpoint locations in.
+      # @param breakpoint_end [Location] End of range to search possible breakpoint locations in (excluding). When not specified, end of scripts is used as end of range.
       # @param restrict_to_function [Boolean] Only consider locations which are in the same (non-nested) function as start.
       #
-      def get_possible_breakpoints(start:, end: nil, restrict_to_function: nil)
+      def get_possible_breakpoints(breakpoint_start:, breakpoint_end: nil, restrict_to_function: nil)
         {
           method: "Debugger.getPossibleBreakpoints",
-          params: { start: start, end: end, restrictToFunction: restrict_to_function }.compact
+          params: { breakpoint_start: breakpoint_start, breakpoint_end: breakpoint_end, restrictToFunction: restrict_to_function }.compact
         }
       end
 
@@ -79,7 +77,6 @@ module Chromiebara
 
       # Returns stack trace with given `stackTraceId`.
       #
-      #
       def get_stack_trace(stack_trace_id:)
         {
           method: "Debugger.getStackTrace",
@@ -89,15 +86,12 @@ module Chromiebara
 
       # Stops on the next JavaScript statement.
       #
-      #
       def pause
         {
           method: "Debugger.pause"
         }
       end
 
-
-      #
       # @param parent_stack_trace_id [Runtime.stacktraceid] Debugger will pause when async call with given stack trace is started.
       #
       def pause_on_async_call(parent_stack_trace_id:)
@@ -108,7 +102,6 @@ module Chromiebara
       end
 
       # Removes JavaScript breakpoint.
-      #
       #
       def remove_breakpoint(breakpoint_id:)
         {
@@ -129,7 +122,6 @@ module Chromiebara
       end
 
       # Resumes JavaScript execution.
-      #
       #
       def resume
         {
@@ -320,7 +312,6 @@ module Chromiebara
 
       # Steps out of the function call.
       #
-      #
       def step_out
         {
           method: "Debugger.stepOut"
@@ -328,7 +319,6 @@ module Chromiebara
       end
 
       # Steps over the statement.
-      #
       #
       def step_over
         {

@@ -4,7 +4,6 @@ module Chromiebara
       extend self
 
       # Clears the log.
-      # 
       #
       def clear
         {
@@ -13,7 +12,6 @@ module Chromiebara
       end
 
       # Disables log domain, prevents further log entries from being reported to the client.
-      # 
       #
       def disable
         {
@@ -23,7 +21,6 @@ module Chromiebara
 
       # Enables log domain, sends the entries collected so far to the client by means of the
       # `entryAdded` notification.
-      # 
       #
       def enable
         {
@@ -32,7 +29,7 @@ module Chromiebara
       end
 
       # start violation reporting.
-      # 
+      #
       # @param config [Array] Configuration for violations.
       #
       def start_violations_report(config:)
@@ -43,7 +40,6 @@ module Chromiebara
       end
 
       # Stop violation reporting.
-      # 
       #
       def stop_violations_report
         {

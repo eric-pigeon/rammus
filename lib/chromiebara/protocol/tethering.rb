@@ -4,7 +4,7 @@ module Chromiebara
       extend self
 
       # Request browser port binding.
-      # 
+      #
       # @param port [Integer] Port number to bind.
       #
       def bind(port:)
@@ -15,7 +15,7 @@ module Chromiebara
       end
 
       # Request browser port unbinding.
-      # 
+      #
       # @param port [Integer] Port number to unbind.
       #
       def unbind(port:)

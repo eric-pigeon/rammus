@@ -4,7 +4,6 @@ module Chromiebara
       extend self
 
       # Clears the overridden Device Orientation.
-      # 
       #
       def clear_device_orientation_override
         {
@@ -13,7 +12,7 @@ module Chromiebara
       end
 
       # Overrides the Device Orientation.
-      # 
+      #
       # @param alpha [Number] Mock alpha
       # @param beta [Number] Mock beta
       # @param gamma [Number] Mock gamma

@@ -4,7 +4,7 @@ module Chromiebara
       extend self
 
       # Deletes a cache.
-      # 
+      #
       # @param cache_id [Cacheid] Id of cache for deletion.
       #
       def delete_cache(cache_id:)
@@ -15,7 +15,7 @@ module Chromiebara
       end
 
       # Deletes a cache entry.
-      # 
+      #
       # @param cache_id [Cacheid] Id of cache where the entry will be deleted.
       # @param request [String] URL spec of the request.
       #
@@ -27,7 +27,7 @@ module Chromiebara
       end
 
       # Requests cache names.
-      # 
+      #
       # @param security_origin [String] Security origin.
       #
       def request_cache_names(security_origin:)
@@ -38,7 +38,7 @@ module Chromiebara
       end
 
       # Fetches cache entry.
-      # 
+      #
       # @param cache_id [Cacheid] Id of cache that contains the entry.
       # @param request_url [String] URL spec of the request.
       #
@@ -50,7 +50,7 @@ module Chromiebara
       end
 
       # Requests data from cache.
-      # 
+      #
       # @param cache_id [Cacheid] ID of cache to get entries from.
       # @param skip_count [Integer] Number of records to skip.
       # @param page_size [Integer] Number of records to fetch.

@@ -1,31 +1,22 @@
 module Chromiebara
   class ChromeClient
-    class CommandError < StandardError
-      attr_reader :code
-
-      def initialize(code:, message:)
-        @code = code
-        super message
-      end
-    end
+    include EventEmitter
 
     attr_reader :web_socket
 
-    # @param Chromiebara::WebSocketClient web_socket
+    # @param [Chromiebara::WebSocketClient] web_socket
     #
     def initialize(web_socket)
+      super()
       @web_socket = web_socket
       web_socket.on_message = method :on_message
       @_sessions = {}
       @last_id = 0
       @command_mutex = Mutex.new
       @_command_callbacks = {}
-      @_event_callbacks = Hash.new { |h, k| h[k] = [] }
     end
 
     # @param [Hash] command
-    #
-    # @raise [CommandError]
     #
     # @return [Hash]
     #
@@ -56,13 +47,6 @@ module Chromiebara
       end
     end
 
-    # @param [String] event
-    # @param [Callable]
-    #
-    def on(event, callable)
-      @_event_callbacks[event] << callable
-    end
-
     # @param [Hash] target_info
     #
     # @return [Chromiebara::CDPSession]
@@ -79,13 +63,6 @@ module Chromiebara
 
       def next_command_id
         @last_id += 1
-      end
-
-      # @param [String] event
-      # @[aram [Hash] data
-      #
-      def emit(event, data)
-        @_event_callbacks[event].each { |callable| callable.call data }
       end
 
       # @param [String] message

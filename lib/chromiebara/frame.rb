@@ -16,9 +16,9 @@ module Chromiebara
       @_detached = false
       @name = ''
 
-      # this._loaderId = '';
+      @_loader_id = ''
       # /** @type {!Set<string>} */
-      # this._lifecycleEvents = new Set();
+      @_lifecycle_events = Set.new
       # /** @type {!DOMWorld} */
       # this._mainWorld = new DOMWorld(frameManager, this, frameManager._timeoutSettings);
       # /** @type {!DOMWorld} */
@@ -315,17 +315,17 @@ module Chromiebara
   #   this._url = url;
   # }
 
-  # /**
-  #  * @param {string} loaderId
-  #  * @param {string} name
-  #  */
-  # _onLifecycleEvent(loaderId, name) {
-  #   if (name === 'init') {
-  #     this._loaderId = loaderId;
-  #     this._lifecycleEvents.clear();
-  #   }
-  #   this._lifecycleEvents.add(name);
-  # }
+    # @param [String] loader_id
+    # @param [String] name
+    #
+    def on_lifecycle_event(loader_id, name)
+      if name == "init"
+        @_loader_id = loader_id
+        @_lifecycle_events.clear
+      end
+
+      @_lifecycle_events.add name
+    end
 
   # _onLoadingStopped() {
   #   this._lifecycleEvents.add('DOMContentLoaded');

@@ -1,8 +1,11 @@
 module Chromiebara
   class CDPSession
+    include EventEmitter
+
     attr_reader :client, :target_type, :session_id
 
     def initialize(client, target_type, session_id)
+      super()
       @client = client
       @target_type = target_type
       @session_id = session_id
@@ -44,9 +47,7 @@ module Chromiebara
           end
         else
           ProtocolLogger.puts_event message
-          # TODO
-          # emit
-          # this.emit(object.method, object.params);
+          emit message["method"], message["params"]
         end
       end
   end

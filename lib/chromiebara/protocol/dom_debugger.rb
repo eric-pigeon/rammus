@@ -4,7 +4,7 @@ module Chromiebara
       extend self
 
       # Returns event listeners of the given object.
-      # 
+      #
       # @param object_id [Runtime.remoteobjectid] Identifier of the object to return listeners for.
       # @param depth [Integer] The maximum depth at which Node children should be retrieved, defaults to 1. Use -1 for the entire subtree or provide an integer larger than 0.
       # @param pierce [Boolean] Whether or not iframes and shadow roots should be traversed when returning the subtree (default is false). Reports listeners for all contexts if pierce is enabled.
@@ -17,7 +17,7 @@ module Chromiebara
       end
 
       # Removes DOM breakpoint that was set using `setDOMBreakpoint`.
-      # 
+      #
       # @param node_id [Dom.nodeid] Identifier of the node to remove breakpoint from.
       # @param type [Dombreakpointtype] Type of the breakpoint to remove.
       #
@@ -29,7 +29,7 @@ module Chromiebara
       end
 
       # Removes breakpoint on particular DOM event.
-      # 
+      #
       # @param event_name [String] Event name.
       # @param target_name [String] EventTarget interface name.
       #
@@ -41,7 +41,7 @@ module Chromiebara
       end
 
       # Removes breakpoint on particular native event.
-      # 
+      #
       # @param event_name [String] Instrumentation name to stop on.
       #
       def remove_instrumentation_breakpoint(event_name:)
@@ -52,7 +52,7 @@ module Chromiebara
       end
 
       # Removes breakpoint from XMLHttpRequest.
-      # 
+      #
       # @param url [String] Resource URL substring.
       #
       def remove_xhr_breakpoint(url:)
@@ -63,7 +63,7 @@ module Chromiebara
       end
 
       # Sets breakpoint on particular operation with DOM.
-      # 
+      #
       # @param node_id [Dom.nodeid] Identifier of the node to set breakpoint on.
       # @param type [Dombreakpointtype] Type of the operation to stop upon.
       #
@@ -75,7 +75,7 @@ module Chromiebara
       end
 
       # Sets breakpoint on particular DOM event.
-      # 
+      #
       # @param event_name [String] DOM Event name to stop on (any DOM event will do).
       # @param target_name [String] EventTarget interface name to stop on. If equal to `"*"` or not provided, will stop on any EventTarget.
       #
@@ -87,7 +87,7 @@ module Chromiebara
       end
 
       # Sets breakpoint on particular native event.
-      # 
+      #
       # @param event_name [String] Instrumentation name to stop on.
       #
       def set_instrumentation_breakpoint(event_name:)
@@ -98,7 +98,7 @@ module Chromiebara
       end
 
       # Sets breakpoint on XMLHttpRequest.
-      # 
+      #
       # @param url [String] Resource URL substring. All XHRs having this substring in the URL will get stopped upon.
       #
       def set_xhr_breakpoint(url:)

@@ -1,6 +1,8 @@
 require 'chromiebara'
 require 'support/test_app'
-require 'byebug'
+if RUBY_ENGINE != "jruby"
+  require 'byebug'
+end
 
 module SeverHelper
   extend RSpec::SharedContext

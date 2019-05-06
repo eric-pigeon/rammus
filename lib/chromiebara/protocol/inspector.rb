@@ -4,7 +4,6 @@ module Chromiebara
       extend self
 
       # Disables inspector domain notifications.
-      # 
       #
       def disable
         {
@@ -13,7 +12,6 @@ module Chromiebara
       end
 
       # Enables inspector domain notifications.
-      # 
       #
       def enable
         {

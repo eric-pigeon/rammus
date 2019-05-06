@@ -4,7 +4,6 @@ module Chromiebara
       extend self
 
       # Disables the accessibility domain.
-      # 
       #
       def disable
         {
@@ -14,7 +13,6 @@ module Chromiebara
 
       # Enables the accessibility domain which causes `AXNodeId`s to remain consistent between method calls.
       # This turns on accessibility for the page, which can impact performance until accessibility is disabled.
-      # 
       #
       def enable
         {
@@ -23,7 +21,7 @@ module Chromiebara
       end
 
       # Fetches the accessibility node and partial accessibility tree for this DOM node, if it exists.
-      # 
+      #
       # @param node_id [Dom.nodeid] Identifier of the node to get the partial accessibility tree for.
       # @param backend_node_id [Dom.backendnodeid] Identifier of the backend node to get the partial accessibility tree for.
       # @param object_id [Runtime.remoteobjectid] JavaScript object id of the node wrapper to get the partial accessibility tree for.
@@ -37,7 +35,6 @@ module Chromiebara
       end
 
       # Fetches the entire accessibility tree
-      # 
       #
       def get_full_ax_tree
         {

@@ -4,7 +4,7 @@ module Chromiebara
       extend self
 
       # Clears storage for origin.
-      # 
+      #
       # @param origin [String] Security origin.
       # @param storage_types [String] Comma separated list of StorageType to clear.
       #
@@ -16,7 +16,7 @@ module Chromiebara
       end
 
       # Returns usage and quota in bytes.
-      # 
+      #
       # @param origin [String] Security origin.
       #
       def get_usage_and_quota(origin:)
@@ -27,7 +27,7 @@ module Chromiebara
       end
 
       # Registers origin to be notified when an update occurs to its cache storage list.
-      # 
+      #
       # @param origin [String] Security origin.
       #
       def track_cache_storage_for_origin(origin:)
@@ -38,7 +38,7 @@ module Chromiebara
       end
 
       # Registers origin to be notified when an update occurs to its IndexedDB.
-      # 
+      #
       # @param origin [String] Security origin.
       #
       def track_indexed_db_for_origin(origin:)
@@ -49,7 +49,7 @@ module Chromiebara
       end
 
       # Unregisters origin from receiving notifications for cache storage.
-      # 
+      #
       # @param origin [String] Security origin.
       #
       def untrack_cache_storage_for_origin(origin:)
@@ -60,7 +60,7 @@ module Chromiebara
       end
 
       # Unregisters origin from receiving notifications for IndexedDB.
-      # 
+      #
       # @param origin [String] Security origin.
       #
       def untrack_indexed_db_for_origin(origin:)

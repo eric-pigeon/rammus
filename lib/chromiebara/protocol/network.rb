@@ -4,7 +4,6 @@ module Chromiebara
       extend self
 
       # Tells whether clearing browser cache is supported.
-      # 
       #
       def can_clear_browser_cache
         {
@@ -13,7 +12,6 @@ module Chromiebara
       end
 
       # Tells whether clearing browser cookies is supported.
-      # 
       #
       def can_clear_browser_cookies
         {
@@ -22,7 +20,6 @@ module Chromiebara
       end
 
       # Tells whether emulation of network conditions is supported.
-      # 
       #
       def can_emulate_network_conditions
         {
@@ -31,7 +28,6 @@ module Chromiebara
       end
 
       # Clears browser cache.
-      # 
       #
       def clear_browser_cache
         {
@@ -40,7 +36,6 @@ module Chromiebara
       end
 
       # Clears browser cookies.
-      # 
       #
       def clear_browser_cookies
         {
@@ -52,7 +47,7 @@ module Chromiebara
       # modifications, or blocks it, or completes it with the provided response bytes. If a network
       # fetch occurs as a result which encounters a redirect an additional Network.requestIntercepted
       # event will be sent with the same InterceptionId.
-      # 
+      #
       # @param error_reason [Errorreason] If set this causes the request to fail with the given reason. Passing `Aborted` for requests marked with `isNavigationRequest` also cancels the navigation. Must not be set in response to an authChallenge.
       # @param raw_response [Binary] If set the requests completes using with the provided base64 encoded raw response, including HTTP status line and headers etc... Must not be set in response to an authChallenge.
       # @param url [String] If set the request url will be modified in a way that's not observable by page. Must not be set in response to an authChallenge.
@@ -69,7 +64,7 @@ module Chromiebara
       end
 
       # Deletes browser cookies with matching name and url or domain/path pair.
-      # 
+      #
       # @param name [String] Name of the cookies to remove.
       # @param url [String] If specified, deletes all the cookies with the given name where domain and path match provided URL.
       # @param domain [String] If specified, deletes only cookies with the exact domain.
@@ -83,7 +78,6 @@ module Chromiebara
       end
 
       # Disables network tracking, prevents network events from being sent to the client.
-      # 
       #
       def disable
         {
@@ -92,7 +86,7 @@ module Chromiebara
       end
 
       # Activates emulation of network conditions.
-      # 
+      #
       # @param offline [Boolean] True to emulate internet disconnection.
       # @param latency [Number] Minimum latency from request sent to response headers received (ms).
       # @param download_throughput [Number] Maximal aggregated download throughput (bytes/sec). -1 disables download throttling.
@@ -107,7 +101,7 @@ module Chromiebara
       end
 
       # Enables network tracking, network events will now be delivered to the client.
-      # 
+      #
       # @param max_total_buffer_size [Integer] Buffer size in bytes to use when preserving network payloads (XHRs, etc).
       # @param max_resource_buffer_size [Integer] Per-resource buffer size in bytes to use when preserving network payloads (XHRs, etc).
       # @param max_post_data_size [Integer] Longest post body size (in bytes) that would be included in requestWillBeSent notification
@@ -121,7 +115,6 @@ module Chromiebara
 
       # Returns all browser cookies. Depending on the backend support, will return detailed cookie
       # information in the `cookies` field.
-      # 
       #
       def get_all_cookies
         {
@@ -130,7 +123,7 @@ module Chromiebara
       end
 
       # Returns the DER-encoded certificate.
-      # 
+      #
       # @param origin [String] Origin to get certificate for.
       #
       def get_certificate(origin:)
@@ -142,7 +135,7 @@ module Chromiebara
 
       # Returns all browser cookies for the current URL. Depending on the backend support, will return
       # detailed cookie information in the `cookies` field.
-      # 
+      #
       # @param urls [Array] The list of URLs for which applicable cookies will be fetched
       #
       def get_cookies(urls: nil)
@@ -153,7 +146,7 @@ module Chromiebara
       end
 
       # Returns content served for the given request.
-      # 
+      #
       # @param request_id [Requestid] Identifier of the network request to get content for.
       #
       def get_response_body(request_id:)
@@ -164,7 +157,7 @@ module Chromiebara
       end
 
       # Returns post data sent with the request. Returns an error when no data was sent with the request.
-      # 
+      #
       # @param request_id [Requestid] Identifier of the network request to get content for.
       #
       def get_request_post_data(request_id:)
@@ -175,7 +168,7 @@ module Chromiebara
       end
 
       # Returns content served for the given currently intercepted request.
-      # 
+      #
       # @param interception_id [Interceptionid] Identifier for the intercepted request to get body for.
       #
       def get_response_body_for_interception(interception_id:)
@@ -189,7 +182,6 @@ module Chromiebara
       # the intercepted request can't be continued as is -- you either need to cancel it or to provide
       # the response body. The stream only supports sequential read, IO.read will fail if the position
       # is specified.
-      # 
       #
       def take_response_body_for_interception_as_stream(interception_id:)
         {
@@ -201,7 +193,7 @@ module Chromiebara
       # This method sends a new XMLHttpRequest which is identical to the original one. The following
       # parameters should be identical: method, url, async, request body, extra headers, withCredentials
       # attribute, user, password.
-      # 
+      #
       # @param request_id [Requestid] Identifier of XHR to replay.
       #
       def replay_xhr(request_id:)
@@ -212,7 +204,7 @@ module Chromiebara
       end
 
       # Searches for given string in response content.
-      # 
+      #
       # @param request_id [Requestid] Identifier of the network response to search.
       # @param query [String] String to search for.
       # @param case_sensitive [Boolean] If true, search is case sensitive.
@@ -226,7 +218,7 @@ module Chromiebara
       end
 
       # Blocks URLs from loading.
-      # 
+      #
       # @param urls [Array] URL patterns to block. Wildcards ('*') are allowed.
       #
       def set_blocked_ur_ls(urls:)
@@ -237,7 +229,7 @@ module Chromiebara
       end
 
       # Toggles ignoring of service worker for each request.
-      # 
+      #
       # @param bypass [Boolean] Bypass service worker and load from network.
       #
       def set_bypass_service_worker(bypass:)
@@ -248,7 +240,7 @@ module Chromiebara
       end
 
       # Toggles ignoring cache for each request. If `true`, cache will not be used.
-      # 
+      #
       # @param cache_disabled [Boolean] Cache disabled state.
       #
       def set_cache_disabled(cache_disabled:)
@@ -259,7 +251,7 @@ module Chromiebara
       end
 
       # Sets a cookie with the given cookie data; may overwrite equivalent cookies if they exist.
-      # 
+      #
       # @param name [String] Cookie name.
       # @param value [String] Cookie value.
       # @param url [String] The request-URI to associate with the setting of the cookie. This value can affect the default domain and path values of the created cookie.
@@ -278,7 +270,7 @@ module Chromiebara
       end
 
       # Sets given cookies.
-      # 
+      #
       # @param cookies [Array] Cookies to be set.
       #
       def set_cookies(cookies:)
@@ -289,7 +281,7 @@ module Chromiebara
       end
 
       # For testing.
-      # 
+      #
       # @param max_total_size [Integer] Maximum total buffer size.
       # @param max_resource_size [Integer] Maximum per-resource size.
       #
@@ -301,7 +293,7 @@ module Chromiebara
       end
 
       # Specifies whether to always send extra HTTP headers with the requests from this page.
-      # 
+      #
       # @param headers [Headers] Map with extra HTTP headers.
       #
       def set_extra_http_headers(headers:)
@@ -312,7 +304,7 @@ module Chromiebara
       end
 
       # Sets the requests to intercept that match a the provided patterns and optionally resource types.
-      # 
+      #
       # @param patterns [Array] Requests matching any of these patterns will be forwarded and wait for the corresponding continueInterceptedRequest call.
       #
       def set_request_interception(patterns:)
@@ -323,7 +315,7 @@ module Chromiebara
       end
 
       # Allows overriding user agent with the given string.
-      # 
+      #
       # @param user_agent [String] User agent to use.
       # @param accept_language [String] Browser langugage to emulate.
       # @param platform [String] The platform navigator.platform should return.

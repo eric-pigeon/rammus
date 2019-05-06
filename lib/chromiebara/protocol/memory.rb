@@ -3,18 +3,12 @@ module Chromiebara
     module Memory
       extend self
 
-
-      # 
-      #
       def get_dom_counters
         {
           method: "Memory.getDOMCounters"
         }
       end
 
-
-      # 
-      #
       def prepare_for_leak_detection
         {
           method: "Memory.prepareForLeakDetection"
@@ -22,7 +16,7 @@ module Chromiebara
       end
 
       # Enable/disable suppressing memory pressure notifications in all processes.
-      # 
+      #
       # @param suppressed [Boolean] If true, memory pressure notifications will be suppressed.
       #
       def set_pressure_notifications_suppressed(suppressed:)
@@ -33,7 +27,7 @@ module Chromiebara
       end
 
       # Simulate a memory pressure notification in all processes.
-      # 
+      #
       # @param level [Pressurelevel] Memory pressure level of the notification.
       #
       def simulate_pressure_notification(level:)
@@ -44,7 +38,7 @@ module Chromiebara
       end
 
       # Start collecting native memory profile.
-      # 
+      #
       # @param sampling_interval [Integer] Average number of bytes between samples.
       # @param suppress_randomness [Boolean] Do not randomize intervals between samples.
       #
@@ -56,7 +50,6 @@ module Chromiebara
       end
 
       # Stop collecting native memory profile.
-      # 
       #
       def stop_sampling
         {
@@ -66,7 +59,6 @@ module Chromiebara
 
       # Retrieve native memory allocations profile
       # collected since renderer process startup.
-      # 
       #
       def get_all_time_sampling_profile
         {
@@ -76,7 +68,6 @@ module Chromiebara
 
       # Retrieve native memory allocations profile
       # collected since browser process startup.
-      # 
       #
       def get_browser_sampling_profile
         {
@@ -86,7 +77,6 @@ module Chromiebara
 
       # Retrieve native memory allocations profile collected since last
       # `startSampling` call.
-      # 
       #
       def get_sampling_profile
         {

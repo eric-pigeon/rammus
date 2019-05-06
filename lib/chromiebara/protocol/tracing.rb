@@ -4,7 +4,6 @@ module Chromiebara
       extend self
 
       # Stop trace events collection.
-      # 
       #
       def end
         {
@@ -13,7 +12,6 @@ module Chromiebara
       end
 
       # Gets supported tracing categories.
-      # 
       #
       def get_categories
         {
@@ -22,7 +20,7 @@ module Chromiebara
       end
 
       # Record a clock sync marker in the trace.
-      # 
+      #
       # @param sync_id [String] The ID of this clock sync marker
       #
       def record_clock_sync_marker(sync_id:)
@@ -33,7 +31,6 @@ module Chromiebara
       end
 
       # Request a global memory dump.
-      # 
       #
       def request_memory_dump
         {
@@ -42,7 +39,7 @@ module Chromiebara
       end
 
       # Start trace events collection.
-      # 
+      #
       # @param categories [String] Category/tag filter
       # @param options [String] Tracing options
       # @param buffer_usage_reporting_interval [Number] If set, the agent will issue bufferUsage events at this interval, specified in milliseconds

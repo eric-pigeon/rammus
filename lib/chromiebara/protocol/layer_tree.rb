@@ -4,7 +4,7 @@ module Chromiebara
       extend self
 
       # Provides the reasons why the given layer was composited.
-      # 
+      #
       # @param layer_id [Layerid] The id of the layer for which we want to get the reasons it was composited.
       #
       def compositing_reasons(layer_id:)
@@ -15,7 +15,6 @@ module Chromiebara
       end
 
       # Disables compositing tree inspection.
-      # 
       #
       def disable
         {
@@ -24,7 +23,6 @@ module Chromiebara
       end
 
       # Enables compositing tree inspection.
-      # 
       #
       def enable
         {
@@ -33,7 +31,7 @@ module Chromiebara
       end
 
       # Returns the snapshot identifier.
-      # 
+      #
       # @param tiles [Array] An array of tiles composing the snapshot.
       #
       def load_snapshot(tiles:)
@@ -44,7 +42,7 @@ module Chromiebara
       end
 
       # Returns the layer snapshot identifier.
-      # 
+      #
       # @param layer_id [Layerid] The id of the layer.
       #
       def make_snapshot(layer_id:)
@@ -54,8 +52,6 @@ module Chromiebara
         }
       end
 
-
-      # 
       # @param snapshot_id [Snapshotid] The id of the layer snapshot.
       # @param min_repeat_count [Integer] The maximum number of times to replay the snapshot (1, if not specified).
       # @param min_duration [Number] The minimum duration (in seconds) to replay the snapshot.
@@ -69,7 +65,7 @@ module Chromiebara
       end
 
       # Releases layer snapshot captured by the back-end.
-      # 
+      #
       # @param snapshot_id [Snapshotid] The id of the layer snapshot.
       #
       def release_snapshot(snapshot_id:)
@@ -80,7 +76,7 @@ module Chromiebara
       end
 
       # Replays the layer snapshot and returns the resulting bitmap.
-      # 
+      #
       # @param snapshot_id [Snapshotid] The id of the layer snapshot.
       # @param from_step [Integer] The first step to replay from (replay from the very start if not specified).
       # @param to_step [Integer] The last step to replay to (replay till the end if not specified).
@@ -94,7 +90,7 @@ module Chromiebara
       end
 
       # Replays the layer snapshot and returns canvas log.
-      # 
+      #
       # @param snapshot_id [Snapshotid] The id of the layer snapshot.
       #
       def snapshot_command_log(snapshot_id:)

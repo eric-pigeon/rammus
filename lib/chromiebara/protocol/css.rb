@@ -5,7 +5,7 @@ module Chromiebara
 
       # Inserts a new rule with the given `ruleText` in a stylesheet with given `styleSheetId`, at the
       # position specified by `location`.
-      # 
+      #
       # @param style_sheet_id [Stylesheetid] The css style sheet identifier where a new rule should be inserted.
       # @param rule_text [String] The text of a new rule.
       # @param location [Sourcerange] Text position of a new rule in the target style sheet.
@@ -18,7 +18,6 @@ module Chromiebara
       end
 
       # Returns all class names from specified stylesheet.
-      # 
       #
       def collect_class_names(style_sheet_id:)
         {
@@ -28,7 +27,7 @@ module Chromiebara
       end
 
       # Creates a new special "via-inspector" stylesheet in the frame with given `frameId`.
-      # 
+      #
       # @param frame_id [Page.frameid] Identifier of the frame where "via-inspector" stylesheet should be created.
       #
       def create_style_sheet(frame_id:)
@@ -39,7 +38,6 @@ module Chromiebara
       end
 
       # Disables the CSS agent for the given page.
-      # 
       #
       def disable
         {
@@ -49,7 +47,6 @@ module Chromiebara
 
       # Enables the CSS agent for the given page. Clients should not assume that the CSS agent has been
       # enabled until the result of this command is received.
-      # 
       #
       def enable
         {
@@ -59,7 +56,7 @@ module Chromiebara
 
       # Ensures that the given node will have specified pseudo-classes whenever its style is computed by
       # the browser.
-      # 
+      #
       # @param node_id [Dom.nodeid] The element id for which to force the pseudo state.
       # @param forced_pseudo_classes [Array] Element pseudo classes to force when computing the element's style.
       #
@@ -70,8 +67,6 @@ module Chromiebara
         }
       end
 
-
-      # 
       # @param node_id [Dom.nodeid] Id of the node to get background colors for.
       #
       def get_background_colors(node_id:)
@@ -82,7 +77,6 @@ module Chromiebara
       end
 
       # Returns the computed style for a DOM node identified by `nodeId`.
-      # 
       #
       def get_computed_style_for_node(node_id:)
         {
@@ -93,7 +87,6 @@ module Chromiebara
 
       # Returns the styles defined inline (explicitly in the "style" attribute and implicitly, using DOM
       # attributes) for a DOM node identified by `nodeId`.
-      # 
       #
       def get_inline_styles_for_node(node_id:)
         {
@@ -103,7 +96,6 @@ module Chromiebara
       end
 
       # Returns requested styles for a DOM node identified by `nodeId`.
-      # 
       #
       def get_matched_styles_for_node(node_id:)
         {
@@ -113,7 +105,6 @@ module Chromiebara
       end
 
       # Returns all media queries parsed by the rendering engine.
-      # 
       #
       def get_media_queries
         {
@@ -123,7 +114,6 @@ module Chromiebara
 
       # Requests information about platform fonts which we used to render child TextNodes in the given
       # node.
-      # 
       #
       def get_platform_fonts_for_node(node_id:)
         {
@@ -133,7 +123,6 @@ module Chromiebara
       end
 
       # Returns the current textual content for a stylesheet.
-      # 
       #
       def get_style_sheet_text(style_sheet_id:)
         {
@@ -144,7 +133,7 @@ module Chromiebara
 
       # Find a rule with the given active property for the given node and set the new value for this
       # property
-      # 
+      #
       # @param node_id [Dom.nodeid] The element id for which to set property.
       #
       def set_effective_property_value_for_node(node_id:, property_name:, value:)
@@ -155,7 +144,6 @@ module Chromiebara
       end
 
       # Modifies the keyframe rule key text.
-      # 
       #
       def set_keyframe_key(style_sheet_id:, range:, key_text:)
         {
@@ -165,7 +153,6 @@ module Chromiebara
       end
 
       # Modifies the rule selector.
-      # 
       #
       def set_media_text(style_sheet_id:, range:, text:)
         {
@@ -175,7 +162,6 @@ module Chromiebara
       end
 
       # Modifies the rule selector.
-      # 
       #
       def set_rule_selector(style_sheet_id:, range:, selector:)
         {
@@ -185,7 +171,6 @@ module Chromiebara
       end
 
       # Sets the new stylesheet text.
-      # 
       #
       def set_style_sheet_text(style_sheet_id:, text:)
         {
@@ -195,7 +180,6 @@ module Chromiebara
       end
 
       # Applies specified style edits one after another in the given order.
-      # 
       #
       def set_style_texts(edits:)
         {
@@ -205,7 +189,6 @@ module Chromiebara
       end
 
       # Enables the selector recording.
-      # 
       #
       def start_rule_usage_tracking
         {
@@ -215,7 +198,6 @@ module Chromiebara
 
       # Stop tracking rule usage and return the list of rules that were used since last call to
       # `takeCoverageDelta` (or since start of coverage instrumentation)
-      # 
       #
       def stop_rule_usage_tracking
         {
@@ -225,7 +207,6 @@ module Chromiebara
 
       # Obtain list of rules that became used since last call to this method (or since start of coverage
       # instrumentation)
-      # 
       #
       def take_coverage_delta
         {

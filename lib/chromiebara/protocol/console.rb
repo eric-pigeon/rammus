@@ -4,7 +4,6 @@ module Chromiebara
       extend self
 
       # Does nothing.
-      # 
       #
       def clear_messages
         {
@@ -13,7 +12,6 @@ module Chromiebara
       end
 
       # Disables console domain, prevents further console messages from being reported to the client.
-      # 
       #
       def disable
         {
@@ -23,7 +21,6 @@ module Chromiebara
 
       # Enables console domain, sends the messages collected so far to the client by means of the
       # `messageAdded` notification.
-      # 
       #
       def enable
         {

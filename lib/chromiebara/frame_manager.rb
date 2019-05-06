@@ -1,5 +1,7 @@
 module Chromiebara
   class FrameManager
+    include EventEmitter
+
     attr_reader :client, :page
 
     # @param [Chromiebara::CDPSession] client
@@ -12,6 +14,7 @@ module Chromiebara
       @_main_frame = nil
 
       # this._client.on('Page.frameAttached', event => this._onFrameAttached(event.frameId, event.parentFrameId));
+      client.on 'Page.frameNavigated', -> (event) { on_frame_navigated event["frame"] }
       # this._client.on('Page.frameNavigated', event => this._onFrameNavigated(event.frame));
       # this._client.on('Page.navigatedWithinDocument', event => this._onFrameNavigatedWithinDocument(event.frameId, event.url));
       # this._client.on('Page.frameDetached', event => this._onFrameDetached(event.frameId));
@@ -19,7 +22,7 @@ module Chromiebara
       # this._client.on('Runtime.executionContextCreated', event => this._onExecutionContextCreated(event.context));
       # this._client.on('Runtime.executionContextDestroyed', event => this._onExecutionContextDestroyed(event.executionContextId));
       # this._client.on('Runtime.executionContextsCleared', event => this._onExecutionContextsCleared());
-      # this._client.on('Page.lifecycleEvent', event => this._onLifecycleEvent(event));
+      client.on 'Page.lifecycleEvent', method(:on_lifecycle_event)
 
       client.command Protocol::Page.enable
       client.command(Protocol::Page.get_frame_tree).tap do |frame_tree|
@@ -41,7 +44,6 @@ module Chromiebara
     # networkManager() {
     #   return this._networkManager;
     # }
-
 
     # @param [String] url
     # TODO
@@ -110,17 +112,6 @@ module Chromiebara
     #   if (error)
     #     throw error;
     #   return watcher.navigationResponse();
-    # }
-
-    # /**
-    #  * @param {!Protocol.Page.lifecycleEventPayload} event
-    #  */
-    # _onLifecycleEvent(event) {
-    #   const frame = this._frames.get(event.frameId);
-    #   if (!frame)
-    #     return;
-    #   frame._onLifecycleEvent(event.loaderId, event.name);
-    #   this.emit(Events.FrameManager.LifecycleEvent, frame);
     # }
 
     # /**
@@ -377,5 +368,15 @@ module Chromiebara
 
         #   this.emit(Events.FrameManager.FrameNavigated, frame);
       end
+
+      #  * @param {!Protocol.Page.lifecycleEventPayload} event
+      #
+      def on_lifecycle_event(event)
+        frame = @_frames.fetch event["frameId"]
+        frame.send(:on_lifecycle_event, event["loaderId"], event["name"]);
+        # TODO
+      #   this.emit(Events.FrameManager.LifecycleEvent, frame);
+      end
+
   end
 end

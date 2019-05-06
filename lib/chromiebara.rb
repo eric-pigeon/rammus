@@ -1,9 +1,12 @@
 require 'json'
+require 'tmpdir'
+require 'set'
 
 module Chromiebara
+  require 'chromiebara/event_emitter'
+
   require 'chromiebara/launcher'
   require 'chromiebara/protocol'
-  # require 'chromiebara/driver'
   require 'chromiebara/browser'
   require 'chromiebara/browser_context'
   require 'chromiebara/web_socket_client'
