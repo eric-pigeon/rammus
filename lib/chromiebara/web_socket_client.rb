@@ -47,7 +47,10 @@ module Chromiebara
 
       def start_listener_thread
         @listener_thread = Thread.new do
-          loop { parse_input }
+          begin
+            loop { parse_input }
+          rescue EOFError, IOError
+          end
         end.tap { |thread| thread.abort_on_exception = true }
       end
   end
