@@ -4,6 +4,7 @@ require 'set'
 
 module Chromiebara
   require 'chromiebara/event_emitter'
+  require 'chromiebara/promise'
 
   require 'chromiebara/launcher'
   require 'chromiebara/protocol'
@@ -15,6 +16,7 @@ module Chromiebara
   require 'chromiebara/target'
   require 'chromiebara/page'
   require 'chromiebara/cdp_session'
+  require 'chromiebara/lifecycle_watcher'
   require 'chromiebara/frame'
   require 'chromiebara/frame_manager'
   require 'chromiebara/protocol_logger'

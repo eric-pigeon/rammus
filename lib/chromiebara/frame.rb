@@ -1,6 +1,6 @@
 module Chromiebara
   class Frame
-    attr_reader :id, :frame_manager
+    attr_reader :id, :frame_manager, :child_frames
 
     # @param [Chromiebara::FrameManager] frame_manager
     # @param [Chromiebara::CPDSession] client
@@ -25,9 +25,16 @@ module Chromiebara
       # this._secondaryWorld = new DOMWorld(frameManager, this, frameManager._timeoutSettings);
 
       # /** @type {!Set<!Frame>} */
-      # this._childFrames = new Set();
-      # if (this._parentFrame)
-      #   this._parentFrame._childFrames.add(this);
+      @child_frames = Set.new
+      if parent_frame
+        parent_frame.child_frames.add self
+      end
+    end
+
+    # TODO
+    #
+    def lifecycle_events
+      @_lifecycle_events.dup
     end
 
 

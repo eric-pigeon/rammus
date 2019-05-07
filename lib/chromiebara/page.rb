@@ -122,12 +122,13 @@ module Chromiebara
   #   return this._accessibility;
   # }
 
-  # /**
-  #  * @return {!Array<Puppeteer.Frame>}
-  #  */
-  # frames() {
-  #   return this._frameManager.frames();
-  # }
+    # An array of all frames attached to the page
+    #
+    # @return [<Chromiebara::Frame>]
+    #
+    def frames
+      @_frame_manager.frames
+    end
 
   # /**
   #  * @return {!Array<!Worker>}
@@ -842,12 +843,13 @@ module Chromiebara
   #   return buffer;
   # }
 
-  # /**
-  #  * @return {!Promise<string>}
-  #  */
-  # async title() {
-  #   return this.mainFrame().title();
-  # }
+    # Page Title
+    #
+    # @return [String]
+    #
+    def title
+      main_frame.title
+    end
 
   # /**
   #  * @param {!{runBeforeUnload: (boolean|undefined)}=} options

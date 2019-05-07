@@ -2,18 +2,23 @@ module Chromiebara
   class FrameManager
     include EventEmitter
 
+    def self.LifecycleEvent
+      'Frame.LifecycleEvent'
+    end
+
     attr_reader :client, :page
 
     # @param [Chromiebara::CDPSession] client
     # @param [Chromiebara::Page] page
     #
     def initialize(client, page)
+      super()
       @client = client
       @page = page
       @_frames = {}
       @_main_frame = nil
 
-      # this._client.on('Page.frameAttached', event => this._onFrameAttached(event.frameId, event.parentFrameId));
+      client.on 'Page.frameAttached', -> (event) { on_frame_attached event["frameId"], event["parentFrameId"] }
       client.on 'Page.frameNavigated', -> (event) { on_frame_navigated event["frame"] }
       # this._client.on('Page.frameNavigated', event => this._onFrameNavigated(event.frame));
       # this._client.on('Page.navigatedWithinDocument', event => this._onFrameNavigatedWithinDocument(event.frameId, event.url));
@@ -54,9 +59,12 @@ module Chromiebara
       # timeout ||= timeout_settings.navigation_timeou
 
       # TODO just hacking this in here
-      client.command Protocol::Page.navigate url: url, referrer: referrer, frame_id: frame.id
+      # client.command Protocol::Page.navigate url: url, referrer: referrer, frame_id: frame.id
 
-      #   const watcher = new LifecycleWatcher(this, frame, waitUntil, timeout);
+      watcher = LifecycleWatcher.new self, frame, wait_until, timeout
+      client.command Protocol::Page.navigate url: url, referrer: referrer, frame_id: frame.id
+      watcher.await_complete
+
       #   let ensureNewDocumentNavigation = false;
       #   let error = await Promise.race([
       #     navigate(this._client, url, referer, frame._id),
@@ -153,12 +161,11 @@ module Chromiebara
     #   return this._mainFrame;
     # }
 
-    # /**
-    #  * @return {!Array<!Frame>}
-    #  */
-    # frames() {
-    #   return Array.from(this._frames.values());
-    # }
+    # @return [Array<Frame>]
+    #
+    def frames
+      @_frames.values
+    end
 
     # /**
     #  * @param {!string} frameId
@@ -166,20 +173,6 @@ module Chromiebara
     #  */
     # frame(frameId) {
     #   return this._frames.get(frameId) || null;
-    # }
-
-    # /**
-    #  * @param {string} frameId
-    #  * @param {?string} parentFrameId
-    #  */
-    # _onFrameAttached(frameId, parentFrameId) {
-    #   if (this._frames.has(frameId))
-    #     return;
-    #   assert(parentFrameId);
-    #   const parentFrame = this._frames.get(parentFrameId);
-    #   const frame = new Frame(this, this._client, parentFrame, frameId);
-    #   this._frames.set(frame._id, frame);
-    #   this.emit(Events.FrameManager.FrameAttached, frame);
     # }
 
     # /**
@@ -327,7 +320,7 @@ module Chromiebara
       #  */
       def handle_frame_tree(frame_tree)
         if frame_tree.dig "frame", "parentId"
-          # on_frame_attached(frame_tree.dig("frame", "id"), frameTree.frame.parentId);
+          on_frame_attached(frame_tree.dig("frame", "id"), frameTree.dig("frame", "parentId"))
         end
         on_frame_navigated frame_tree["frame"]
         # this._onFrameNavigated(frameTree.frame);
@@ -340,7 +333,7 @@ module Chromiebara
 
       def on_frame_navigated(frame_payload)
         is_main_frame = !frame_payload.has_key?("parentId")
-        frame = is_main_frame ? @_main_frame : @_frams.fetch(frame_payload["id"])
+        frame = is_main_frame ? @_main_frame : @_frames.fetch(frame_payload["id"])
         # assert(isMainFrame || frame, 'We either navigate top level or have old version of the navigated frame');
 
         # Detach all child frames first.
@@ -371,12 +364,23 @@ module Chromiebara
 
       #  * @param {!Protocol.Page.lifecycleEventPayload} event
       #
+      # TODO
       def on_lifecycle_event(event)
         frame = @_frames.fetch event["frameId"]
         frame.send(:on_lifecycle_event, event["loaderId"], event["name"]);
-        # TODO
-      #   this.emit(Events.FrameManager.LifecycleEvent, frame);
+        emit(FrameManager.LifecycleEvent, frame);
       end
 
+      # @param [String] frame_id
+      # @param [String, nil] parent_frame_id
+      #
+      def on_frame_attached(frame_id, parent_frame_id)
+        return if @_frames.has_key? frame_id
+        raise 'x' unless parent_frame_id
+        parent_frame = @_frames.fetch parent_frame_id
+        frame = Frame.new(self, client, parent_frame, frame_id)
+        @_frames[frame.id] = frame
+        # this.emit(Events.FrameManager.FrameAttached, frame);
+      end
   end
 end
