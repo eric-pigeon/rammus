@@ -1,5 +1,26 @@
 module Chromiebara
   class LifecycleWatcher
+    attr_reader :frame_manager, :frame
+
+    # @param [Chromiebara::FrameManager] frame_manager
+    # @param [Chromiebara::Frame] frame
+    # @param [Symbol] wait_until
+    # @param [Integer] timeout
+    #
+    def initialize(frame_manager, frame, wait_until, timeout)
+      @frame_manager = frame_manager
+      @frame = frame
+      @timeout = timeout
+      @_expected_lifecycle = Array(wait_until).map do |event|
+        PROTOCOL_MAPPING.fetch event
+      end.to_set
+      @_complete_promise = Promise.new
+      frame_manager.on(FrameManager.LifecycleEvent, method(:check_lifecycle_complete))
+    end
+
+    def await_complete
+      @_complete_promise.await
+    end
 
 #   * @param {!Puppeteer.Frame} frame
 #   * @param {string|!Array<string>} waitUntil
@@ -166,12 +187,20 @@ module Chromiebara
 #    helper.removeEventListeners(this._eventListeners);
 #    clearTimeout(this._maximumTimer);
 #  }
+    private
 
-#const puppeteerToProtocolLifecycle = {
-#  'load': 'load',
-#  'domcontentloaded': 'DOMContentLoaded',
-#  'networkidle0': 'networkIdle',
-#  'networkidle2': 'networkAlmostIdle',
-#};
+      PROTOCOL_MAPPING = {
+        load: 'load',
+        domcontentloaded: 'DOMContentLoaded',
+        networkidle0: 'networkIdle',
+        networkidle2: 'networkAlmostIdle'
+      }
+
+      def check_lifecycle_complete(frame)
+        return unless @_expected_lifecycle.subset?(frame.lifecycle_events) &&
+          frame.child_frames.all? { |child| @_expected_lifecycle.subset?(child.lifecycle_events) }
+
+        @_complete_promise.resolve true
+      end
   end
 end
