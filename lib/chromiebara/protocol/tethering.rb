@@ -24,6 +24,10 @@ module Chromiebara
           params: { port: port }.compact
         }
       end
+
+      def accepted
+        'Tethering.accepted'
+      end
     end
   end
 end

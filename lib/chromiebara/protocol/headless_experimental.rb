@@ -35,6 +35,10 @@ module Chromiebara
           method: "HeadlessExperimental.enable"
         }
       end
+
+      def needs_begin_frames_changed
+        'HeadlessExperimental.needsBeginFramesChanged'
+      end
     end
   end
 end

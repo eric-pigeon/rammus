@@ -111,6 +111,14 @@ module Chromiebara
           params: { requestId: request_id }.compact
         }
       end
+
+      def request_paused
+        'Fetch.requestPaused'
+      end
+
+      def auth_required
+        'Fetch.authRequired'
+      end
     end
   end
 end

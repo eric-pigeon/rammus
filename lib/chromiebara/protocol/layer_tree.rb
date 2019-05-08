@@ -99,6 +99,14 @@ module Chromiebara
           params: { snapshotId: snapshot_id }.compact
         }
       end
+
+      def layer_painted
+        'LayerTree.layerPainted'
+      end
+
+      def layer_tree_did_change
+        'LayerTree.layerTreeDidChange'
+      end
     end
   end
 end

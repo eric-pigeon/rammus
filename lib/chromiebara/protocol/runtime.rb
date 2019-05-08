@@ -258,6 +258,38 @@ module Chromiebara
           params: { name: name }.compact
         }
       end
+
+      def binding_called
+        'Runtime.bindingCalled'
+      end
+
+      def console_api_called
+        'Runtime.consoleAPICalled'
+      end
+
+      def exception_revoked
+        'Runtime.exceptionRevoked'
+      end
+
+      def exception_thrown
+        'Runtime.exceptionThrown'
+      end
+
+      def execution_context_created
+        'Runtime.executionContextCreated'
+      end
+
+      def execution_context_destroyed
+        'Runtime.executionContextDestroyed'
+      end
+
+      def execution_contexts_cleared
+        'Runtime.executionContextsCleared'
+      end
+
+      def inspect_requested
+        'Runtime.inspectRequested'
+      end
     end
   end
 end

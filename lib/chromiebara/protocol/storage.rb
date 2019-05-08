@@ -69,6 +69,22 @@ module Chromiebara
           params: { origin: origin }.compact
         }
       end
+
+      def cache_storage_content_updated
+        'Storage.cacheStorageContentUpdated'
+      end
+
+      def cache_storage_list_updated
+        'Storage.cacheStorageListUpdated'
+      end
+
+      def indexed_db_content_updated
+        'Storage.indexedDBContentUpdated'
+      end
+
+      def indexed_db_list_updated
+        'Storage.indexedDBListUpdated'
+      end
     end
   end
 end

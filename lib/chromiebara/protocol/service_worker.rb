@@ -83,6 +83,18 @@ module Chromiebara
           params: { scopeURL: scope_url }.compact
         }
       end
+
+      def worker_error_reported
+        'ServiceWorker.workerErrorReported'
+      end
+
+      def worker_registration_updated
+        'ServiceWorker.workerRegistrationUpdated'
+      end
+
+      def worker_version_updated
+        'ServiceWorker.workerVersionUpdated'
+      end
     end
   end
 end

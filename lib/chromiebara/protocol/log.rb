@@ -46,6 +46,10 @@ module Chromiebara
           method: "Log.stopViolationsReport"
         }
       end
+
+      def entry_added
+        'Log.entryAdded'
+      end
     end
   end
 end

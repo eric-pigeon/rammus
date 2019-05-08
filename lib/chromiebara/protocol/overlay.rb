@@ -203,6 +203,22 @@ module Chromiebara
           params: { suspended: suspended }.compact
         }
       end
+
+      def inspect_node_requested
+        'Overlay.inspectNodeRequested'
+      end
+
+      def node_highlight_requested
+        'Overlay.nodeHighlightRequested'
+      end
+
+      def screenshot_requested
+        'Overlay.screenshotRequested'
+      end
+
+      def inspect_mode_canceled
+        'Overlay.inspectModeCanceled'
+      end
     end
   end
 end

@@ -52,6 +52,18 @@ module Chromiebara
           params: { categories: categories, options: options, bufferUsageReportingInterval: buffer_usage_reporting_interval, transferMode: transfer_mode, streamCompression: stream_compression, traceConfig: trace_config }.compact
         }
       end
+
+      def buffer_usage
+        'Tracing.bufferUsage'
+      end
+
+      def data_collected
+        'Tracing.dataCollected'
+      end
+
+      def tracing_complete
+        'Tracing.tracingComplete'
+      end
     end
   end
 end

@@ -326,6 +326,74 @@ module Chromiebara
           params: { userAgent: user_agent, acceptLanguage: accept_language, platform: platform }.compact
         }
       end
+
+      def data_received
+        'Network.dataReceived'
+      end
+
+      def event_source_message_received
+        'Network.eventSourceMessageReceived'
+      end
+
+      def loading_failed
+        'Network.loadingFailed'
+      end
+
+      def loading_finished
+        'Network.loadingFinished'
+      end
+
+      def request_intercepted
+        'Network.requestIntercepted'
+      end
+
+      def request_served_from_cache
+        'Network.requestServedFromCache'
+      end
+
+      def request_will_be_sent
+        'Network.requestWillBeSent'
+      end
+
+      def resource_changed_priority
+        'Network.resourceChangedPriority'
+      end
+
+      def signed_exchange_received
+        'Network.signedExchangeReceived'
+      end
+
+      def response_received
+        'Network.responseReceived'
+      end
+
+      def web_socket_closed
+        'Network.webSocketClosed'
+      end
+
+      def web_socket_created
+        'Network.webSocketCreated'
+      end
+
+      def web_socket_frame_error
+        'Network.webSocketFrameError'
+      end
+
+      def web_socket_frame_received
+        'Network.webSocketFrameReceived'
+      end
+
+      def web_socket_frame_sent
+        'Network.webSocketFrameSent'
+      end
+
+      def web_socket_handshake_response_received
+        'Network.webSocketHandshakeResponseReceived'
+      end
+
+      def web_socket_will_send_handshake_request
+        'Network.webSocketWillSendHandshakeRequest'
+      end
     end
   end
 end

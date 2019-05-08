@@ -41,6 +41,14 @@ module Chromiebara
           params: { frameId: frame_id }.compact
         }
       end
+
+      def application_cache_status_updated
+        'ApplicationCache.applicationCacheStatusUpdated'
+      end
+
+      def network_state_updated
+        'ApplicationCache.networkStateUpdated'
+      end
     end
   end
 end

@@ -96,6 +96,26 @@ module Chromiebara
           params: { reportProgress: report_progress }.compact
         }
       end
+
+      def add_heap_snapshot_chunk
+        'HeapProfiler.addHeapSnapshotChunk'
+      end
+
+      def heap_stats_update
+        'HeapProfiler.heapStatsUpdate'
+      end
+
+      def last_seen_object_id
+        'HeapProfiler.lastSeenObjectId'
+      end
+
+      def report_heap_snapshot_progress
+        'HeapProfiler.reportHeapSnapshotProgress'
+      end
+
+      def reset_profiles
+        'HeapProfiler.resetProfiles'
+      end
     end
   end
 end

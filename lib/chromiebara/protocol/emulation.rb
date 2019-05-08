@@ -232,6 +232,18 @@ module Chromiebara
           params: { userAgent: user_agent, acceptLanguage: accept_language, platform: platform }.compact
         }
       end
+
+      def virtual_time_advanced
+        'Emulation.virtualTimeAdvanced'
+      end
+
+      def virtual_time_budget_expired
+        'Emulation.virtualTimeBudgetExpired'
+      end
+
+      def virtual_time_paused
+        'Emulation.virtualTimePaused'
+      end
     end
   end
 end

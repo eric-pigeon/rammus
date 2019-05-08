@@ -18,6 +18,18 @@ module Chromiebara
           method: "Inspector.enable"
         }
       end
+
+      def detached
+        'Inspector.detached'
+      end
+
+      def target_crashed
+        'Inspector.targetCrashed'
+      end
+
+      def target_reloaded_after_crash
+        'Inspector.targetReloadedAfterCrash'
+      end
     end
   end
 end
