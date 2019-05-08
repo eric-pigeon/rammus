@@ -493,6 +493,62 @@ module Chromiebara
           params: { frameId: frame_id }.compact
         }
       end
+
+      def attribute_modified
+        'DOM.attributeModified'
+      end
+
+      def attribute_removed
+        'DOM.attributeRemoved'
+      end
+
+      def character_data_modified
+        'DOM.characterDataModified'
+      end
+
+      def child_node_count_updated
+        'DOM.childNodeCountUpdated'
+      end
+
+      def child_node_inserted
+        'DOM.childNodeInserted'
+      end
+
+      def child_node_removed
+        'DOM.childNodeRemoved'
+      end
+
+      def distributed_nodes_updated
+        'DOM.distributedNodesUpdated'
+      end
+
+      def document_updated
+        'DOM.documentUpdated'
+      end
+
+      def inline_style_invalidated
+        'DOM.inlineStyleInvalidated'
+      end
+
+      def pseudo_element_added
+        'DOM.pseudoElementAdded'
+      end
+
+      def pseudo_element_removed
+        'DOM.pseudoElementRemoved'
+      end
+
+      def set_child_nodes
+        'DOM.setChildNodes'
+      end
+
+      def shadow_root_popped
+        'DOM.shadowRootPopped'
+      end
+
+      def shadow_root_pushed
+        'DOM.shadowRootPushed'
+      end
     end
   end
 end

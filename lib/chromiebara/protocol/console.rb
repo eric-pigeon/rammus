@@ -27,6 +27,10 @@ module Chromiebara
           method: "Console.enable"
         }
       end
+
+      def message_added
+        'Console.messageAdded'
+      end
     end
   end
 end

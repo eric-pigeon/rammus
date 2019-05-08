@@ -39,6 +39,10 @@ module Chromiebara
           method: "Performance.getMetrics"
         }
       end
+
+      def metrics
+        'Performance.metrics'
+      end
     end
   end
 end

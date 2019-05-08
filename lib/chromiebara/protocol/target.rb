@@ -179,6 +179,34 @@ module Chromiebara
           params: { locations: locations }.compact
         }
       end
+
+      def attached_to_target
+        'Target.attachedToTarget'
+      end
+
+      def detached_from_target
+        'Target.detachedFromTarget'
+      end
+
+      def received_message_from_target
+        'Target.receivedMessageFromTarget'
+      end
+
+      def target_created
+        'Target.targetCreated'
+      end
+
+      def target_destroyed
+        'Target.targetDestroyed'
+      end
+
+      def target_crashed
+        'Target.targetCrashed'
+      end
+
+      def target_info_changed
+        'Target.targetInfoChanged'
+      end
     end
   end
 end

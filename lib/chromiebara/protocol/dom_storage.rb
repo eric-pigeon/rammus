@@ -46,6 +46,22 @@ module Chromiebara
           params: { storageId: storage_id, key: key, value: value }.compact
         }
       end
+
+      def dom_storage_item_added
+        'DOMStorage.domStorageItemAdded'
+      end
+
+      def dom_storage_item_removed
+        'DOMStorage.domStorageItemRemoved'
+      end
+
+      def dom_storage_item_updated
+        'DOMStorage.domStorageItemUpdated'
+      end
+
+      def dom_storage_items_cleared
+        'DOMStorage.domStorageItemsCleared'
+      end
     end
   end
 end

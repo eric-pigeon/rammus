@@ -325,6 +325,26 @@ module Chromiebara
           method: "Debugger.stepOver"
         }
       end
+
+      def breakpoint_resolved
+        'Debugger.breakpointResolved'
+      end
+
+      def paused
+        'Debugger.paused'
+      end
+
+      def resumed
+        'Debugger.resumed'
+      end
+
+      def script_failed_to_parse
+        'Debugger.scriptFailedToParse'
+      end
+
+      def script_parsed
+        'Debugger.scriptParsed'
+      end
     end
   end
 end

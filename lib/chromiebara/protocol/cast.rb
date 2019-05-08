@@ -51,6 +51,14 @@ module Chromiebara
           params: { sinkName: sink_name }.compact
         }
       end
+
+      def sinks_updated
+        'Cast.sinksUpdated'
+      end
+
+      def issue_updated
+        'Cast.issueUpdated'
+      end
     end
   end
 end

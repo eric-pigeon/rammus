@@ -213,6 +213,26 @@ module Chromiebara
           method: "CSS.takeCoverageDelta"
         }
       end
+
+      def fonts_updated
+        'CSS.fontsUpdated'
+      end
+
+      def media_query_result_changed
+        'CSS.mediaQueryResultChanged'
+      end
+
+      def style_sheet_added
+        'CSS.styleSheetAdded'
+      end
+
+      def style_sheet_changed
+        'CSS.styleSheetChanged'
+      end
+
+      def style_sheet_removed
+        'CSS.styleSheetRemoved'
+      end
     end
   end
 end

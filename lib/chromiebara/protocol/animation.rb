@@ -107,6 +107,18 @@ module Chromiebara
           params: { animationId: animation_id, duration: duration, delay: delay }.compact
         }
       end
+
+      def animation_canceled
+        'Animation.animationCanceled'
+      end
+
+      def animation_created
+        'Animation.animationCreated'
+      end
+
+      def animation_started
+        'Animation.animationStarted'
+      end
     end
   end
 end

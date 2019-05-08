@@ -29,7 +29,14 @@ module Chromiebara
           method: "<%= domain.name %>.<%= command.name %>"<% if command.has_parameters? then %>,
           params: { <%= command.parameters_body %> }.compact<% end %>
         }
-      end<% end %>
+      end\
+<% end %>
+<% domain.events.each do |event| -%>
+
+      def <%= event.method_name %>
+        <%= event.method %>
+      end
+<% end -%>
     end
   end
 end
@@ -53,7 +60,7 @@ Domain = Struct.new(:name, :commands, :events) do
     new(
       json["domain"],
       json["commands"].map { |command| Command.from_json command },
-      json.fetch("events",[]).map { |event| Event.from_json event }
+      json.fetch("events",[]).map { |event| Event.from_json json["domain"], event }
     )
   end
 end
@@ -128,11 +135,20 @@ Parameter = Struct.new(:command, :name, :type, :optional, :experimental, :descri
     "@param #{underscore(name)} [#{type.capitalize}] #{description.strip.gsub(/\s+/, ' ')}"
   end
 end
-Event = Struct.new(:name) do
-  def self.from_json(json)
+Event = Struct.new(:domain, :name) do
+  def self.from_json(domain, json)
     new(
+      domain,
       json["name"]
     )
+  end
+
+  def method_name
+    underscore name
+  end
+
+  def method
+    "'#{domain}.#{name}'"
   end
 end
 

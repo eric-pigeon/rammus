@@ -102,6 +102,14 @@ module Chromiebara
           method: "Profiler.takeTypeProfile"
         }
       end
+
+      def console_profile_finished
+        'Profiler.consoleProfileFinished'
+      end
+
+      def console_profile_started
+        'Profiler.consoleProfileStarted'
+      end
     end
   end
 end

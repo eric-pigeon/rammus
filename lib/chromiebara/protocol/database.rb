@@ -32,6 +32,10 @@ module Chromiebara
           params: { databaseId: database_id }.compact
         }
       end
+
+      def add_database
+        'Database.addDatabase'
+      end
     end
   end
 end

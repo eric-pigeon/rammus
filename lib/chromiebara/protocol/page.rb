@@ -557,6 +557,86 @@ module Chromiebara
           method: "Page.waitForDebugger"
         }
       end
+
+      def dom_content_event_fired
+        'Page.domContentEventFired'
+      end
+
+      def frame_attached
+        'Page.frameAttached'
+      end
+
+      def frame_cleared_scheduled_navigation
+        'Page.frameClearedScheduledNavigation'
+      end
+
+      def frame_detached
+        'Page.frameDetached'
+      end
+
+      def frame_navigated
+        'Page.frameNavigated'
+      end
+
+      def frame_resized
+        'Page.frameResized'
+      end
+
+      def frame_scheduled_navigation
+        'Page.frameScheduledNavigation'
+      end
+
+      def frame_started_loading
+        'Page.frameStartedLoading'
+      end
+
+      def frame_stopped_loading
+        'Page.frameStoppedLoading'
+      end
+
+      def interstitial_hidden
+        'Page.interstitialHidden'
+      end
+
+      def interstitial_shown
+        'Page.interstitialShown'
+      end
+
+      def javascript_dialog_closed
+        'Page.javascriptDialogClosed'
+      end
+
+      def javascript_dialog_opening
+        'Page.javascriptDialogOpening'
+      end
+
+      def lifecycle_event
+        'Page.lifecycleEvent'
+      end
+
+      def load_event_fired
+        'Page.loadEventFired'
+      end
+
+      def navigated_within_document
+        'Page.navigatedWithinDocument'
+      end
+
+      def screencast_frame
+        'Page.screencastFrame'
+      end
+
+      def screencast_visibility_changed
+        'Page.screencastVisibilityChanged'
+      end
+
+      def window_open
+        'Page.windowOpen'
+      end
+
+      def compilation_cache_produced
+        'Page.compilationCacheProduced'
+      end
     end
   end
 end

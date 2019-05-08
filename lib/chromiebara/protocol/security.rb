@@ -53,6 +53,14 @@ module Chromiebara
           params: { override: override }.compact
         }
       end
+
+      def certificate_error
+        'Security.certificateError'
+      end
+
+      def security_state_changed
+        'Security.securityStateChanged'
+      end
     end
   end
 end
