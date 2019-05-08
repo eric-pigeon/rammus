@@ -1,4 +1,5 @@
 module Chromiebara
+  # @!visibility private
   class LifecycleWatcher
     attr_reader :frame_manager, :frame
 

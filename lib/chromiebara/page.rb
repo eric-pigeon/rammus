@@ -68,19 +68,11 @@ module Chromiebara
   #   await this._client.send('Emulation.setGeolocationOverride', {longitude, latitude, accuracy});
   # }
 
-  # /**
-  #  * @return {!Puppeteer.Target}
-  #  */
-  # target() {
-  #   return this._target;
-  # }
-
-  # /**
-  #  * @return {!Puppeteer.Browser}
-  #  */
-  # browser() {
-  #   return this._target.browser();
-  # }
+    # @return [Chromiebara::Browser]
+    #
+    def browser
+      target.browser
+    end
 
   # /**
   #  * @return {!Puppeteer.BrowserContext}
