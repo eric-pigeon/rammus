@@ -917,19 +917,16 @@ module Chromiebara
       main_frame.title
     end
 
-  # /**
-  #  * @param {!{runBeforeUnload: (boolean|undefined)}=} options
-  #  */
-  # async close(options = {runBeforeUnload: undefined}) {
-  #   assert(!!this._client._connection, 'Protocol error: Connection closed. Most likely the page has been closed.');
-  #   const runBeforeUnload = !!options.runBeforeUnload;
-  #   if (runBeforeUnload) {
-  #     await this._client.send('Page.close');
-  #   } else {
-  #     await this._client._connection.send('Target.closeTarget', { targetId: this._target._targetId });
-  #     await this._target._isClosedPromise;
-  #   }
-  # }
+    # TODO
+    def close(run_before_unload: false)
+      #  assert(!!this._client._connection, 'Protocol error: Connection closed. Most likely the page has been closed.');
+      if run_before_unload
+        # await this._client.send('Page.close');
+      else
+        client.client.command Protocol::Target.close_target target_id: target.target_id
+        # await this._target._isClosedPromise;
+      end
+    end
 
   # /**
   #  * @return {boolean}

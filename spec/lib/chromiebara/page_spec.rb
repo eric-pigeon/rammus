@@ -2,11 +2,19 @@ module Chromiebara
   RSpec.describe Page, browser: true do
     let!(:page) { browser.new_page }
 
+    describe '#close' do
+      it 'should not be visible in browser.pages' do
+        new_page = browser.new_page
+        expect(browser.pages).to include new_page
+
+        new_page.close
+        expect(browser.pages).not_to include new_page
+      end
+    end
+
     describe '#frames' do
       it 'returns all frames in the page' do
         page.goto server.domain + "frames/nested-frames.html"
-        # page.goto server.domain + "frames/nested-frames.html"
-        # all lifecycle events happen before Page.navigated(which updates the url) happen
         expected_frames = [
           "http://localhost:4567/frames/nested-frames.html",
           "http://localhost:4567/frames/two-frames.html",
@@ -16,10 +24,6 @@ module Chromiebara
         ]
         expect(page.frames.map(&:url)).to eq expected_frames
       end
-    end
-
-    describe '#goto' do
-      # TODO
     end
 
     describe '#url' do

@@ -50,5 +50,13 @@ module Chromiebara
           emit message["method"], message["params"]
         end
       end
+
+      def on_close
+        # for (const callback of this._callbacks.values())
+        #   callback.reject(rewriteError(callback.error, `Protocol error (${callback.method}): Target closed.`));
+        # this._callbacks.clear();
+        # this._connection = null;
+        # this.emit(Events.CDPSession.Disconnected);
+      end
   end
 end
