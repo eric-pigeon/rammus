@@ -75,6 +75,11 @@ module Chromiebara
           session_id = message.dig "params", "sessionId"
           session = CDPSession.new(self, message.dig("targetInfo", "type"), session_id)
           @_sessions[session_id] = session
+        elsif message["method"] == Protocol::Target.detached_from_target
+          session_id = message.dig "params", "sessionId"
+          session = @_sessions.fetch session_id
+          session.send(:on_close)
+          @_sessions.delete session_id
         end
 
         if message["sessionId"]

@@ -1,6 +1,6 @@
 module Chromiebara
   class Target
-    attr_reader :target_info, :browser_context, :initialized
+    attr_reader :target_info, :browser_context, :target_id, :initialized
 
     # @param [Hash] target_info
     # @param [Chromiebara::BrowserContext] browser_context
@@ -9,6 +9,7 @@ module Chromiebara
     def initialize(target_info, browser_context, client)
       @target_info = target_info
       @browser_context = browser_context
+      @target_id = target_info["targetId"]
       @_client = client
       @initialized = target_info["type"] != 'page' || target_info["url"] != ""
     end
