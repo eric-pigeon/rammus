@@ -15,17 +15,25 @@ module SeverHelper
     )
   end
 
-  def dump_frames(frame, indentation = '')
-    description = frame.url.gsub(/:\d{4}\//, ':<PORT>/');
-    if frame.name
-      description += " (#{frame.name})"
-    end
-    result = [indentation + description]
-    frame.child_frames.each do |child|
-      result.push(dump_frames(child, '    ' + indentation));
-    end
-    result
+  shared_context 'browser', browser: true do
+    before(:context) { @_browser = Chromiebara::Launcher.launch }
+
+    let(:browser) { @_browser }
+
+    after(:context) { @_browser.close }
   end
+
+  # def dump_frames(frame, indentation = '')
+  #   description = frame.url.gsub(/:\d{4}\//, ':<PORT>/');
+  #   if frame.name
+  #     description += " (#{frame.name})"
+  #   end
+  #   result = [indentation + description]
+  #   frame.child_frames.each do |child|
+  #     result.push(dump_frames(child, '    ' + indentation));
+  #   end
+  #   result
+  # end
 end
 
 RSpec.configure do |config|

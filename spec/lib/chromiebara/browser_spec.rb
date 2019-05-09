@@ -1,5 +1,5 @@
 module Chromiebara
-  RSpec.describe Browser do
+  RSpec.describe Browser, browser: true do
     before do
       @browser = Launcher.launch
     end

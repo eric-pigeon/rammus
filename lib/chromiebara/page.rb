@@ -2,17 +2,91 @@ module Chromiebara
   class Page
     extend Forwardable
 
-    attr_reader :target
+    attr_reader :target, :frame_manager
     delegate [:url] => :main_frame
 
-    def initialize(target)
-      @target = target
-      @_frame_manager = FrameManager.new(client, self)
-      client.command Protocol::Target.set_auto_attach auto_attach: true, wait_for_debugger_on_start: false, flatten: true
-      client.command Protocol::Performance.enable
-      client.command Protocol::Log.enable
+    def self.create(target)
+      page = new target
+      page.frame_manager.start
+      target.session.command Protocol::Target.set_auto_attach auto_attach: true, wait_for_debugger_on_start: false, flatten: true
+      # TODO add back
+      # target.session.command Protocol::Performance.enable
+      # target.session.command Protocol::Log.enable
       # if (defaultViewport)
         # await page.setViewport(defaultViewport);
+      page
+    end
+
+    private_class_method :new
+    def initialize(target)
+      @_closed = false
+      # this._client = client;
+      @target = target
+      # this._keyboard = new Keyboard(client);
+      # this._mouse = new Mouse(client, this._keyboard);
+      # this._timeoutSettings = new TimeoutSettings();
+      # this._touchscreen = new Touchscreen(client, this._keyboard);
+      # this._accessibility = new Accessibility(client);
+      @frame_manager = FrameManager.new(client, self)
+      # this._frameManager = new FrameManager(client, this, ignoreHTTPSErrors, this._timeoutSettings);
+      # this._emulationManager = new EmulationManager(client);
+      # this._tracing = new Tracing(client);
+      # /** @type {!Map<string, Function>} */
+      # this._pageBindings = new Map();
+      # this._coverage = new Coverage(client);
+      # this._javascriptEnabled = true;
+      # /** @type {?Puppeteer.Viewport} */
+      # this._viewport = null;
+
+      # this._screenshotTaskQueue = screenshotTaskQueue;
+
+      # /** @type {!Map<string, Worker>} */
+      # this._workers = new Map();
+      client.on Protocol::Target.attached_to_target, -> (event) { raise 'todo' }
+      # client.on('Target.attachedToTarget', event => {
+      #   if (event.targetInfo.type !== 'worker') {
+      #     // If we don't detach from service workers, they will never die.
+      #     client.send('Target.detachFromTarget', {
+      #       sessionId: event.sessionId
+      #     }).catch(debugError);
+      #     return;
+      #   }
+      #   const session = Connection.fromSession(client).session(event.sessionId);
+      #   const worker = new Worker(session, event.targetInfo.url, this._addConsoleMessage.bind(this), this._handleException.bind(this));
+      #   this._workers.set(event.sessionId, worker);
+      #   this.emit(Events.Page.WorkerCreated, worker);
+      # });
+      # client.on('Target.detachedFromTarget', event => {
+      #   const worker = this._workers.get(event.sessionId);
+      #   if (!worker)
+      #     return;
+      #   this.emit(Events.Page.WorkerDestroyed, worker);
+      #   this._workers.delete(event.sessionId);
+      # });
+
+      # this._frameManager.on(Events.FrameManager.FrameAttached, event => this.emit(Events.Page.FrameAttached, event));
+      # this._frameManager.on(Events.FrameManager.FrameDetached, event => this.emit(Events.Page.FrameDetached, event));
+      # this._frameManager.on(Events.FrameManager.FrameNavigated, event => this.emit(Events.Page.FrameNavigated, event));
+
+      # const networkManager = this._frameManager.networkManager();
+      # networkManager.on(Events.NetworkManager.Request, event => this.emit(Events.Page.Request, event));
+      # networkManager.on(Events.NetworkManager.Response, event => this.emit(Events.Page.Response, event));
+      # networkManager.on(Events.NetworkManager.RequestFailed, event => this.emit(Events.Page.RequestFailed, event));
+      # networkManager.on(Events.NetworkManager.RequestFinished, event => this.emit(Events.Page.RequestFinished, event));
+
+      # client.on('Page.domContentEventFired', event => this.emit(Events.Page.DOMContentLoaded));
+      # client.on('Page.loadEventFired', event => this.emit(Events.Page.Load));
+      # client.on('Runtime.consoleAPICalled', event => this._onConsoleAPI(event));
+      # client.on('Runtime.bindingCalled', event => this._onBindingCalled(event));
+      # client.on('Page.javascriptDialogOpening', event => this._onDialog(event));
+      # client.on('Runtime.exceptionThrown', exception => this._handleException(exception.exceptionDetails));
+      # client.on('Inspector.targetCrashed', event => this._onTargetCrashed());
+      # client.on('Performance.metrics', event => this._emitMetrics(event));
+      # client.on('Log.entryAdded', event => this._onLogEntryAdded(event));
+      # this._target._isClosedPromise.then(() => {
+      #   this.emit(Events.Page.Close);
+      #   this._closed = true;
+      # });
     end
 
   # /**
@@ -54,7 +128,7 @@ module Chromiebara
     # @return [Chromiebara::Frame]
     #
     def main_frame
-      @_frame_manager.main_frame
+      @frame_manager.main_frame
     end
 
   # async setGeolocation(options) {
@@ -119,7 +193,7 @@ module Chromiebara
     # @return [<Chromiebara::Frame>]
     #
     def frames
-      @_frame_manager.frames
+      @frame_manager.frames
     end
 
   # /**

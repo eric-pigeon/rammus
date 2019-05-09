@@ -1,11 +1,12 @@
 module Chromiebara
-  RSpec.describe Page do
-    let!(:browser) { Launcher.launch }
+  RSpec.describe Page, browser: true do
     let!(:page) { browser.new_page }
 
     describe '#frames' do
       it 'returns all frames in the page' do
         page.goto server.domain + "frames/nested-frames.html"
+        # page.goto server.domain + "frames/nested-frames.html"
+        # all lifecycle events happen before Page.navigated(which updates the url) happen
         expected_frames = [
           "http://localhost:4567/frames/nested-frames.html",
           "http://localhost:4567/frames/two-frames.html",

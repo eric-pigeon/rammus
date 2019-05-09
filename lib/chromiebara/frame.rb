@@ -1,6 +1,6 @@
 module Chromiebara
   class Frame
-    attr_reader :id, :frame_manager, :child_frames
+    attr_reader :id, :frame_manager, :child_frames, :loader_id
 
     # @param [Chromiebara::FrameManager] frame_manager
     # @param [Chromiebara::CPDSession] client
@@ -16,7 +16,7 @@ module Chromiebara
       @_detached = false
       @name = ''
 
-      @_loader_id = ''
+      @loader_id = ''
       # /** @type {!Set<string>} */
       @_lifecycle_events = Set.new
       # /** @type {!DOMWorld} */
@@ -36,7 +36,6 @@ module Chromiebara
     def lifecycle_events
       @_lifecycle_events.dup
     end
-
 
     # @param [String] url
     # TODO
@@ -327,17 +326,17 @@ module Chromiebara
     #
     def on_lifecycle_event(loader_id, name)
       if name == "init"
-        @_loader_id = loader_id
+        @loader_id = loader_id
         @_lifecycle_events.clear
       end
 
       @_lifecycle_events.add name
     end
 
-  # _onLoadingStopped() {
-  #   this._lifecycleEvents.add('DOMContentLoaded');
-  #   this._lifecycleEvents.add('load');
-  # }
+    def on_loading_stopped
+      @_lifecycle_events.add 'DOMContentLoaded'
+      @_lifecycle_events.add 'load'
+    end
 
   # _detach() {
   #   this._detached = true;

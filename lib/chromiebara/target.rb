@@ -20,7 +20,7 @@ module Chromiebara
     def page
       return unless type == "page" || type == "background_page"
 
-      @_page ||= Page.new(self)
+      @_page ||= Page.create(self)
     end
 
     def session

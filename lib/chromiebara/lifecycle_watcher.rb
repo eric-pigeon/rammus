@@ -11,10 +11,12 @@ module Chromiebara
     def initialize(frame_manager, frame, wait_until, timeout)
       @frame_manager = frame_manager
       @frame = frame
+      @_initial_loader_id = frame.loader_id
       @timeout = timeout
       @_expected_lifecycle = Array(wait_until).map do |event|
         PROTOCOL_MAPPING.fetch event
       end.to_set
+      @_has_same_document_navigation = false
       @_complete_promise = Promise.new
       frame_manager.on(FrameManager.LifecycleEvent, method(:check_lifecycle_complete))
     end
@@ -154,36 +156,7 @@ module Chromiebara
 #    this._checkLifecycleComplete();
 #  }
 #
-#  _checkLifecycleComplete() {
-#    // We expect navigation to commit.
-#    if (!checkLifecycle(this._frame, this._expectedLifecycle))
-#      return;
-#    this._lifecycleCallback();
-#    if (this._frame._loaderId === this._initialLoaderId && !this._hasSameDocumentNavigation)
-#      return;
-#    if (this._hasSameDocumentNavigation)
-#      this._sameDocumentNavigationCompleteCallback();
-#    if (this._frame._loaderId !== this._initialLoaderId)
-#      this._newDocumentNavigationCompleteCallback();
-#
-#    /**
-#     * @param {!Puppeteer.Frame} frame
-#     * @param {!Array<string>} expectedLifecycle
-#     * @return {boolean}
-#     */
-#    function checkLifecycle(frame, expectedLifecycle) {
-#      for (const event of expectedLifecycle) {
-#        if (!frame._lifecycleEvents.has(event))
-#          return false;
-#      }
-#      for (const child of frame.childFrames()) {
-#        if (!checkLifecycle(child, expectedLifecycle))
-#          return false;
-#      }
-#      return true;
-#    }
-#  }
-#
+
 #  dispose() {
 #    helper.removeEventListeners(this._eventListeners);
 #    clearTimeout(this._maximumTimer);
@@ -197,11 +170,28 @@ module Chromiebara
         networkidle2: 'networkAlmostIdle'
       }
 
-      def check_lifecycle_complete(frame)
-        return unless @_expected_lifecycle.subset?(frame.lifecycle_events) &&
-          frame.child_frames.all? { |child| @_expected_lifecycle.subset?(child.lifecycle_events) }
+      def check_lifecycle_complete(_frame)
+        return unless LifecycleWatcher.check_lifecycle(frame, @_expected_lifecycle)
+
+        # this._lifecycleCallback();
+
+        # TODO is this ever going to happen?
+        return if @frame.loader_id == @_initial_loader_id && !@_has_same_document_navigation
+        # if (this._hasSameDocumentNavigation)
+        #   this._sameDocumentNavigationCompleteCallback();
+        if @frame.loader_id != @_initial_loader_id
+        end
+        #   this._newDocumentNavigationCompleteCallback();
 
         @_complete_promise.resolve true
+      end
+
+      # @return [Boolean]
+      #
+      def self.check_lifecycle(frame, expected_lifecycle, indentation = '')
+        expected_lifecycle.subset?(frame.lifecycle_events) && frame.child_frames.all? do |child|
+          LifecycleWatcher.check_lifecycle child, expected_lifecycle, indentation + "  "
+        end
       end
   end
 end
