@@ -70,12 +70,14 @@ module Chromiebara
       def on_message(message)
         message = JSON.parse message
 
-        if message["method"] === 'Target.attachedToTarget'
+        if message["method"] == Protocol::Target.attached_to_target
           ProtocolLogger.puts_event message
           session_id = message.dig "params", "sessionId"
           session = CDPSession.new(self, message.dig("targetInfo", "type"), session_id)
           @_sessions[session_id] = session
-        elsif message["sessionId"]
+        end
+
+        if message["sessionId"]
           @_sessions.fetch(message["sessionId"]).send(:on_message, message)
         elsif message["id"]
           ProtocolLogger.puts_command_response message

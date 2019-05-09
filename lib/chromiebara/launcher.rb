@@ -24,7 +24,9 @@ module Chromiebara
 
       client = ChromeClient.new(ws_client)
 
-      Browser.new(client: client).tap do |browser|
+      close_callback = -> { client.command Protocol::Browser.close }
+
+      Browser.new(client: client, close_callback: close_callback).tap do |browser|
         ObjectSpace.define_finalizer(browser, Launcher.process_killer(pid, tmpdir))
       end
     end

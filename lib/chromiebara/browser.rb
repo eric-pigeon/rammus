@@ -7,10 +7,11 @@ module Chromiebara
 
     delegate [:new_page] => :default_context
 
-    def initialize(client:)
+    def initialize(client:, close_callback: nil)
       @client = client
       @contexts = {}
       @default_context = BrowserContext.new(client: client, browser: self)
+      @_close_callback = close_callback
       @_targets = {}
       client.on('Target.targetCreated', method(:target_created))
       client.on('Target.targetDestroyed', method(:target_destroyed))
@@ -94,6 +95,15 @@ module Chromiebara
     #
     def version
       client.command Protocol::Browser.get_version
+    end
+
+    # Closes the browser and all of its pages (if any were opened). The Browser
+    # object itself is considered to be disposed and cannot be used anymore.
+    #
+    def close
+      @_close_callback.call
+      # TODO
+      # client.disconnect
     end
 
     private

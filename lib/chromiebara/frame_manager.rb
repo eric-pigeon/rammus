@@ -3,7 +3,7 @@ module Chromiebara
     include EventEmitter
 
     def self.LifecycleEvent
-      'Frame.LifecycleEvent'
+      'FrameManager.LifecycleEvent'
     end
 
     attr_reader :client, :page
@@ -20,21 +20,24 @@ module Chromiebara
 
       client.on 'Page.frameAttached', -> (event) { on_frame_attached event["frameId"], event["parentFrameId"] }
       client.on 'Page.frameNavigated', -> (event) { on_frame_navigated event["frame"] }
-      # this._client.on('Page.frameNavigated', event => this._onFrameNavigated(event.frame));
       # this._client.on('Page.navigatedWithinDocument', event => this._onFrameNavigatedWithinDocument(event.frameId, event.url));
       # this._client.on('Page.frameDetached', event => this._onFrameDetached(event.frameId));
-      # this._client.on('Page.frameStoppedLoading', event => this._onFrameStoppedLoading(event.frameId));
+      client.on Protocol::Page.frame_stopped_loading, -> (event) { on_frame_stopped_loading event["frameId"] }
       # this._client.on('Runtime.executionContextCreated', event => this._onExecutionContextCreated(event.context));
       # this._client.on('Runtime.executionContextDestroyed', event => this._onExecutionContextDestroyed(event.executionContextId));
       # this._client.on('Runtime.executionContextsCleared', event => this._onExecutionContextsCleared());
       client.on 'Page.lifecycleEvent', method(:on_lifecycle_event)
+    end
 
+    def start
       client.command Protocol::Page.enable
       client.command(Protocol::Page.get_frame_tree).tap do |frame_tree|
         handle_frame_tree frame_tree["frameTree"]
       end
       client.command Protocol::Page.set_lifecycle_events_enabled enabled: true
-      client.command Protocol::Runtime.enable
+      # client.command Protocol::Runtime.enable
+      # this._client.send('Runtime.enable', {}).then(() => this._ensureIsolatedWorld(UTILITY_WORLD_NAME)),
+      # this._networkManager.initialize(),
     end
 
     # @return [Chromiebara::Frame]
@@ -120,17 +123,6 @@ module Chromiebara
     #   if (error)
     #     throw error;
     #   return watcher.navigationResponse();
-    # }
-
-    # /**
-    #  * @param {string} frameId
-    #  */
-    # _onFrameStoppedLoading(frameId) {
-    #   const frame = this._frames.get(frameId);
-    #   if (!frame)
-    #     return;
-    #   frame._onLoadingStopped();
-    #   this.emit(Events.FrameManager.LifecycleEvent, frame);
     # }
 
     # /**
@@ -376,11 +368,23 @@ module Chromiebara
       #
       def on_frame_attached(frame_id, parent_frame_id)
         return if @_frames.has_key? frame_id
+        # TODO
         raise 'x' unless parent_frame_id
         parent_frame = @_frames.fetch parent_frame_id
         frame = Frame.new(self, client, parent_frame, frame_id)
         @_frames[frame.id] = frame
         # this.emit(Events.FrameManager.FrameAttached, frame);
       end
+
+      # @param [String] frame_id
+      #
+      def on_frame_stopped_loading(frame_id)
+        frame = @_frames.fetch frame_id
+        # if (!frame)
+        #   return;
+        frame.send(:on_loading_stopped)
+        #   this.emit(Events.FrameManager.LifecycleEvent, frame);
+      end
+
   end
 end
