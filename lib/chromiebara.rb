@@ -9,6 +9,7 @@ module Chromiebara
   require 'chromiebara/launcher'
   require 'chromiebara/protocol'
   require 'chromiebara/browser'
+  require 'chromiebara/dom_world'
   require 'chromiebara/browser_context'
   require 'chromiebara/web_socket_client'
   require 'chromiebara/chrome_client'

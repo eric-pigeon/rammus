@@ -294,15 +294,18 @@ module Chromiebara
   #   return this.mainFrame().$x(expression);
   # }
 
-  # /**
-  #  * @param {!Array<string>} urls
-  #  * @return {!Promise<!Array<Network.Cookie>>}
-  #  */
-  # async cookies(...urls) {
-  #   return (await this._client.send('Network.getCookies', {
-  #     urls: urls.length ? urls : [this.url()]
-  #   })).cookies;
-  # }
+    # If no URLs are specified, this method returns cookies for the current page
+    # URL. If URLs are specified, only cookies for those URLs are returned.
+    #
+    # @param [Array<String>] urls
+    #
+    # @return [Array<Chromiebara::Network::Cookie>]
+    #
+    def cookies(urls = nil)
+      urls ||= [url]
+      response = client.command Protocol::Network.get_cookies urls: urls
+      response["cookies"]
+    end
 
   # /**
   #  * @param {Array<Protocol.Network.deleteCookiesParameters>} cookies
@@ -737,14 +740,14 @@ module Chromiebara
   #   return this._viewport;
   # }
 
-  # /**
-  #  * @param {Function|string} pageFunction
-  #  * @param {!Array<*>} args
-  #  * @return {!Promise<*>}
-  #  */
-  # async evaluate(pageFunction, ...args) {
-  #   return this._frameManager.mainFrame().evaluate(pageFunction, ...args);
-  # }
+    # TODO
+    #  * @param {Function|string} pageFunction
+    #  * @param {!Array<*>} args
+    #  * @return {!Promise<*>}
+    #
+    def evaluate(function, *args)
+      main_frame.evaluate function, *args
+    end
 
   # /**
   #  * @param {Function|string} pageFunction
@@ -917,7 +920,7 @@ module Chromiebara
       main_frame.title
     end
 
-    # TODO
+    # TODO DOCUMENT
     def close(run_before_unload: false)
       #  assert(!!this._client._connection, 'Protocol error: Connection closed. Most likely the page has been closed.');
       if run_before_unload

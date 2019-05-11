@@ -1,3 +1,5 @@
+require 'chromiebara/execution_context'
+
 module Chromiebara
   class FrameManager
     include EventEmitter
@@ -15,7 +17,12 @@ module Chromiebara
       super()
       @client = client
       @page = page
+      # @type [Hash<String, Frame>]
       @_frames = {}
+      # @type [Hash<Integer, ExecutionContext>]
+      @_execution_contexts = {}
+      # @type [Set<String>]
+      @_isolated_worlds = Set.new
       @_main_frame = nil
 
       client.on 'Page.frameAttached', -> (event) { on_frame_attached event["frameId"], event["parentFrameId"] }
@@ -23,6 +30,7 @@ module Chromiebara
       # this._client.on('Page.navigatedWithinDocument', event => this._onFrameNavigatedWithinDocument(event.frameId, event.url));
       # this._client.on('Page.frameDetached', event => this._onFrameDetached(event.frameId));
       client.on Protocol::Page.frame_stopped_loading, -> (event) { on_frame_stopped_loading event["frameId"] }
+      client.on Protocol::Runtime.execution_context_created, -> (event) { on_execution_context_created event["context"] }
       # this._client.on('Runtime.executionContextCreated', event => this._onExecutionContextCreated(event.context));
       # this._client.on('Runtime.executionContextDestroyed', event => this._onExecutionContextDestroyed(event.executionContextId));
       # this._client.on('Runtime.executionContextsCleared', event => this._onExecutionContextsCleared());
@@ -35,7 +43,7 @@ module Chromiebara
         handle_frame_tree frame_tree["frameTree"]
       end
       client.command Protocol::Page.set_lifecycle_events_enabled enabled: true
-      # client.command Protocol::Runtime.enable
+      client.command Protocol::Runtime.enable
       # this._client.send('Runtime.enable', {}).then(() => this._ensureIsolatedWorld(UTILITY_WORLD_NAME)),
       # this._networkManager.initialize(),
     end
@@ -241,29 +249,6 @@ module Chromiebara
     #     this._removeFramesRecursively(frame);
     # }
 
-    # _onExecutionContextCreated(contextPayload) {
-    #   const frameId = contextPayload.auxData ? contextPayload.auxData.frameId : null;
-    #   const frame = this._frames.get(frameId) || null;
-    #   let world = null;
-    #   if (frame) {
-    #     if (contextPayload.auxData && !!contextPayload.auxData['isDefault']) {
-    #       world = frame._mainWorld;
-    #     } else if (contextPayload.name === UTILITY_WORLD_NAME && !frame._secondaryWorld._hasContext()) {
-    #       // In case of multiple sessions to the same target, there's a race between
-    #       // connections so we might end up creating multiple isolated worlds.
-    #       // We can use either.
-    #       world = frame._secondaryWorld;
-    #     }
-    #   }
-    #   if (contextPayload.auxData && contextPayload.auxData['type'] === 'isolated')
-    #     this._isolatedWorlds.add(contextPayload.name);
-    #   /** @type {!ExecutionContext} */
-    #   const context = new ExecutionContext(this._client, contextPayload, world);
-    #   if (world)
-    #     world._setContext(context);
-    #   this._contextIdToContext.set(contextPayload.id, context);
-    # }
-
     # /**
     #  * @param {number} executionContextId
     #  */
@@ -386,5 +371,28 @@ module Chromiebara
         #   this.emit(Events.FrameManager.LifecycleEvent, frame);
       end
 
+      def on_execution_context_created(context_payload)
+        frame_id = context_payload.dig "auxData", "frameId"
+        frame = @_frames.fetch frame_id, nil
+        world = nil
+        if frame
+          if context_payload.dig "auxData", "isDefault"
+            world = frame.main_world
+          elsif false
+          # else if (contextPayload.name === UTILITY_WORLD_NAME && !frame._secondaryWorld._hasContext()) {
+            # TODO
+          #   // In case of multiple sessions to the same target, there's a race between
+          #   // connections so we might end up creating multiple isolated worlds.
+          #   // We can use either.
+          #   world = frame._secondaryWorld;
+          end
+        end
+        if context_payload["auxData"] && context_payload.dig("auxData", "type") == 'isolated'
+          @_isolated_worlds.add context_payload["name"]
+        end
+        context = ExecutionContext.new client, context_payload, world
+        world.send(:set_context, context) if world
+        @_execution_contexts[context_payload["id"]] = context
+      end
   end
 end

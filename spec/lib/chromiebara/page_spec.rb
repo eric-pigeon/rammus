@@ -12,6 +12,20 @@ module Chromiebara
       end
     end
 
+    describe '#cookies' do
+      it 'should return empty array without cookies' do
+        page.goto server.empty_page
+        expect(page.cookies).to eq []
+      end
+    end
+
+    describe '#evaluate' do
+      it 'evaluates javascript' do
+        result = page.evaluate '() => 7 * 3'
+        expect(result).to eq 21
+      end
+    end
+
     describe '#frames' do
       it 'returns all frames in the page' do
         page.goto server.domain + "frames/nested-frames.html"
