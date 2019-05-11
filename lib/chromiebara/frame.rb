@@ -1,6 +1,6 @@
 module Chromiebara
   class Frame
-    attr_reader :id, :frame_manager, :child_frames, :loader_id
+    attr_reader :id, :frame_manager, :child_frames, :loader_id, :main_world
 
     # @param [Chromiebara::FrameManager] frame_manager
     # @param [Chromiebara::CPDSession] client
@@ -20,7 +20,7 @@ module Chromiebara
       # /** @type {!Set<string>} */
       @_lifecycle_events = Set.new
       # /** @type {!DOMWorld} */
-      # this._mainWorld = new DOMWorld(frameManager, this, frameManager._timeoutSettings);
+      @main_world =  DOMWorld.new frame_manager, self#, frameManager._timeoutSettings
       # /** @type {!DOMWorld} */
       # this._secondaryWorld = new DOMWorld(frameManager, this, frameManager._timeoutSettings);
 
@@ -68,14 +68,14 @@ module Chromiebara
   #   return this._mainWorld.evaluateHandle(pageFunction, ...args);
   # }
 
-  # /**
-  #  * @param {Function|string} pageFunction
-  #  * @param {!Array<*>} args
-  #  * @return {!Promise<*>}
-  #  */
-  # async evaluate(pageFunction, ...args) {
-  #   return this._mainWorld.evaluate(pageFunction, ...args);
-  # }
+    # TODO
+    #  * @param {Function|string} pageFunction
+    #  * @param {!Array<*>} args
+    #  * @return {!Promise<*>}
+    #
+    def evaluate(function, *args)
+      @main_world.evaluate function, *args
+    end
 
   # /**
   #  * @param {string} selector
