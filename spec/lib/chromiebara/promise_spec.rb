@@ -2,6 +2,45 @@ module Chromiebara
   RSpec.describe Promise do
     include Promise::Await
 
+    describe '.resolve' do
+      it 'returns a resolved promise with the value' do
+        value = await Promise.resolve 4
+        expect(value).to eq 4
+      end
+    end
+
+    describe '.reject' do
+      it 'returns a rejected promise with the value' do
+        value = await Promise.reject(4).catch { |v| v }
+        expect(value).to eq 4
+      end
+    end
+
+    describe '.all' do
+      it 'returns all values' do
+        promise1 = Promise.resolve(3)
+        promise2 = 42;
+
+        results = await Promise.all(promise1, promise2)
+        expect(results).to eq [3, 42]
+      end
+    end
+
+    describe '.all' do
+      it 'waits for all promises to fulfill' do
+      end
+    end
+
+    describe '.create' do
+      it "returns a promise and it's fulfill methods" do
+        promise, resolve, reject = Promise.create
+
+        expect(promise).to be_a Promise
+        expect(resolve).to be_a Method
+        expect(reject).to be_a Method
+      end
+    end
+
     describe '#initialize' do
       it 'yields resolve and reject' do
         resolve, reject = nil, nil
@@ -45,6 +84,31 @@ module Chromiebara
         promise.then { |value| previous_value = value }
         expect(previous_value).to eq 3
       end
+
+      it 'rejects the promise if the on_fill throws an error' do
+        value = await Promise.resolve(nil)
+          .then { raise "failed" }
+          .catch { |error| error.message }
+        expect(value).to eq "failed"
+      end
+
+      it 'allows multiple promises to chain' do
+        promise_1, resolve, _reject = Promise.create
+
+        promise_2 = promise_1.then { 4 }
+        promise_3 = promise_1.then { 5 }
+        resolve.(true)
+
+        expect(await promise_2, 0.01).to eq 4
+        expect(await promise_3, 0.01).to eq 4
+      end
+
+      context 'when on_fulfill returns a fulfilled promise' do
+        it 'fulfills the promise with the value of that promise' do
+          value = await Promise.resolve(3).then { Promise.resolve 4 }
+          expect(value).to eq 4
+        end
+      end
     end
 
     describe '#await' do
@@ -77,7 +141,7 @@ module Chromiebara
       end
     end
 
-    describe 'resolve' do
+    describe 'resolving promises' do
       it 'sets the value of the promise' do
         value = await Promise.new { |resolve, _| resolve.(3) }
         expect(value).to eq 3
@@ -89,7 +153,7 @@ module Chromiebara
       end
     end
 
-    describe 'rejection' do
+    describe 'rejecting promises' do
       it 'sets the value of the promise' do
         value = await Promise.new { |_, reject| reject.(3) }
           .catch { |error| error }

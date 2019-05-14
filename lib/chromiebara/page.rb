@@ -1,5 +1,7 @@
 module Chromiebara
   class Page
+    include Promise::Await
+    extend Promise::Await
     extend Forwardable
 
     attr_reader :target, :frame_manager
@@ -8,7 +10,7 @@ module Chromiebara
     def self.create(target)
       page = new target
       page.frame_manager.start
-      target.session.command Protocol::Target.set_auto_attach auto_attach: true, wait_for_debugger_on_start: false, flatten: true
+      await target.session.command Protocol::Target.set_auto_attach auto_attach: true, wait_for_debugger_on_start: false, flatten: true
       # TODO add back
       # target.session.command Protocol::Performance.enable
       # target.session.command Protocol::Log.enable
@@ -303,7 +305,7 @@ module Chromiebara
     #
     def cookies(urls = nil)
       urls ||= [url]
-      response = client.command Protocol::Network.get_cookies urls: urls
+      response = await client.command Protocol::Network.get_cookies urls: urls
       response["cookies"]
     end
 
@@ -926,7 +928,7 @@ module Chromiebara
       if run_before_unload
         # await this._client.send('Page.close');
       else
-        client.client.command Protocol::Target.close_target target_id: target.target_id
+        await client.client.command Protocol::Target.close_target target_id: target.target_id
         # await this._target._isClosedPromise;
       end
     end

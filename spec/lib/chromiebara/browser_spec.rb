@@ -1,5 +1,7 @@
 module Chromiebara
   RSpec.describe Browser, browser: true do
+    include Promise::Await
+
     before do
       @browser = Launcher.launch
     end
@@ -32,7 +34,7 @@ module Chromiebara
 
         expect(@browser.browser_contexts.size).to eq 1
 
-        response = @browser.client.command Protocol::Target.get_browser_contexts
+        response = await @browser.client.command Protocol::Target.get_browser_contexts
         expect(response["browserContextIds"].size).to eq 0
       end
 

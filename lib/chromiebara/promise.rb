@@ -1,3 +1,5 @@
+require 'timeout'
+
 module Chromiebara
   class Promise
     class UnhandledRejection < StandardError; end
@@ -8,8 +10,32 @@ module Chromiebara
       end
     end
 
+    def self.resolve(value)
+      Promise.new { |resolve| resolve.(value) }
+    end
+
+    def self.reject(value)
+      Promise.new { |_, reject| reject.(value) }
+    end
+
+    def self.all(*promises)
+      results = []
+
+      merged = promises.reduce(Promise.resolve(nil)) do |acc, promise|
+        acc.then{ puts "first then #{promise}"; promise }
+          .then { |result| puts "second then #{result}"; results.push result }
+      end
+
+      merged.then { results }
+    end
+
+    def self.create
+      promise = new
+      [promise, promise.method(:resolve), promise.method(:reject)]
+    end
+
     def initialize(on_fulfill = nil, on_reject = nil, &block)
-      @_state = :pending
+      @_state = PENDING
       @_mutex = Mutex.new
       @_condition_variable = ConditionVariable.new
       @_value = nil
@@ -33,9 +59,9 @@ module Chromiebara
       @_mutex.synchronize do
         loop do
           case @_state
-          when :fulfilled
+          when FULFILLED
             return @_value
-          when :rejected
+          when REJECTED
             if @_on_reject
               return @_value
             else
@@ -60,9 +86,9 @@ module Chromiebara
 
       @_mutex.synchronize do
         case @_state
-        when :fulfilled
+        when FULFILLED
           @_next_resolve.(@_value)
-        when :rejected
+        when REJECTED
           @_next_reject.(@_value)
         end
       end
@@ -78,26 +104,41 @@ module Chromiebara
 
     private
 
+      def fulfilled?
+        @_state != PENDING
+      end
+
+      PENDING = :pending
+      FULFILLED = :fulfilled
+      REJECTED = :rejected
+
       def resolve(value)
         @_mutex.synchronize do
-          next if @_state != :pending
+          next if @_state != PENDING
 
-          @_state = :fulfilled
-          @_value = if @_on_resolve
-                      @_on_resolve.call value
-                    else
-                      value
-                    end
+          begin
+            @_value = if @_on_resolve
+                        @_on_resolve.call value
+                      else
+                        value
+                      end
+            @_state = FULFILLED
+            @_condition_variable.broadcast
+            @_next_resolve.(@_value) if @_next_resolve
+        rescue => error
+          @_state = REJECTED
+          @_value = error
           @_condition_variable.broadcast
-          @_next_resolve.(@_value) if @_next_resolve
+          @_next_reject.(@_value) if @_next_reject
+          end
         end
       end
 
       def reject(value)
         @_mutex.synchronize do
-          next if @_state != :pending
+          next if @_state != PENDING
 
-          @_state = :rejected
+          @_state = REJECTED
           @_value = if @_on_reject
                       @_on_reject.call value
                     else

@@ -2,6 +2,8 @@ module Chromiebara
   class CDPSession
     include EventEmitter
 
+    CommandCallback = Struct.new(:resolve, :reject, :method)
+
     attr_reader :client, :target_type, :session_id
 
     def initialize(client, target_type, session_id)
@@ -26,9 +28,9 @@ module Chromiebara
         # processed before it's added to the hash
         # command ids are unique per session, so just make this class
         # responsible for the id
-        Response.new.tap do |response|
-          @_command_callbacks[command_id] = response
-        end.await
+        Promise.new do |resolve, reject|
+          @_command_callbacks[command_id] = CommandCallback.new(resolve, reject, command["method"])
+        end
       end
     end
 
@@ -43,7 +45,7 @@ module Chromiebara
           if message["error"]
             raise 'todo'
           else
-            callback.resolve message["result"]
+            callback.resolve.(message["result"])
           end
         else
           ProtocolLogger.puts_event message
