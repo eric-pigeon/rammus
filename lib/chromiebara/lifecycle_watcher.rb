@@ -1,6 +1,8 @@
 module Chromiebara
   # @!visibility private
   class LifecycleWatcher
+    include Promise::Await
+
     attr_reader :frame_manager, :frame
 
     # @param [Chromiebara::FrameManager] frame_manager
@@ -17,12 +19,20 @@ module Chromiebara
         PROTOCOL_MAPPING.fetch event
       end.to_set
       @_has_same_document_navigation = false
-      @_complete_promise = Promise.new
+      # @_complete_promise = Promise.new
       frame_manager.on(FrameManager.LifecycleEvent, method(:check_lifecycle_complete))
+
+      lifecycle_callback = nil
+      @_lifecycle_promise = Promise.new do |fulfill|
+        lifecycle_callback = fulfill
+      end
+      @_lifecycle_callback = lifecycle_callback
     end
 
+    # TODO
     def await_complete
-      @_complete_promise.await
+      await lifecycle_promise
+      # @_complete_promise.await
     end
 
 #   * @param {!Puppeteer.Frame} frame
@@ -34,16 +44,7 @@ module Chromiebara
 #      waitUntil = waitUntil.slice();
 #    else if (typeof waitUntil === 'string')
 #      waitUntil = [waitUntil];
-#    this._expectedLifecycle = waitUntil.map(value => {
-#      const protocolEvent = puppeteerToProtocolLifecycle[value];
-#      assert(protocolEvent, 'Unknown value for options.waitUntil: ' + value);
-#      return protocolEvent;
-#    });
 #
-#    this._frameManager = frameManager;
-#    this._frame = frame;
-#    this._initialLoaderId = frame._loaderId;
-#    this._timeout = timeout;
 #    /** @type {?Puppeteer.Request} */
 #    this._navigationRequest = null;
 #    this._eventListeners = [
@@ -120,13 +121,13 @@ module Chromiebara
 #  newDocumentNavigationPromise() {
 #    return this._newDocumentNavigationPromise;
 #  }
-#
-#  /**
-#   * @return {!Promise}
-#   */
-#  lifecyclePromise() {
-#    return this._lifecyclePromise;
-#  }
+
+    # @return [Chromiebara::Promise]
+    #
+    def lifecycle_promise
+      @_lifecycle_promise
+    end
+
 #
 #  /**
 #   * @return {!Promise<?Error>}
@@ -173,6 +174,7 @@ module Chromiebara
       def check_lifecycle_complete(_frame)
         return unless LifecycleWatcher.check_lifecycle(frame, @_expected_lifecycle)
 
+        @_lifecycle_callback.(true)
         # this._lifecycleCallback();
 
         # TODO is this ever going to happen?
@@ -183,7 +185,7 @@ module Chromiebara
         end
         #   this._newDocumentNavigationCompleteCallback();
 
-        @_complete_promise.resolve true
+        # @_complete_promise.resolve true
       end
 
       # @return [Boolean]

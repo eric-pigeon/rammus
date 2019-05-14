@@ -11,6 +11,8 @@ module Chromiebara
   # Besides pages, execution contexts can be found in workers.
   #
   class ExecutionContext
+    include Promise::Await
+
     EVALUATION_SCRIPT_URL = '__puppeteer_evaluation_script__';
     SOURCE_URL_REGEX = /^[\040\t]*\/\/[@#] sourceURL=\s*(\S*?)\s*$/m;
 
@@ -61,7 +63,7 @@ module Chromiebara
         expression = function
         #expression_with_source_url = SOURCE_URL_REGEX.match?(expression) ? expression : expression + '\n' + suffix;
         expression_with_source_url = expression
-        resp = client.command Protocol::Runtime.evaluate(
+        resp = await client.command Protocol::Runtime.evaluate(
           expression: expression_with_source_url,
           context_id: context_id,
           return_by_value: false,

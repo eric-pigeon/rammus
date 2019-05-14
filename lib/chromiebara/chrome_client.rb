@@ -1,5 +1,9 @@
 module Chromiebara
   class ChromeClient
+    include Promise::Await
+
+    CommandCallback = Struct.new(:resolve, :reject, :method)
+
     include EventEmitter
 
     attr_reader :web_socket
@@ -11,27 +15,28 @@ module Chromiebara
       @web_socket = web_socket
       web_socket.on_message = method :on_message
       @_sessions = {}
-      @last_id = 0
+      @_last_id = 0
       @command_mutex = Mutex.new
+      # Hash<Integer, { resolve: Method, reject: Method, method: String }>
       @_command_callbacks = {}
     end
 
     # @param [Hash] command
     #
+    # TODO
     # @return [Hash]
     #
     def command(command)
-      response = @command_mutex.synchronize do
+      @command_mutex.synchronize do
         comamnd_id = next_command_id
         command = command.merge(id: comamnd_id).to_json
 
-        Response.new.tap do |resp|
-          @_command_callbacks[comamnd_id] = resp
+        Promise.new do |resolve, reject|
+          @_command_callbacks[comamnd_id] = CommandCallback.new(resolve, reject, command["method"])
           ProtocolLogger.puts_command command
           web_socket.send_message command: command
         end
       end
-      response.await
     end
 
     # @return [Integer] command_id
@@ -52,7 +57,7 @@ module Chromiebara
     # @return [Chromiebara::CDPSession]
     #
     def create_session(target_info)
-      response = command Protocol::Target.attach_to_target target_id: target_info["targetId"], flatten: true
+      response = await command Protocol::Target.attach_to_target target_id: target_info["targetId"], flatten: true
 
       session_id = response["sessionId"]
 
@@ -62,7 +67,7 @@ module Chromiebara
     private
 
       def next_command_id
-        @last_id += 1
+        @_last_id += 1
       end
 
       # @param [String] message
@@ -87,7 +92,12 @@ module Chromiebara
         elsif message["id"]
           ProtocolLogger.puts_command_response message
           if callback = @_command_callbacks.delete(message["id"])
-            callback.resolve message["result"]
+            if message.has_key? "error"
+              # TODO
+              callback.reject.(message["error"])
+            else
+              callback.resolve.(message["result"])
+            end
           end
         else
           ProtocolLogger.puts_event message

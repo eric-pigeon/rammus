@@ -2,6 +2,7 @@ require 'forwardable'
 
 module Chromiebara
   class Browser
+    include Promise::Await
     extend Forwardable
     attr_reader :client, :default_context
 
@@ -16,7 +17,7 @@ module Chromiebara
       client.on('Target.targetCreated', method(:target_created))
       client.on('Target.targetDestroyed', method(:target_destroyed))
       client.on('Target.targetInfoChanged', method(:target_info_changed))
-      client.command Protocol::Target.set_discover_targets discover: true
+      await client.command Protocol::Target.set_discover_targets discover: true
     end
 
     # Creates a new incognito browser context. This won't share cookies/cache
@@ -25,7 +26,7 @@ module Chromiebara
     # @return [Chromiebara::BrowserContext]
     #
     def create_context
-      response = client.command(Protocol::Target.create_browser_context)
+      response = await client.command(Protocol::Target.create_browser_context)
       context_id = response['browserContextId']
 
       BrowserContext.new(client: client, id: context_id, browser: self).tap do |context|
@@ -44,7 +45,7 @@ module Chromiebara
 
     # TODO document this
     def delete_context(context)
-      _response = client.command(Protocol::Target.dispose_browser_context(browser_context_id: context.id))
+      _response = await client.command(Protocol::Target.dispose_browser_context(browser_context_id: context.id))
       @contexts.delete(context.id)
       true
     end
@@ -83,7 +84,7 @@ module Chromiebara
     # @return [Chromiebara::Page]
     #
     def create_page_in_context(context_id)
-      response = client.command(Protocol::Target.create_target(url: 'about:blank', browser_context_id: context_id))
+      response = await client.command(Protocol::Target.create_target(url: 'about:blank', browser_context_id: context_id))
       target_id = response["targetId"]
       target = @_targets.fetch target_id
       target.page
@@ -94,7 +95,7 @@ module Chromiebara
     # @return [Hash]
     #
     def version
-      client.command Protocol::Browser.get_version
+      await client.command Protocol::Browser.get_version
     end
 
     # Closes the browser and all of its pages (if any were opened). The Browser

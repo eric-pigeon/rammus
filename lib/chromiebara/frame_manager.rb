@@ -2,6 +2,7 @@ require 'chromiebara/execution_context'
 
 module Chromiebara
   class FrameManager
+    include Promise::Await
     include EventEmitter
 
     def self.LifecycleEvent
@@ -38,12 +39,12 @@ module Chromiebara
     end
 
     def start
-      client.command Protocol::Page.enable
-      client.command(Protocol::Page.get_frame_tree).tap do |frame_tree|
+      await client.command Protocol::Page.enable
+      (await client.command(Protocol::Page.get_frame_tree)).tap do |frame_tree|
         handle_frame_tree frame_tree["frameTree"]
       end
-      client.command Protocol::Page.set_lifecycle_events_enabled enabled: true
-      client.command Protocol::Runtime.enable
+      await client.command Protocol::Page.set_lifecycle_events_enabled enabled: true
+      await client.command Protocol::Runtime.enable
       # this._client.send('Runtime.enable', {}).then(() => this._ensureIsolatedWorld(UTILITY_WORLD_NAME)),
       # this._networkManager.initialize(),
     end
@@ -73,7 +74,7 @@ module Chromiebara
       # client.command Protocol::Page.navigate url: url, referrer: referrer, frame_id: frame.id
 
       watcher = LifecycleWatcher.new self, frame, wait_until, timeout
-      client.command Protocol::Page.navigate url: url, referrer: referrer, frame_id: frame.id
+      await client.command Protocol::Page.navigate url: url, referrer: referrer, frame_id: frame.id
       watcher.await_complete
 
       #   let ensureNewDocumentNavigation = false;

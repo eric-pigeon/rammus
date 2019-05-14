@@ -1,5 +1,7 @@
 module Chromiebara
   class Launcher
+    extend Promise::Await
+
     def self.launch(headless: true, args: [])
       tmpdir = Dir.mktmpdir
 
@@ -24,7 +26,7 @@ module Chromiebara
 
       client = ChromeClient.new(ws_client)
 
-      close_callback = -> { client.command Protocol::Browser.close }
+      close_callback = -> { await client.command Protocol::Browser.close }
 
       Browser.new(client: client, close_callback: close_callback).tap do |browser|
         ObjectSpace.define_finalizer(browser, Launcher.process_killer(pid, tmpdir))
