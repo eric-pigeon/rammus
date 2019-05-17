@@ -11,7 +11,7 @@ module Chromiebara
 
     describe '.reject' do
       it 'returns a rejected promise with the value' do
-        value = await Promise.reject(4).catch { |v| v }
+        value = await Promise.reject(4).catch { |v| v }, 0.01
         expect(value).to eq 4
       end
     end
@@ -23,11 +23,6 @@ module Chromiebara
 
         results = await Promise.all(promise1, promise2)
         expect(results).to eq [3, 42]
-      end
-    end
-
-    describe '.all' do
-      it 'waits for all promises to fulfill' do
       end
     end
 
@@ -56,7 +51,7 @@ module Chromiebara
       it 'rejects the promise if the block raises an error' do
         error = RuntimeError.new("failed")
         value = await Promise.new { |_, _| raise error }
-          .catch { |err| err }
+          .catch { |err| err }, 0.01
         expect(value).to eq error
       end
     end
@@ -68,8 +63,7 @@ module Chromiebara
       end
 
       it 'passes the previous result on resolve' do
-        fulfill = nil
-        promise = Promise.new { |resolve, _| fulfill = resolve }
+        promise, fulfill, _reject = Promise.create
         previous_value = nil
         promise.then { |value| previous_value = value }
         fulfill.(3)
@@ -85,10 +79,10 @@ module Chromiebara
         expect(previous_value).to eq 3
       end
 
-      it 'rejects the promise if the on_fill throws an error' do
+      it 'rejects the promise if the on_resolve throws an error' do
         value = await Promise.resolve(nil)
           .then { raise "failed" }
-          .catch { |error| error.message }
+          .catch { |error| error.message }, 0.01
         expect(value).to eq "failed"
       end
 
@@ -100,14 +94,7 @@ module Chromiebara
         resolve.(true)
 
         expect(await promise_2, 0.01).to eq 4
-        expect(await promise_3, 0.01).to eq 4
-      end
-
-      context 'when on_fulfill returns a fulfilled promise' do
-        it 'fulfills the promise with the value of that promise' do
-          value = await Promise.resolve(3).then { Promise.resolve 4 }
-          expect(value).to eq 4
-        end
+        expect(await promise_3, 0.01).to eq 5
       end
     end
 
@@ -127,16 +114,16 @@ module Chromiebara
     describe '#catch' do
       it 'deals with rejected promises' do
         value = await Promise.new { |_, reject| reject.(3) }
-          .catch { |error| error }
+          .catch { |error| error }, 0.01
         expect(value).to eq 3
       end
 
       it 'catch the end of a promise chain' do
-        value = await Promise.new { |_, reject| reject.(3) }
+        value = await Promise.reject(3)
           .then { |_| 4 }
           .then { |_| 5 }
           .then { |_| 6 }
-          .catch { |error| error }
+          .catch { |error| error }, 0.01
         expect(value).to eq 3
       end
     end
@@ -151,19 +138,68 @@ module Chromiebara
         value = await Promise.new { |resolve, _| resolve.(3); resolve.(4) }
         expect(value).to eq 3
       end
+
+      context 'when the value is a fulfilled promise' do
+        it 'resolves with the value of that promise' do
+          value = await Promise.resolve(Promise.resolve 4), 0.01
+          expect(value).to eq 4
+        end
+
+        it 'rejects if the promise rejects' do
+          value = await Promise.resolve(Promise.reject(false)).catch { 5 }, 0.01
+          expect(value).to eq 5
+        end
+      end
+
+      context 'when the value is a pending promise' do
+        it 'waits for that promise to fulfill' do
+          promise_1, _resolve, _reject = Promise.create
+          promise_2 = Promise.resolve promise_1
+          expect { await promise_2, 0.01 }.to raise_error Timeout::Error
+        end
+
+        it 'resolves with the value of that promise' do
+          promise_1, resolve, _reject = Promise.create
+          promise_2 = Promise.resolve promise_1
+          resolve.(true)
+          expect(await promise_2, 0.01).to eq true
+        end
+      end
     end
 
     describe 'rejecting promises' do
       it 'sets the value of the promise' do
         value = await Promise.new { |_, reject| reject.(3) }
-          .catch { |error| error }
+          .catch { |error| error }, 0.01
         expect(value).to eq 3
       end
 
       it 'does not change the value of a fulfilled promise' do
         value = await Promise.new { |_, reject| reject.(3); reject.(4) }
-          .catch { |error| error }
+          .catch { |error| error }, 0.01
         expect(value).to eq 3
+      end
+
+      context 'when the value is a fulfilled promise' do
+        it 'rejects with the value of that promise' do
+          value = await Promise.reject(Promise.resolve 4).catch { |v| v }, 0.01
+          expect(value).to eq 4
+        end
+      end
+
+      context 'when the value is a pending promise' do
+        it 'waits for that promise to fulfill' do
+          promise_1, _resolve, _reject = Promise.create
+          promise_2 = Promise.reject(promise_1).catch { |v| v }
+          expect { await promise_2, 0.01 }.to raise_error Timeout::Error
+        end
+
+        it 'rejects with the value of that promise' do
+          promise_1, resolve, _reject = Promise.create
+          promise_2 = Promise.reject(promise_1).catch { |v| v }
+          resolve.(true)
+          expect(await promise_2, 0.01).to eq true
+        end
       end
     end
   end
