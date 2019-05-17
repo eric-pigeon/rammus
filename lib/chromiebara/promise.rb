@@ -22,8 +22,7 @@ module Chromiebara
       results = []
 
       merged = promises.reduce(Promise.resolve(nil)) do |acc, promise|
-        acc.then{ puts "first then #{promise}"; promise }
-          .then { |result| puts "second then #{result}"; results.push result }
+        acc.then{ promise }.then { |result| results.push result }
       end
 
       merged.then { results }
@@ -34,15 +33,12 @@ module Chromiebara
       [promise, promise.method(:resolve), promise.method(:reject)]
     end
 
-    def initialize(on_fulfill = nil, on_reject = nil, &block)
+    def initialize(&block)
       @_state = PENDING
       @_mutex = Mutex.new
       @_condition_variable = ConditionVariable.new
       @_value = nil
-      @_on_resolve = on_fulfill
-      @_on_reject = on_reject
-      @_next_resolve = nil
-      @_next_reject = nil
+      @_subscribers = []
 
       if block_given?
         begin
@@ -59,14 +55,10 @@ module Chromiebara
       @_mutex.synchronize do
         loop do
           case @_state
-          when FULFILLED
+          when RESOLVED
             return @_value
           when REJECTED
-            if @_on_reject
-              return @_value
-            else
-              raise UnhandledRejection
-            end
+            raise UnhandledRejection
           end
 
           to_wait = deadline - current_time
@@ -76,24 +68,26 @@ module Chromiebara
       end
     end
 
-    def then(on_fulfill = nil, on_reject = nil, &block)
-      on_fulfill ||= block
+    def then(on_resolve = nil, on_reject = nil, &block)
+      on_resolve ||= block
 
-      next_promise = Promise.new on_fulfill, on_reject do |resolve, reject|
-        @_next_resolve = resolve
-        @_next_reject = reject
-      end
+      subscriber = Subscriber.new(
+        owner: self,
+        promise: Promise.new,
+        resolved: on_resolve,
+        rejected: on_reject
+      )
 
       @_mutex.synchronize do
         case @_state
-        when FULFILLED
-          @_next_resolve.(@_value)
-        when REJECTED
-          @_next_reject.(@_value)
+        when PENDING
+          @_subscribers << subscriber
+        else
+          subscriber.notify @_state, @_value
         end
       end
 
-      next_promise
+      subscriber.promise
     end
 
     def catch(on_reject = nil, &block)
@@ -104,34 +98,57 @@ module Chromiebara
 
     private
 
-      def fulfilled?
-        @_state != PENDING
-      end
-
       PENDING = :pending
-      FULFILLED = :fulfilled
+      RESOLVED = :resolved
       REJECTED = :rejected
 
+      class Subscriber
+        attr_reader :owner, :promise, :resolved, :rejected
+
+        def initialize(owner:, promise:, resolved:, rejected:)
+          @owner = owner; @promise = promise; @resolved = resolved; @rejected = rejected
+        end
+
+        def notify(state, value)
+          value =
+            begin
+              case state
+              when RESOLVED
+                resolved.nil? ? value : resolved.(value)
+              when REJECTED
+                if rejected.nil?
+                  promise.send(:reject, value)
+                  return
+                else
+                  rejected.(value)
+                end
+              end
+
+            rescue => error
+              promise.send(:reject, error)
+            end
+
+            promise.send(:resolve, value)
+        end
+      end
+
       def resolve(value)
-        @_mutex.synchronize do
+        chain = @_mutex.synchronize do
           next if @_state != PENDING
 
-          begin
-            @_value = if @_on_resolve
-                        @_on_resolve.call value
-                      else
-                        value
-                      end
-            @_state = FULFILLED
+          if value.is_a? Promise
+            true
+          else
+            @_value = value
+            @_state = RESOLVED
             @_condition_variable.broadcast
-            @_next_resolve.(@_value) if @_next_resolve
-        rescue => error
-          @_state = REJECTED
-          @_value = error
-          @_condition_variable.broadcast
-          @_next_reject.(@_value) if @_next_reject
+            publish
+            false
           end
         end
+        # if the value is a fulfilled promise #then will cause this promise's
+        # resolve to call and fail to aquire the mutex.
+        value.then method(:resolve), method(:reject) if chain
       end
 
       def reject(value)
@@ -139,14 +156,15 @@ module Chromiebara
           next if @_state != PENDING
 
           @_state = REJECTED
-          @_value = if @_on_reject
-                      @_on_reject.call value
-                    else
-                      value
-                    end
+          @_value = value
           @_condition_variable.broadcast
-          @_next_reject.(@_value) if @_next_reject
+          publish
         end
+      end
+
+      def publish
+        @_subscribers.each { |subscriber| subscriber.notify @_state, @_value }
+        @_subscribers.clear
       end
 
       def current_time
