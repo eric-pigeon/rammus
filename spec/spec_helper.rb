@@ -40,7 +40,7 @@ RSpec.configure do |config|
   config.include SeverHelper
 
   config.before(:suite) do
-    @_app = Thread.new { TestApp.run! }
+    Thread.new { TestApp.run! }
   end
 
   config.after(:suite) do
