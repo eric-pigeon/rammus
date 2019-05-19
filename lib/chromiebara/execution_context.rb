@@ -71,8 +71,6 @@ module Chromiebara
           user_gesture: true
         )
 
-        byebug
-
       #   const {exceptionDetails, result: remoteObject} = await this._client.send('Runtime.evaluate', {
       #     contextId,
       #     userGesture: true

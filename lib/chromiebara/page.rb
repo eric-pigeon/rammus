@@ -7,15 +7,21 @@ module Chromiebara
     attr_reader :target, :frame_manager
     delegate [:url] => :main_frame
 
-    def self.create(target)
+    def self.create(target, default_viewport: nil)
       page = new target
-      page.frame_manager.start
-      await target.session.command Protocol::Target.set_auto_attach auto_attach: true, wait_for_debugger_on_start: false, flatten: true
-      # TODO add back
-      # target.session.command Protocol::Performance.enable
-      # target.session.command Protocol::Log.enable
-      # if (defaultViewport)
-        # await page.setViewport(defaultViewport);
+      await target.session.command(Protocol::Target.set_auto_attach auto_attach: true, wait_for_debugger_on_start: false, flatten: true)
+      await target.session.command(Protocol::Performance.enable)
+      await target.session.command(Protocol::Log.enable)
+      await page.frame_manager.start
+      await Promise.all(
+        target.session.command(Protocol::Target.set_auto_attach auto_attach: true, wait_for_debugger_on_start: false, flatten: true),
+        target.session.command(Protocol::Performance.enable),
+        target.session.command(Protocol::Log.enable),
+        page.frame_manager.start,
+      )
+      if default_viewport
+        page.set_viewport default_viewport
+      end
       page
     end
 
