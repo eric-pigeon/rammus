@@ -58,11 +58,12 @@ module Chromiebara
           when RESOLVED
             return @_value
           when REJECTED
-            raise UnhandledRejection
+            raise UnhandledRejection.new @_value
           end
 
           to_wait = deadline - current_time
-          raise Timeout::Error, "Timed out waiting for response" if to_wait <= 0
+
+          raise Timeout::Error, "Timed out waiting for response after #{timeout}" if to_wait <= 0
           @_condition_variable.wait @_mutex, to_wait
         end
       end

@@ -5,6 +5,8 @@ module Chromiebara
     include Promise::Await
     include EventEmitter
 
+    UTILITY_WORLD_NAME = '__puppeteer_utility_world__';
+
     def self.LifecycleEvent
       'FrameManager.LifecycleEvent'
     end
@@ -39,14 +41,16 @@ module Chromiebara
     end
 
     def start
-      await client.command Protocol::Page.enable
-      (await client.command(Protocol::Page.get_frame_tree)).tap do |frame_tree|
-        handle_frame_tree frame_tree["frameTree"]
-      end
-      await client.command Protocol::Page.set_lifecycle_events_enabled enabled: true
-      await client.command Protocol::Runtime.enable
-      # this._client.send('Runtime.enable', {}).then(() => this._ensureIsolatedWorld(UTILITY_WORLD_NAME)),
-      # this._networkManager.initialize(),
+      _, frame_tree = await Promise.all(
+        client.command(Protocol::Page.enable),
+        client.command(Protocol::Page.get_frame_tree)
+      )
+      handle_frame_tree frame_tree["frameTree"]
+       Promise.all(
+        client.command(Protocol::Page.set_lifecycle_events_enabled enabled: true),
+        client.command(Protocol::Runtime.enable).then { ensure_isolated_world UTILITY_WORLD_NAME },
+        # this._networkManager.initialize(),
+      )
     end
 
     # @return [Chromiebara::Frame]
@@ -211,24 +215,6 @@ module Chromiebara
     # }
 
     # /**
-    #  * @param {string} name
-    #  */
-    # async _ensureIsolatedWorld(name) {
-    #   if (this._isolatedWorlds.has(name))
-    #     return;
-    #   this._isolatedWorlds.add(name);
-    #   await this._client.send('Page.addScriptToEvaluateOnNewDocument', {
-    #     source: `//# sourceURL=${EVALUATION_SCRIPT_URL}`,
-    #     worldName: name,
-    #   }),
-    #   await Promise.all(this.frames().map(frame => this._client.send('Page.createIsolatedWorld', {
-    #     frameId: frame._id,
-    #     grantUniveralAccess: true,
-    #     worldName: name,
-    #   })));
-    # }
-
-    # /**
     #  * @param {string} frameId
     #  * @param {string} url
     #  */
@@ -308,6 +294,28 @@ module Chromiebara
         # for (const child of frameTree.childFrames)
         #   this._handleFrameTree(child);
       end
+
+      # @param [String] name
+      #
+      def ensure_isolated_world(name)
+        return if @_isolated_worlds.member? name
+
+        @_isolated_worlds << name
+        await client.command(Protocol::Page.add_script_to_evaluate_on_new_document(
+          source: "//# sourceURL=#{ExecutionContext::EVALUATION_SCRIPT_URL}",
+          world_name: name
+        ))
+        await Promise.all(
+         frames.map do |frame|
+           client.command Protocol::Page.create_isolated_world(
+             frame_id: frame.id,
+             grant_universal_access: true,
+             world_name: name
+           )
+         end
+        )
+      end
+
 
       def on_frame_navigated(frame_payload)
         is_main_frame = !frame_payload.has_key?("parentId")
