@@ -1,3 +1,5 @@
+require 'chromiebara/js_handle'
+
 module Chromiebara
   # The class represents a context for JavaScript execution. A Page might hav
   # many execution contexts:
@@ -28,6 +30,12 @@ module Chromiebara
       @context_id = context_payload["contextId"]
     end
 
+    # @return [Chromiebara::Frame, nil]
+    #
+    def frame
+      world.nil? ? nil : world.frame
+    end
+
     # /**
     #  * @return {?Puppeteer.Frame}
     #  */
@@ -41,6 +49,7 @@ module Chromiebara
     #  */
     def evaluate(function, *args)
       handle = evaluate_handle function, *args
+      _result = handle.json_value
     #   const result = await handle.jsonValue().catch(error => {
     #     if (error.message.includes('Object reference chain is too long'))
     #       return;
@@ -59,17 +68,24 @@ module Chromiebara
     def evaluate_handle(function, *args)
       suffix = "//# sourceURL=#{EVALUATION_SCRIPT_URL}"
 
-      # if (helper.isString(pageFunction)) {
         expression = function
-        #expression_with_source_url = SOURCE_URL_REGEX.match?(expression) ? expression : expression + '\n' + suffix;
-        expression_with_source_url = expression
-        resp = await client.command Protocol::Runtime.evaluate(
+        # TODO
+        expression_with_source_url = SOURCE_URL_REGEX.match?(expression) ? expression : expression + "\n" + suffix;
+        # expression_with_source_url = expression
+        response = await client.command Protocol::Runtime.evaluate(
           expression: expression_with_source_url,
           context_id: context_id,
           return_by_value: false,
           await_promise: true,
           user_gesture: true
         )
+
+        if response["exceptionDetails"]
+          # TODO
+          raise 'FAILURE'
+        end
+
+        create_js_handle response["result"]
 
       #   const {exceptionDetails, result: remoteObject} = await this._client.send('Runtime.evaluate', {
       #     contextId,
@@ -183,6 +199,17 @@ module Chromiebara
     # }
 
     private
+
+      # @param [Hash] remote_object
+      #
+      def create_js_handle(remote_object)
+        if remote_object["subtype"] == "node" && frame
+          # const frameManager = frame._frameManager;
+          # return new ElementHandle(context, context._client, remoteObject, frameManager.page(), frameManager);
+        end
+
+        JSHandle.new(self, self.client, remote_object)
+      end
 
       #  * @param {!Error} error
       #  * @return {!Protocol.Runtime.evaluateReturnValue}

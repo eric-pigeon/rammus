@@ -65,8 +65,9 @@ module Chromiebara
       it 'passes the previous result on resolve' do
         promise, fulfill, _reject = Promise.create
         previous_value = nil
-        promise.then { |value| previous_value = value }
+        next_promse = promise.then { |value| previous_value = value }
         fulfill.(3)
+        await next_promse, 0.1
         expect(previous_value).to eq 3
       end
 
@@ -75,7 +76,7 @@ module Chromiebara
         promise = Promise.new { |resolve, _| fulfill = resolve }
         fulfill.(3)
         previous_value = nil
-        promise.then { |value| previous_value = value }
+        await promise.then { |value| previous_value = value }, 0.1
         expect(previous_value).to eq 3
       end
 
