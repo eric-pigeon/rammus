@@ -2,6 +2,7 @@ require 'timeout'
 
 module Chromiebara
   class Promise
+    EXECUTOR = Concurrent.global_io_executor
     class UnhandledRejection < StandardError; end
 
     module Await
@@ -111,25 +112,27 @@ module Chromiebara
         end
 
         def notify(state, value)
-          value =
-            begin
-              case state
-              when RESOLVED
-                resolved.nil? ? value : resolved.(value)
-              when REJECTED
-                if rejected.nil?
-                  promise.send(:reject, value)
-                  return
-                else
-                  rejected.(value)
+          EXECUTOR.post(state, value) do |state, value|
+            value =
+              begin
+                case state
+                when RESOLVED
+                  resolved.nil? ? value : resolved.(value)
+                when REJECTED
+                  if rejected.nil?
+                    promise.send(:reject, value)
+                    return
+                  else
+                    rejected.(value)
+                  end
                 end
+
+              rescue => error
+                promise.send(:reject, error)
               end
 
-            rescue => error
-              promise.send(:reject, error)
-            end
-
-            promise.send(:resolve, value)
+              promise.send(:resolve, value)
+          end
         end
       end
 

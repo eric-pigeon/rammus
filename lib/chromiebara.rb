@@ -1,6 +1,7 @@
 require 'json'
 require 'tmpdir'
 require 'set'
+require 'concurrent'
 
 module Chromiebara
   require 'chromiebara/event_emitter'

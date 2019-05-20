@@ -15,15 +15,15 @@ module Chromiebara
      }
 
     def puts_command(text)
-      puts wrap text, :magenta
+      puts wrap "SEND ► #{text}", :magenta
     end
 
     def puts_command_response(text)
-      puts wrap text, :cyan
+      puts wrap "◀ RECV #{text}", :cyan
     end
 
     def puts_event(text)
-      puts wrap text, :green
+      puts wrap "◀ RECV #{text}", :green
     end
 
     private

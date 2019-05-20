@@ -20,8 +20,8 @@ module Chromiebara
     end
 
     describe '#evaluate' do
-      xit 'evaluates javascript' do
-        result = page.evaluate '() => 7 * 3'
+      it 'evaluates javascript' do
+        result = page.evaluate '7 * 3'
         expect(result).to eq 21
       end
     end

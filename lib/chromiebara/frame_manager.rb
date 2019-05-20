@@ -309,7 +309,7 @@ module Chromiebara
          frames.map do |frame|
            client.command Protocol::Page.create_isolated_world(
              frame_id: frame.id,
-             grant_universal_access: true,
+             grant_univeral_access: true,
              world_name: name
            )
          end
