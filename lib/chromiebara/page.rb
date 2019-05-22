@@ -315,37 +315,47 @@ module Chromiebara
       response["cookies"]
     end
 
-  # /**
-  #  * @param {Array<Protocol.Network.deleteCookiesParameters>} cookies
-  #  */
-  # async deleteCookie(...cookies) {
-  #   const pageURL = this.url();
-  #   for (const cookie of cookies) {
-  #     const item = Object.assign({}, cookie);
-  #     if (!cookie.url && pageURL.startsWith('http'))
-  #       item.url = pageURL;
-  #     await this._client.send('Network.deleteCookies', item);
-  #   }
-  # }
+  #* @param {Array<Protocol.Network.deleteCookiesParameters>} cookies
+  #
+  def delete_cookie(*cookies)
+    page_url = url
+    cookies.each do |cookie|
+      cookie ||= {}
+      if !cookie.has_key?("url") && page_url.start_with?("http")
+        cookie["url"] = page_url
+      end
+      # TODO Hash#transform_keys was added in ruby 2.5
+      cookie = cookie.map do |key, value|
+        key = key.to_sym rescue key
+        next unless [:name, :url, :domain, :path].include? key
+        [key, value]
+      end.compact.to_h
+      await client.command Protocol::Network.delete_cookies cookie
+    end
+  end
 
-  # /**
   #  * @param {Array<Network.CookieParam>} cookies
-  #  */
-  # async setCookie(...cookies) {
-  #   const pageURL = this.url();
-  #   const startsWithHTTP = pageURL.startsWith('http');
-  #   const items = cookies.map(cookie => {
-  #     const item = Object.assign({}, cookie);
-  #     if (!item.url && startsWithHTTP)
-  #       item.url = pageURL;
-  #     assert(item.url !== 'about:blank', `Blank page can not have cookie "${item.name}"`);
-  #     assert(!String.prototype.startsWith.call(item.url || '', 'data:'), `Data URL page can not have cookie "${item.name}"`);
-  #     return item;
-  #   });
-  #   await this.deleteCookie(...items);
-  #   if (items.length)
-  #     await this._client.send('Network.setCookies', { cookies: items });
-  # }
+  #
+  def set_cookie(*cookies)
+    page_url = url
+    starts_with_http = page_url.start_with? 'http'
+    cookies = cookies.map do |cookie|
+      if !cookie.has_key? "url" && starts_with_http
+        cookie["url"] = page_url
+        if cookie["url"] == "about:blank"
+          raise "Blank page can not have a cookie #{cookie["name"]}"
+        end
+        if cookie["url"].start_with? "data:"
+          raise "Data URL can not have cookie #{cookie["name"]}"
+        end
+      end
+      cookie
+    end
+    delete_cookie(*cookies)
+    if cookies.length
+      await client.command Protocol::Network.set_cookies cookies: cookies
+    end
+  end
 
   # /**
   #  * @param {!{url?: string, path?: string, content?: string, type?: string}} options

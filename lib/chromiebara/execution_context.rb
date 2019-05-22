@@ -47,38 +47,38 @@ module Chromiebara
     #  * @param {...*} args
     #  * @return {!Promise<(!Object|undefined)>}
     #  */
-    def evaluate(function, *args)
-      handle = evaluate_handle function, *args
-      _result = handle.json_value
-    #   const result = await handle.jsonValue().catch(error => {
-    #     if (error.message.includes('Object reference chain is too long'))
-    #       return;
-    #     if (error.message.includes('Object couldn\'t be returned by value'))
-    #       return;
-    #     throw error;
-    #   });
-    #   await handle.dispose();
-    #   return result;
+    def evaluate(page_function, *args, function: false)
+      handle = evaluate_handle page_function, *args, function: function
+      result = handle.json_value
+      # const result = await handle.jsonValue().catch(error => {
+      #   if (error.message.includes('Object reference chain is too long'))
+      #     return;
+      #   if (error.message.includes('Object couldn\'t be returned by value'))
+      #     return;
+      #   throw error;
+      # });
+      handle.dispose
+      result
     end
 
     #  * @param {Function|string} pageFunction
     #  * @param {...*} args
     #  * @return {!Promise<!JSHandle>}
     #  */
-    def evaluate_handle(function, *args)
+    def evaluate_handle(page_function, *args, function: false)
       suffix = "//# sourceURL=#{EVALUATION_SCRIPT_URL}"
 
-        expression = function
+      if !function
+        expression = page_function
         # TODO
         expression_with_source_url = SOURCE_URL_REGEX.match?(expression) ? expression : expression + "\n" + suffix;
-        # expression_with_source_url = expression
-        response = await client.command Protocol::Runtime.evaluate(
+        response = await client.command(Protocol::Runtime.evaluate(
           expression: expression_with_source_url,
           context_id: context_id,
           return_by_value: false,
           await_promise: true,
           user_gesture: true
-        )
+        )).catch { |error| raise 'TODO '}
 
         if response["exceptionDetails"]
           # TODO
@@ -86,6 +86,9 @@ module Chromiebara
         end
 
         create_js_handle response["result"]
+      else
+        # TODO
+      end
 
       #   const {exceptionDetails, result: remoteObject} = await this._client.send('Runtime.evaluate', {
       #     contextId,
