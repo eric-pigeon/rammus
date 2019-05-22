@@ -85,12 +85,19 @@ module Chromiebara
     #   return null;
     # }
 
-    # async dispose() {
-    #   if (this._disposed)
-    #     return;
-    #   this._disposed = true;
-    #   await helper.releaseObject(this._client, this._remoteObject);
-    # }
+    def dispose
+      return if @_disposed
+
+      @_disposed = true
+      if remote_object["objectId"]
+        await client.command(Protocol::Runtime.release_object object_id: remote_object["objectId"]).catch do |error|
+          # Exceptions might happen in case of a page been navigated or closed.
+          # Swallow these since they are harmless and we don't leak anything in this case.
+          # TODO
+          raise error
+        end
+      end
+    end
 
     # /**
     #  * @override
@@ -110,6 +117,8 @@ module Chromiebara
       #
       def value_from_remote_object(remote_object)
         raise "Cannot extract value when objectId is given" if remote_object["objectId"]
+        if remote_object["unserializableValue"]
+          raise 'TODO'
         # if (remoteObject.unserializableValue) {
         #   if (remoteObject.type === 'bigint' && typeof BigInt !== 'undefined')
         #     return BigInt(remoteObject.unserializableValue.replace('n', ''));
@@ -125,7 +134,7 @@ module Chromiebara
         #     default:
         #       throw new Error('Unsupported unserializable value: ' + remoteObject.unserializableValue);
         #   }
-        # }
+        end
         return remote_object["value"];
       end
   end
