@@ -27,7 +27,7 @@ module Chromiebara
     def initialize(client, context_payload, world)
       @client = client
       @world = world
-      @context_id = context_payload["contextId"]
+      @context_id = context_payload["id"]
     end
 
     # @return [Chromiebara::Frame, nil]
@@ -48,7 +48,12 @@ module Chromiebara
     #  * @return {!Promise<(!Object|undefined)>}
     #  */
     def evaluate(page_function, *args, function: false)
-      handle = evaluate_handle page_function, *args, function: function
+      handle =
+        if function
+          evaluate_handle_function page_function, *args
+        else
+          evaluate_handle page_function, *args
+        end
       result = handle.json_value
       # const result = await handle.jsonValue().catch(error => {
       #   if (error.message.includes('Object reference chain is too long'))
@@ -61,64 +66,57 @@ module Chromiebara
       result
     end
 
-    #  * @param {Function|string} pageFunction
-    #  * @param {...*} args
-    #  * @return {!Promise<!JSHandle>}
-    #  */
-    def evaluate_handle(page_function, *args, function: false)
+    def evaluate_handle_function(page_function, *args)
       suffix = "//# sourceURL=#{EVALUATION_SCRIPT_URL}"
+      function_text = page_function
 
-      if !function
-        expression = page_function
-        # TODO
-        expression_with_source_url = SOURCE_URL_REGEX.match?(expression) ? expression : expression + "\n" + suffix;
-        response = await client.command(Protocol::Runtime.evaluate(
-          expression: expression_with_source_url,
-          context_id: context_id,
-          return_by_value: false,
-          await_promise: true,
-          user_gesture: true
-        )).catch { |error| raise 'TODO '}
-
-        if response["exceptionDetails"]
-          # TODO
-          raise 'FAILURE'
+      arguments = args.map do |arg|
+        if arg == "Infinity"
+          { unserializableValue: 'Infinity' }
+        else
+          { value: arg }
         end
-
-        create_js_handle response["result"]
-      else
-        # TODO
+        #   if (typeof arg === 'bigint') // eslint-disable-line valid-typeof
+        #     return { unserializableValue: `${arg.toString()}n` };
+        #   if (Object.is(arg, -0))
+        #     return { unserializableValue: '-0' };
+        #   if (Object.is(arg, Infinity))
+        #     return { unserializableValue: 'Infinity' };
+        #   if (Object.is(arg, -Infinity))
+        #     return { unserializableValue: '-Infinity' };
+        #   if (Object.is(arg, NaN))
+        #     return { unserializableValue: 'NaN' };
+        #   const objectHandle = arg && (arg instanceof JSHandle) ? arg : null;
+        #   if (objectHandle) {
+        #     if (objectHandle._context !== this)
+        #       throw new Error('JSHandles can be evaluated only in the context they were created!');
+        #     if (objectHandle._disposed)
+        #       throw new Error('JSHandle is disposed!');
+        #     if (objectHandle._remoteObject.unserializableValue)
+        #       return { unserializableValue: objectHandle._remoteObject.unserializableValue };
+        #     if (!objectHandle._remoteObject.objectId)
+        #       return { value: objectHandle._remoteObject.value };
+        #     return { objectId: objectHandle._remoteObject.objectId };
+        #   }
+        #   return { value: arg };
       end
 
-      #   const {exceptionDetails, result: remoteObject} = await this._client.send('Runtime.evaluate', {
-      #     contextId,
-      #     userGesture: true
-      #   }).catch(rewriteError);
-      #   if (exceptionDetails)
-      #     throw new Error('Evaluation failed: ' + helper.getExceptionMessage(exceptionDetails));
-      #   return createJSHandle(this, remoteObject);
-      # }
+      response = await client.command(Protocol::Runtime.call_function_on(
+        function_declaration: function_text + "\n" + suffix + "\n",
+        execution_context_id: context_id,
+        arguments: arguments,
+        return_by_value: false,
+        await_promise: true,
+        user_gesture: true
+      )).catch { |error| raise 'TODO' }
 
-      # if (typeof pageFunction !== 'function')
-      #   throw new Error(`Expected to get |string| or |function| as the first argument, but got "${pageFunction}" instead.`);
+      if response["exceptionDetails"]
+        # TODO
+        raise 'FAILURE'
+      end
 
-      # let functionText = pageFunction.toString();
-      # try {
-      #   new Function('(' + functionText + ')');
-      # } catch (e1) {
-      #   // This means we might have a function shorthand. Try another
-      #   // time prefixing 'function '.
-      #   if (functionText.startsWith('async '))
-      #     functionText = 'async function ' + functionText.substring('async '.length);
-      #   else
-      #     functionText = 'function ' + functionText;
-      #   try {
-      #     new Function('(' + functionText  + ')');
-      #   } catch (e2) {
-      #     // We tried hard to serialize, but there's a weird beast here.
-      #     throw new Error('Passed function is not well-serializable!');
-      #   }
-      # }
+      create_js_handle response["result"]
+
       # let callFunctionOnPromise;
       # try {
       #   callFunctionOnPromise = this._client.send('Runtime.callFunctionOn', {
@@ -169,6 +167,30 @@ module Chromiebara
       #   }
       #   return { value: arg };
       # }
+    end
+
+    #  * @param {Function|string} pageFunction
+    #  * @param {...*} args
+    #  * @return {!Promise<!JSHandle>}
+    #  */
+    def evaluate_handle(page_function, *args)
+      suffix = "//# sourceURL=#{EVALUATION_SCRIPT_URL}"
+
+      expression_with_source_url = SOURCE_URL_REGEX.match?(page_function) ? page_function : page_function + "\n" + suffix;
+      response = await client.command(Protocol::Runtime.evaluate(
+        expression: expression_with_source_url,
+        context_id: context_id,
+        return_by_value: false,
+        await_promise: true,
+        user_gesture: true
+      )).catch { |error| raise 'TODO '}
+
+      if response["exceptionDetails"]
+        # TODO
+        raise 'FAILURE'
+      end
+
+      create_js_handle response["result"]
     end
 
     # /**

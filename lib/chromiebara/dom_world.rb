@@ -23,12 +23,11 @@ module Chromiebara
       @_detached = false
     end
 
-    # /**
     #  * @return {boolean}
     #  */
-    # _hasContext() {
-    #   return !this._contextResolveCallback;
-    # }
+    def has_context?
+      !@context.nil?
+    end
 
     # _detach() {
     #   this._detached = true;
@@ -131,45 +130,44 @@ module Chromiebara
     #   return value;
     # }
 
-    # /**
-    #  * @return {!Promise<String>}
-    #  */
-    # async content() {
-    #   return await this.evaluate(() => {
-    #     let retVal = '';
-    #     if (document.doctype)
-    #       retVal = new XMLSerializer().serializeToString(document.doctype);
-    #     if (document.documentElement)
-    #       retVal += document.documentElement.outerHTML;
-    #     return retVal;
-    #   });
-    # }
+    # * @return {!Promise<String>}
+    #
+    def content
+      # return await this.evaluate(() => {
+      #   let retVal = '';
+      #   if (document.doctype)
+      #     retVal = new XMLSerializer().serializeToString(document.doctype);
+      #   if (document.documentElement)
+      #     retVal += document.documentElement.outerHTML;
+      #   return retVal;
+      # });
+    end
 
-    # /**
     #  * @param {string} html
     #  * @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
     #  */
-    # async setContent(html, options = {}) {
-    #   const {
-    #     waitUntil = ['load'],
-    #     timeout = this._timeoutSettings.navigationTimeout(),
-    #   } = options;
-    #   // We rely upon the fact that document.open() will reset frame lifecycle with "init"
-    #   // lifecycle event. @see https://crrev.com/608658
-    #   await this.evaluate(base64html => {
-    #     document.open();
-    #     document.write(atob(base64html));
-    #     document.close();
-    #   }, Buffer.from(html).toString('base64'));
-    #   const watcher = new LifecycleWatcher(this._frameManager, this._frame, waitUntil, timeout);
-    #   const error = await Promise.race([
-    #     watcher.timeoutOrTerminationPromise(),
-    #     watcher.lifecyclePromise(),
-    #   ]);
-    #   watcher.dispose();
-    #   if (error)
-    #     throw error;
-    # }
+    def set_content(html, timeout: nil, wait_until: nil)
+      wait_until = [:load]
+      # timeout = this._timeoutSettings.navigationTimeout(),
+      # We rely upon the fact that document.open() will reset frame lifecycle with "init"
+      # lifecycle event. @see https://crrev.com/608658
+      # TODO make this the funcion version for string quote nightmares
+      evaluate("document.open(); document.write('#{html}'); document.close();")
+      # await this.evaluate(html => {
+      #   document.open();
+      #   document.write(html);
+      #   document.close();
+      # }, html);
+      # const watcher = new LifecycleWatcher(this._frameManager, this._frame, waitUntil, timeout);
+      # const error = await Promise.race([
+      #   watcher.timeoutOrTerminationPromise(),
+      #   watcher.lifecyclePromise(),
+      # ]);
+      # watcher.dispose();
+      # if (error)
+      #   throw error;
+
+    end
 
     # /**
     #  * @param {!{url?: string, path?: string, content?: string, type?: string}} options
@@ -310,16 +308,16 @@ module Chromiebara
     #   }
     # }
 
-    # /**
-    #  * @param {string} selector
-    #  * @param {!{delay?: number, button?: "left"|"right"|"middle", clickCount?: number}=} options
-    #  */
-    # async click(selector, options) {
-    #   const handle = await this.$(selector);
-    #   assert(handle, 'No node found for selector: ' + selector);
-    #   await handle.click(options);
-    #   await handle.dispose();
-    # }
+    # @param {string} selector
+    # @param {!{delay?: number, button?: "left"|"right"|"middle", clickCount?: number}=} options
+    #
+    def click(selector, options)
+      # TODO
+      # const handle = await this.$(selector);
+      # assert(handle, 'No node found for selector: ' + selector);
+      # await handle.click(options);
+      # await handle.dispose();
+    end
 
     # /**
     #  * @param {string} selector

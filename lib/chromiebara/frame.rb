@@ -22,7 +22,7 @@ module Chromiebara
       # /** @type {!DOMWorld} */
       @main_world =  DOMWorld.new frame_manager, self#, frameManager._timeoutSettings
       # /** @type {!DOMWorld} */
-      # this._secondaryWorld = new DOMWorld(frameManager, this, frameManager._timeoutSettings);
+      @_secondary_world = DOMWorld.new frame_manager, self#, frameManager._timeoutSettings);
 
       # /** @type {!Set<!Frame>} */
       @child_frames = Set.new
@@ -121,20 +121,18 @@ module Chromiebara
   #   return this._mainWorld.$$(selector);
   # }
 
-  # /**
-  #  * @return {!Promise<String>}
-  #  */
-  # async content() {
-  #   return this._secondaryWorld.content();
-  # }
+    #  @return {!Promise<String>}
+    #
+    def content
+      return @_secondary_world.content
+    end
 
-  # /**
-  #  * @param {string} html
-  #  * @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
-  #  */
-  # async setContent(html, options = {}) {
-  #   return this._secondaryWorld.setContent(html, options);
-  # }
+    # @param {string} html
+    # @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
+    #
+    def set_content(html, timeout: nil, wait_until: nil)
+      @_secondary_world.set_content html, timeout: timeout, wait_until: wait_until
+    end
 
   # /**
   #  * @return {string}
@@ -188,13 +186,12 @@ module Chromiebara
   #   return this._mainWorld.addStyleTag(options);
   # }
 
-  # /**
-  #  * @param {string} selector
-  #  * @param {!{delay?: number, button?: "left"|"right"|"middle", clickCount?: number}=} options
-  #  */
-  # async click(selector, options) {
-  #   return this._secondaryWorld.click(selector, options);
-  # }
+    # @param {string} selector
+    # @param {!{delay?: number, button?: "left"|"right"|"middle", clickCount?: number}=} options
+    #
+    def click(selector, options)
+      @_secondary_world.click selector, options
+    end
 
   # /**
   #  * @param {string} selector
