@@ -592,20 +592,18 @@ module Chromiebara
   #   return this.mainFrame().url();
   # }
 
-  # /**
-  #  * @return {!Promise<string>}
-  #  */
-  # async content() {
-  #   return await this._frameManager.mainFrame().content();
-  # }
+    # * @return {!Promise<string>}
+    #
+    def content
+      frame_manager.main_frame.content
+    end
 
-  # /**
-  #  * @param {string} html
-  #  * @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
-  #  */
-  # async setContent(html, options) {
-  #   await this._frameManager.mainFrame().setContent(html, options);
-  # }
+    # @param {string} html
+    # @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
+    #
+    def set_content(html, timeout: nil, wait_until: nil)
+      frame_manager.main_frame.set_content html, timeout: timeout, wait_until: wait_until
+    end
 
     # @param [String] url
     # TODO
@@ -963,13 +961,12 @@ module Chromiebara
   #   return this._mouse;
   # }
 
-  # /**
-  #  * @param {string} selector
-  #  * @param {!{delay?: number, button?: "left"|"right"|"middle", clickCount?: number}=} options
-  #  */
-  # click(selector, options = {}) {
-  #   return this.mainFrame().click(selector, options);
-  # }
+    # @param {string} selector
+    # @param {!{delay?: number, button?: "left"|"right"|"middle", clickCount?: number}=} options
+    #
+    def click(selector, options = {})
+      main_frame.click selector, options
+    end
 
   # /**
   #  * @param {string} selector

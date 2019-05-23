@@ -34,7 +34,6 @@ module Chromiebara
       # this._client.on('Page.frameDetached', event => this._onFrameDetached(event.frameId));
       client.on Protocol::Page.frame_stopped_loading, -> (event) { on_frame_stopped_loading event["frameId"] }
       client.on Protocol::Runtime.execution_context_created, -> (event) { on_execution_context_created event["context"] }
-      # this._client.on('Runtime.executionContextCreated', event => this._onExecutionContextCreated(event.context));
       # this._client.on('Runtime.executionContextDestroyed', event => this._onExecutionContextDestroyed(event.executionContextId));
       # this._client.on('Runtime.executionContextsCleared', event => this._onExecutionContextsCleared());
       client.on 'Page.lifecycleEvent', method(:on_lifecycle_event)
@@ -387,19 +386,18 @@ module Chromiebara
         if frame
           if context_payload.dig "auxData", "isDefault"
             world = frame.main_world
-          elsif false
-          # else if (contextPayload.name === UTILITY_WORLD_NAME && !frame._secondaryWorld._hasContext()) {
-            # TODO
-          #   // In case of multiple sessions to the same target, there's a race between
-          #   // connections so we might end up creating multiple isolated worlds.
-          #   // We can use either.
-          #   world = frame._secondaryWorld;
+          elsif context_payload["name"] == UTILITY_WORLD_NAME && !frame.instance_variable_get(:@_secondary_world).has_context?
+            # In case of multiple sessions to the same target, there's a race between
+            # connections so we might end up creating multiple isolated worlds.
+            # We can use either.
+            world = frame.instance_variable_get(:@_secondary_world)
           end
         end
         if context_payload["auxData"] && context_payload.dig("auxData", "type") == 'isolated'
           @_isolated_worlds.add context_payload["name"]
         end
         context = ExecutionContext.new client, context_payload, world
+        puts world.object_id
         world.send(:set_context, context) if world
         @_execution_contexts[context_payload["id"]] = context
       end

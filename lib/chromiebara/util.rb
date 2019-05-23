@@ -6,22 +6,20 @@ module Chromiebara
       byebug if remote_object["objectId"]
       raise "Cannot extract value when objectId is given" if remote_object["objectId"]
       if remote_object["unserializableValue"]
-        raise 'TODO'
-        # if (remoteObject.unserializableValue) {
-        #   if (remoteObject.type === 'bigint' && typeof BigInt !== 'undefined')
-        #     return BigInt(remoteObject.unserializableValue.replace('n', ''));
-        #   switch (remoteObject.unserializableValue) {
-        #     case '-0':
-        #       return -0;
-        #     case 'NaN':
-        #       return NaN;
-        #     case 'Infinity':
-        #       return Infinity;
-        #     case '-Infinity':
-        #       return -Infinity;
-        #     default:
-        #       throw new Error('Unsupported unserializable value: ' + remoteObject.unserializableValue);
-        #   }
+        # if (remoteObject.type === 'bigint' && typeof BigInt !== 'undefined')
+        #   return BigInt(remoteObject.unserializableValue.replace('n', ''));
+        case remote_object["unserializableValue"]
+        when '-0'
+          raise 'TODO'
+        when 'NaN'
+          raise 'TODO'
+        when 'Infinity'
+          raise 'TODO'
+        when '-Infinity'
+          raise 'TODO'
+        else
+          raise "Unsupported unserializable value #{remote_object["unserializableValue"]}"
+        end
       end
       return remote_object["value"]
     end
