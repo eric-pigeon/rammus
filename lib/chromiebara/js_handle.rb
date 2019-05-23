@@ -1,3 +1,5 @@
+require 'chromiebara/util'
+
 module Chromiebara
   # JSHandle represents an in-page JavaScript object. JSHandles can be created
   # with the page.evaluateHandle method.
@@ -72,10 +74,10 @@ module Chromiebara
           return_by_value: true,
           await_promise: true
         )
-        value_from_remote_object response["result"]
+        return Util.value_from_remote_object response["result"]
       end
 
-      value_from_remote_object remote_object
+      Util.value_from_remote_object remote_object
     end
 
     # /**
@@ -110,32 +112,5 @@ module Chromiebara
     #   }
     #   return 'JSHandle:' + helper.valueFromRemoteObject(this._remoteObject);
     # }
-
-    private
-
-      # [Protocol.Runtime.RemoteObject] remote_object
-      #
-      def value_from_remote_object(remote_object)
-        raise "Cannot extract value when objectId is given" if remote_object["objectId"]
-        if remote_object["unserializableValue"]
-          raise 'TODO'
-        # if (remoteObject.unserializableValue) {
-        #   if (remoteObject.type === 'bigint' && typeof BigInt !== 'undefined')
-        #     return BigInt(remoteObject.unserializableValue.replace('n', ''));
-        #   switch (remoteObject.unserializableValue) {
-        #     case '-0':
-        #       return -0;
-        #     case 'NaN':
-        #       return NaN;
-        #     case 'Infinity':
-        #       return Infinity;
-        #     case '-Infinity':
-        #       return -Infinity;
-        #     default:
-        #       throw new Error('Unsupported unserializable value: ' + remoteObject.unserializableValue);
-        #   }
-        end
-        return remote_object["value"];
-      end
   end
 end

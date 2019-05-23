@@ -59,7 +59,12 @@ module Chromiebara
           when RESOLVED
             return @_value
           when REJECTED
-            raise UnhandledRejection.new @_value
+            # TODO add test for reasing @_value if its an exception instead of UnhandledRejection
+            if @_value.is_a? Exception
+              raise @_value
+            else
+              raise UnhandledRejection.new @_value
+            end
           end
 
           to_wait = deadline - current_time

@@ -207,6 +207,7 @@ module Chromiebara
       #
       def create_js_handle(remote_object)
         if remote_object["subtype"] == "node" && frame
+          raise 'TODO'
           # const frameManager = frame._frameManager;
           # return new ElementHandle(context, context._client, remoteObject, frameManager.page(), frameManager);
         end

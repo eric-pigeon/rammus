@@ -29,10 +29,10 @@ module Chromiebara
     def command(command)
       @command_mutex.synchronize do
         comamnd_id = next_command_id
-        command = command.merge(id: comamnd_id).to_json
 
         Promise.new do |resolve, reject|
           @_command_callbacks[comamnd_id] = CommandCallback.new(resolve, reject, command["method"])
+          command = command.merge(id: comamnd_id).to_json
           ProtocolLogger.puts_command command
           web_socket.send_message command: command
         end

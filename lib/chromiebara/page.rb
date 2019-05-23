@@ -309,8 +309,8 @@ module Chromiebara
     #
     # @return [Array<Chromiebara::Network::Cookie>]
     #
-    def cookies(urls = nil)
-      urls ||= [url]
+    def cookies(*urls)
+      urls = urls.length.zero? ? nil : urls
       response = await client.command Protocol::Network.get_cookies urls: urls
       response["cookies"]
     end
@@ -321,8 +321,8 @@ module Chromiebara
     page_url = url
     cookies.each do |cookie|
       cookie ||= {}
-      if !cookie.has_key?("url") && page_url.start_with?("http")
-        cookie["url"] = page_url
+      if !cookie.has_key?(:url) && page_url.start_with?("http")
+        cookie[:url] = page_url
       end
       # TODO Hash#transform_keys was added in ruby 2.5
       cookie = cookie.map do |key, value|
@@ -340,14 +340,14 @@ module Chromiebara
     page_url = url
     starts_with_http = page_url.start_with? 'http'
     cookies = cookies.map do |cookie|
-      if !cookie.has_key? "url" && starts_with_http
-        cookie["url"] = page_url
-        if cookie["url"] == "about:blank"
-          raise "Blank page can not have a cookie #{cookie["name"]}"
-        end
-        if cookie["url"].start_with? "data:"
-          raise "Data URL can not have cookie #{cookie["name"]}"
-        end
+      if !cookie.has_key?(:url) && starts_with_http
+        cookie[:url] = page_url
+      end
+      if cookie[:url] == "about:blank"
+        raise "Blank page can not have cookie \"#{cookie[:name]}\""
+      end
+      if cookie[:url] && cookie[:url].start_with?("data:")
+        raise "Data URL can not have cookie \"#{cookie[:name]}\""
       end
       cookie
     end
