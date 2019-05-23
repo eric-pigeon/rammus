@@ -29,7 +29,7 @@ module Chromiebara
         # command ids are unique per session, so just make this class
         # responsible for the id
         Promise.new do |resolve, reject|
-          @_command_callbacks[command_id] = CommandCallback.new(resolve, reject, command["method"])
+          @_command_callbacks[command_id] = CommandCallback.new(resolve, reject, command[:method])
         end
       end
     end
@@ -43,7 +43,7 @@ module Chromiebara
           ProtocolLogger.puts_command_response message
           @_command_callbacks.delete message["id"]
           if message["error"]
-            raise 'todo'
+            callback.reject.(create_protocol_error callback.method, message)
           else
             callback.resolve.(message["result"])
           end
@@ -59,6 +59,17 @@ module Chromiebara
         # this._callbacks.clear();
         # this._connection = null;
         # this.emit(Events.CDPSession.Disconnected);
+      end
+
+      # @param [String] method
+      # @param [Hash] object
+      #
+      def create_protocol_error(method, object)
+        message = "Protocol error (#{method}): #{object.dig("error", "message")}"
+        # TODO
+        # if ('data' in object.error)
+        #   message += ` ${object.error.data}`;
+        ProtocolError.new message
       end
   end
 end

@@ -4,6 +4,8 @@ require 'set'
 require 'concurrent'
 
 module Chromiebara
+  class ProtocolError < StandardError; end
+
   require 'chromiebara/event_emitter'
   require 'chromiebara/promise'
 
