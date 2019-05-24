@@ -14,9 +14,9 @@ module Chromiebara
         when 'NaN'
           raise 'TODO'
         when 'Infinity'
-          raise 'TODO'
+          return Float::INFINITY
         when '-Infinity'
-          raise 'TODO'
+          return -Float::INFINITY
         else
           raise "Unsupported unserializable value #{remote_object["unserializableValue"]}"
         end

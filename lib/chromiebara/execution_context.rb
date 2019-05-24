@@ -1,4 +1,5 @@
 require 'chromiebara/js_handle'
+require 'chromiebara/element_handle'
 
 module Chromiebara
   # The class represents a context for JavaScript execution. A Page might hav
@@ -36,13 +37,6 @@ module Chromiebara
       world.nil? ? nil : world.frame
     end
 
-    # /**
-    #  * @return {?Puppeteer.Frame}
-    #  */
-    # frame() {
-    #   return this._world ? this._world.frame() : null;
-    # }
-
     #  * @param {Function|string} pageFunction
     #  * @param {...*} args
     #  * @return {!Promise<(!Object|undefined)>}
@@ -71,11 +65,29 @@ module Chromiebara
       function_text = page_function
 
       arguments = args.map do |arg|
-        if arg == "Infinity"
-          { unserializableValue: 'Infinity' }
-        else
-          { value: arg }
+        if arg == Float::INFINITY then next { unserializableValue: 'Infinity' } end
+        if arg == -Float::INFINITY then next { unserializableValue: '-Infinity' } end
+
+        object_handle = arg && arg.is_a?(JSHandle) ? arg : nil
+        if object_handle
+          if object_handle.context != self
+           raise 'JSHandles can be evaluated only in the context they were created!'
+          end
+          if object_handle.disposed?
+            raise 'JSHandle is disposed!'
+          end
+          if object_handle.remote_object["unserializable_value"]
+            raise 'TODO'
+            # return { unserializableValue: objectHandle._remoteObject.unserializableValue };
+          end
+          if !object_handle.remote_object["objectId"]
+            raise 'TODO'
+          #  return { value: objectHandle._remoteObject.value };
+          end
+          next { objectId: object_handle.remote_object["objectId"] }
         end
+
+        { value: arg }
         #   if (typeof arg === 'bigint') // eslint-disable-line valid-typeof
         #     return { unserializableValue: `${arg.toString()}n` };
         #   if (Object.is(arg, -0))
@@ -86,19 +98,6 @@ module Chromiebara
         #     return { unserializableValue: '-Infinity' };
         #   if (Object.is(arg, NaN))
         #     return { unserializableValue: 'NaN' };
-        #   const objectHandle = arg && (arg instanceof JSHandle) ? arg : null;
-        #   if (objectHandle) {
-        #     if (objectHandle._context !== this)
-        #       throw new Error('JSHandles can be evaluated only in the context they were created!');
-        #     if (objectHandle._disposed)
-        #       throw new Error('JSHandle is disposed!');
-        #     if (objectHandle._remoteObject.unserializableValue)
-        #       return { unserializableValue: objectHandle._remoteObject.unserializableValue };
-        #     if (!objectHandle._remoteObject.objectId)
-        #       return { value: objectHandle._remoteObject.value };
-        #     return { objectId: objectHandle._remoteObject.objectId };
-        #   }
-        #   return { value: arg };
       end
 
       response = await client.command(Protocol::Runtime.call_function_on(
@@ -229,9 +228,8 @@ module Chromiebara
       #
       def create_js_handle(remote_object)
         if remote_object["subtype"] == "node" && frame
-          raise 'TODO'
-          # const frameManager = frame._frameManager;
-          # return new ElementHandle(context, context._client, remoteObject, frameManager.page(), frameManager);
+          frame_manager = frame.frame_manager
+          return ElementHandle.new self, client, remote_object, frame_manager.page, frame_manager
         end
 
         JSHandle.new(self, self.client, remote_object)

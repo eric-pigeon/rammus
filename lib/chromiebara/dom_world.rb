@@ -21,6 +21,7 @@ module Chromiebara
       # /** @type {!Set<!WaitTask>} */
       # this._waitTasks = new Set();
       @_detached = false
+      @context = nil
     end
 
     #  * @return {boolean}
@@ -64,28 +65,28 @@ module Chromiebara
       execution_context.evaluate function, *args
     end
 
-    # /**
-    #  * @param {string} selector
-    #  * @return {!Promise<?Puppeteer.ElementHandle>}
-    #  */
-    # async $(selector) {
+    # @param {string} selector
+    # @return {!Promise<?Puppeteer.ElementHandle>}
+    #
+    def query_selector(selector)
+      document.query_selector selector
     #   const document = await this._document();
     #   const value = await document.$(selector);
     #   return value;
-    # }
+    end
 
-    # /**
-    #  * @return {!Promise<!Puppeteer.ElementHandle>}
-    #  */
-    # async _document() {
-    #   if (this._documentPromise)
-    #     return this._documentPromise;
-    #   this._documentPromise = this.executionContext().then(async context => {
-    #     const document = await context.evaluateHandle('document');
-    #     return document.asElement();
-    #   });
-    #   return this._documentPromise;
-    # }
+    # @return {!Promise<!Puppeteer.ElementHandle>}
+    #
+    def document
+      execution_context.evaluate_handle('document').as_element
+      # if (this._documentPromise)
+      #   return this._documentPromise;
+      # this._documentPromise = this.executionContext().then(async context => {
+      #   const document = await context.evaluateHandle('document');
+      #   return document.asElement();
+      # });
+      # return this._documentPromise;
+    end
 
     # /**
     #  * @param {string} expression
@@ -312,11 +313,10 @@ module Chromiebara
     # @param {!{delay?: number, button?: "left"|"right"|"middle", clickCount?: number}=} options
     #
     def click(selector, options)
-      # TODO
-      # const handle = await this.$(selector);
-      # assert(handle, 'No node found for selector: ' + selector);
-      # await handle.click(options);
-      # await handle.dispose();
+      handle = query_selector selector
+      raise "No node found for selector: #{selector}" if handle.nil?
+      handle.click options
+      handle.dispose
     end
 
     # /**
@@ -489,6 +489,7 @@ module Chromiebara
           #     for (const waitTask of this._waitTasks)
           #       waitTask.rerun();
         else
+          @context = nil
           #     this._documentPromise = null;
           #     this._contextPromise = new Promise(fulfill => {
           #       this._contextResolveCallback = fulfill;

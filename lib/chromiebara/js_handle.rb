@@ -26,12 +26,15 @@ module Chromiebara
       @_disposed = false
     end
 
-    # /**
-    #  * @return {!Puppeteer.ExecutionContext}
+    # @return {!Puppeteer.ExecutionContext}
     #  */
-    # executionContext() {
-    #   return this._context;
-    # }
+    def execution_context
+      @context
+    end
+
+    def disposed?
+      @_disposed
+    end
 
     # /**
     #  * @param {string} propertyName
