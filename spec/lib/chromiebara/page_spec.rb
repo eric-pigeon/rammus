@@ -556,15 +556,16 @@ module Chromiebara
           expect(result).to eq 0
         end
 
-        it 'should transfer Infinity' do
-          result = page.evaluate('a => a', 'Infinity', function: true);
-          expect(result).to eq "Infinity"
+        it 'should transfer Float::INFINITY' do
+          result = page.evaluate('a => a', Float::INFINITY, function: true);
+          expect(result).to eq Float::INFINITY
         end
 
-        #it('should transfer -Infinity', async({page, server}) => {
-        #  const result = await page.evaluate(a => a, -Infinity);
-        #  expect(Object.is(result, -Infinity)).toBe(true);
-        #});
+        it 'should transfer -Float::INFINITY' do
+          result = page.evaluate('a => a', -Float::INFINITY, function: true);
+          expect(result).to eq(-Float::INFINITY)
+        end
+
         #it('should transfer arrays', async({page, server}) => {
         #  const result = await page.evaluate(a => a, [1, 2, 3]);
         #  expect(result).toEqual([1,2,3]);

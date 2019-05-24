@@ -34,8 +34,8 @@ module Chromiebara
       # this._client.on('Page.frameDetached', event => this._onFrameDetached(event.frameId));
       client.on Protocol::Page.frame_stopped_loading, -> (event) { on_frame_stopped_loading event["frameId"] }
       client.on Protocol::Runtime.execution_context_created, -> (event) { on_execution_context_created event["context"] }
-      # this._client.on('Runtime.executionContextDestroyed', event => this._onExecutionContextDestroyed(event.executionContextId));
-      # this._client.on('Runtime.executionContextsCleared', event => this._onExecutionContextsCleared());
+      client.on Protocol::Runtime.execution_context_destroyed, -> (event) { on_execution_context_destroyed(event["executionContextId"]) }
+      client.on Protocol::Runtime.execution_contexts_cleared, method(:on_execution_contexts_cleared)
       client.on 'Page.lifecycleEvent', method(:on_lifecycle_event)
     end
 
@@ -236,26 +236,6 @@ module Chromiebara
     # }
 
     # /**
-    #  * @param {number} executionContextId
-    #  */
-    # _onExecutionContextDestroyed(executionContextId) {
-    #   const context = this._contextIdToContext.get(executionContextId);
-    #   if (!context)
-    #     return;
-    #   this._contextIdToContext.delete(executionContextId);
-    #   if (context._world)
-    #     context._world._setContext(null);
-    # }
-
-    # _onExecutionContextsCleared() {
-    #   for (const context of this._contextIdToContext.values()) {
-    #     if (context._world)
-    #       context._world._setContext(null);
-    #   }
-    #   this._contextIdToContext.clear();
-    # }
-
-    # /**
     #  * @param {number} contextId
     #  * @return {!ExecutionContext}
     #  */
@@ -315,7 +295,6 @@ module Chromiebara
         )
       end
 
-
       def on_frame_navigated(frame_payload)
         is_main_frame = !frame_payload.has_key?("parentId")
         frame = is_main_frame ? @_main_frame : @_frames.fetch(frame_payload["id"])
@@ -347,7 +326,7 @@ module Chromiebara
         #   this.emit(Events.FrameManager.FrameNavigated, frame);
       end
 
-      #  * @param {!Protocol.Page.lifecycleEventPayload} event
+      # @param {!Protocol.Page.lifecycleEventPayload} event
       #
       # TODO
       def on_lifecycle_event(event)
@@ -397,9 +376,25 @@ module Chromiebara
           @_isolated_worlds.add context_payload["name"]
         end
         context = ExecutionContext.new client, context_payload, world
-        puts world.object_id
         world.send(:set_context, context) if world
         @_execution_contexts[context_payload["id"]] = context
+      end
+
+      #  @param {number} executionContextId
+      #
+      def on_execution_context_destroyed(execution_context_id)
+        context = @_execution_contexts.delete(execution_context_id)
+        if context.world
+          context.world.send(:set_context, nil)
+        end
+      end
+
+      def on_execution_contexts_cleared(*)
+        @_execution_contexts.values.each do |context|
+          context.world.send(:set_context, nil) if context.world
+        end
+
+        @_execution_contexts.clear
       end
   end
 end
