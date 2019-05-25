@@ -46,63 +46,6 @@ module Chromiebara
     #  return this._frameManager.frame(nodeInfo.node.frameId);
     #}
 
-    #async _scrollIntoViewIfNeeded() {
-    #  const error = await this.executionContext().evaluate(async(element, pageJavascriptEnabled) => {
-    #    if (!element.isConnected)
-    #      return 'Node is detached from document';
-    #    if (element.nodeType !== Node.ELEMENT_NODE)
-    #      return 'Node is not of type HTMLElement';
-    #    // force-scroll if page's javascript is disabled.
-    #    if (!pageJavascriptEnabled) {
-    #      element.scrollIntoView({block: 'center', inline: 'center', behavior: 'instant'});
-    #      return false;
-    #    }
-    #    const visibleRatio = await new Promise(resolve => {
-    #      const observer = new IntersectionObserver(entries => {
-    #        resolve(entries[0].intersectionRatio);
-    #        observer.disconnect();
-    #      });
-    #      observer.observe(element);
-    #    });
-    #    if (visibleRatio !== 1.0)
-    #      element.scrollIntoView({block: 'center', inline: 'center', behavior: 'instant'});
-    #    return false;
-    #  }, this, this._page._javascriptEnabled);
-    #  if (error)
-    #    throw new Error(error);
-    #}
-
-    #/**
-    # * @return {!Promise<!{x: number, y: number}>}
-    # */
-    #async _clickablePoint() {
-    #  const [result, layoutMetrics] = await Promise.all([
-    #    this._client.send('DOM.getContentQuads', {
-    #      objectId: this._remoteObject.objectId
-    #    }).catch(debugError),
-    #    this._client.send('Page.getLayoutMetrics'),
-    #  ]);
-    #  if (!result || !result.quads.length)
-    #    throw new Error('Node is either not visible or not an HTMLElement');
-    #  // Filter out quads that have too small area to click into.
-    #  const {clientWidth, clientHeight} = layoutMetrics.layoutViewport;
-    #  const quads = result.quads.map(quad => this._fromProtocolQuad(quad)).map(quad => this._intersectQuadWithViewport(quad, clientWidth, clientHeight)).filter(quad => computeQuadArea(quad) > 1);
-    #  if (!quads.length)
-    #    throw new Error('Node is either not visible or not an HTMLElement');
-    #  // Return the middle point of the first quad.
-    #  const quad = quads[0];
-    #  let x = 0;
-    #  let y = 0;
-    #  for (const point of quad) {
-    #    x += point.x;
-    #    y += point.y;
-    #  }
-    #  return {
-    #    x: x / 4,
-    #    y: y / 4
-    #  };
-    #}
-
     #/**
     # * @return {!Promise<void|Protocol.DOM.getBoxModelReturnValue>}
     # */
@@ -112,46 +55,19 @@ module Chromiebara
     #  }).catch(error => debugError(error));
     #}
 
-    #/**
-    # * @param {!Array<number>} quad
-    # * @return {!Array<{x: number, y: number}>}
-    # */
-    #_fromProtocolQuad(quad) {
-    #  return [
-    #    {x: quad[0], y: quad[1]},
-    #    {x: quad[2], y: quad[3]},
-    #    {x: quad[4], y: quad[5]},
-    #    {x: quad[6], y: quad[7]}
-    #  ];
-    #}
-
-    #/**
-    # * @param {!Array<{x: number, y: number}>} quad
-    # * @param {number} width
-    # * @param {number} height
-    # * @return {!Array<{x: number, y: number}>}
-    # */
-    #_intersectQuadWithViewport(quad, width, height) {
-    #  return quad.map(point => ({
-    #    x: Math.min(Math.max(point.x, 0), width),
-    #    y: Math.min(Math.max(point.y, 0), height),
-    #  }));
-    #}
-
     #async hover() {
     #  await this._scrollIntoViewIfNeeded();
     #  const {x, y} = await this._clickablePoint();
     #  await this._page.mouse.move(x, y);
     #}
 
-    #/**
     # * @param {!{delay?: number, button?: "left"|"right"|"middle", clickCount?: number}=} options
-    # */
-    #async click(options) {
-    #  await this._scrollIntoViewIfNeeded();
-    #  const {x, y} = await this._clickablePoint();
-    #  await this._page.mouse.click(x, y, options);
-    #}
+    #
+    def click(options)
+      scroll_into_view_if_needed
+      point = clickable_point
+      page.mouse.click(point[:x], point[:y], options)
+    end
 
     #/**
     # * @param {!Array<string>} filePaths
@@ -388,5 +304,108 @@ module Chromiebara
     #    return visibleRatio > 0;
     #  }, this);
     #}
+
+    private
+
+      def scroll_into_view_if_needed
+        function = <<~JAVASCRIPT
+          async(element, pageJavascriptEnabled) => {
+            if (!element.isConnected)
+              return 'Node is detached from document';
+            if (element.nodeType !== Node.ELEMENT_NODE)
+              return 'Node is not of type HTMLElement';
+            // force-scroll if page's javascript is disabled.
+            if (!pageJavascriptEnabled) {
+              element.scrollIntoView({block: 'center', inline: 'center', behavior: 'instant'});
+              return false;
+            }
+            const visibleRatio = await new Promise(resolve => {
+              const observer = new IntersectionObserver(entries => {
+                resolve(entries[0].intersectionRatio);
+                observer.disconnect();
+              });
+              observer.observe(element);
+            });
+            if (visibleRatio !== 1.0)
+              element.scrollIntoView({block: 'center', inline: 'center', behavior: 'instant'});
+            return false;
+          }
+        JAVASCRIPT
+        error = execution_context.evaluate function, self, page.javascript_enabled, function: true
+        raise 'TODO' if error
+      end
+
+      # @return {!Promise<!{x: number, y: number}>}
+      #
+      def clickable_point
+        result, layout_metrics = await Promise.all(
+          client.command(Protocol::DOM.get_content_quads object_id: remote_object["objectId"]),
+          client.command(Protocol::Page.get_layout_metrics)
+        )
+
+        if !result || !result.fetch("quads", []).length
+          rasie 'Node is either not visible or not an HTMLElement'
+        end
+
+        # Filter out quads that have too small area to click into.
+        client_width = layout_metrics.dig "layoutViewport", "clientWidth"
+        client_height = layout_metrics.dig "layoutViewport", "clientHeight"
+
+        quads = result["quads"]
+          .map { |quad| from_protocol_quad quad }
+          .map { |quad| intersect_quad_with_viewport quad, client_width, client_height }
+          .select { |quad| compute_quad_area(quad) > 1 }
+
+        raise 'Node is either not visible or not an HTMLElement' if quads.length.zero?
+
+        # Return the middle point of the first quad.
+        quad = quads[0]
+        x, y = 0, 0
+
+        quad.each do |point|
+          x += point[:x]
+          y += point[:y]
+        end
+
+        { x: x / 4, y: y / 4 }
+      end
+
+      # @param {!Array<number>} quad
+      # @return {!Array<{x: number, y: number}>}
+      #/
+      def from_protocol_quad(quad)
+        [
+          { x: quad[0], y: quad[1] },
+          { x: quad[2], y: quad[3] },
+          { x: quad[4], y: quad[5] },
+          { x: quad[6], y: quad[7] }
+        ]
+      end
+
+      # @param {!Array<{x: number, y: number}>} quad
+      # @param {number} width
+      # @param {number} height
+      # @return {!Array<{x: number, y: number}>}
+      #
+      def intersect_quad_with_viewport(quad, width, height)
+        quad.map do |point|
+          {
+            x: [[point[:x], 0].max, width].min,
+            y: [[point[:y], 0].max, height].min
+          }
+        end
+      end
+
+      def compute_quad_area(quad)
+        # Compute sum of all directed areas of adjacent triangles
+        # https://en.wikipedia.org/wiki/Polygon#Simple_polygons
+        area = 0;
+        quad.length.times do |i|
+          p1 = quad[i]
+          p2 = quad[(i + 1) % quad.length]
+          area += (p1[:x] * p2[:y] - p2[:x] * p1[:y]) / 2;
+        end
+        area.abs
+      end
   end
 end

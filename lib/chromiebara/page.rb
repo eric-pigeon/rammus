@@ -1,10 +1,13 @@
+require 'chromiebara/keyboard'
+require 'chromiebara/mouse'
+
 module Chromiebara
   class Page
     include Promise::Await
     extend Promise::Await
     extend Forwardable
 
-    attr_reader :target, :frame_manager
+    attr_reader :target, :frame_manager, :javascript_enabled, :keyboard, :mouse
     delegate [:url] => :main_frame
 
     def self.create(target, default_viewport: nil)
@@ -26,8 +29,8 @@ module Chromiebara
       @_closed = false
       # this._client = client;
       @target = target
-      # this._keyboard = new Keyboard(client);
-      # this._mouse = new Mouse(client, this._keyboard);
+      @keyboard = Keyboard.new client
+      @mouse =  Mouse.new client, keyboard
       # this._timeoutSettings = new TimeoutSettings();
       # this._touchscreen = new Touchscreen(client, this._keyboard);
       # this._accessibility = new Accessibility(client);
@@ -38,7 +41,7 @@ module Chromiebara
       # /** @type {!Map<string, Function>} */
       # this._pageBindings = new Map();
       # this._coverage = new Coverage(client);
-      # this._javascriptEnabled = true;
+      @javascript_enabled = true
       # /** @type {?Puppeteer.Viewport} */
       # this._viewport = null;
 
@@ -152,17 +155,6 @@ module Chromiebara
       target.browser
     end
 
-  # /**
-  #  * @return {!Puppeteer.BrowserContext}
-  #  */
-  # browserContext() {
-
-  # /**
-  #  * @return {!Keyboard}
-  #  */
-  # get keyboard() {
-  #   return this._keyboard;
-  # }
 
   # /**
   #  * @return {!Touchscreen}
@@ -948,13 +940,6 @@ module Chromiebara
   #  */
   # isClosed() {
   #   return this._closed;
-  # }
-
-  # /**
-  #  * @return {!Mouse}
-  #  */
-  # get mouse() {
-  #   return this._mouse;
   # }
 
     # @param {string} selector
