@@ -1,5 +1,9 @@
+require 'chromiebara/key_definitions'
+
 module Chromiebara
   class Keyboard
+    include Promise::Await
+
     attr_reader :client, :modifiers
 
     # @param {!Puppeteer.CDPSession} client
@@ -10,148 +14,152 @@ module Chromiebara
       @_pressed_keys = Set.new
     end
 
-    #/**
-    # * @param {string} key
-    # * @param {{text?: string}=} options
-    # */
-    #async down(key, options = { text: undefined }) {
-    #  const description = this._keyDescriptionForString(key);
+    # @param {string} key
+    # @param {{text?: string}=} options
+    #
+    def down(key, text: nil)
+      description = key_description_for_string key
 
-    #  const autoRepeat = this._pressedKeys.has(description.code);
-    #  this._pressedKeys.add(description.code);
-    #  this._modifiers |= this._modifierBit(description.key);
+      auto_repeat = @_pressed_keys.include? description[:code]
+      @_pressed_keys << description[:code]
+      @modifiers |= modifier_bit description[:key]
 
-    #  const text = options.text === undefined ? description.text : options.text;
-    #  await this._client.send('Input.dispatchKeyEvent', {
-    #    type: text ? 'keyDown' : 'rawKeyDown',
-    #    modifiers: this._modifiers,
-    #    windowsVirtualKeyCode: description.keyCode,
-    #    code: description.code,
-    #    key: description.key,
-    #    text: text,
-    #    unmodifiedText: text,
-    #    autoRepeat,
-    #    location: description.location,
-    #    isKeypad: description.location === 3
-    #  });
-    #}
+      text ||= description[:text]
+
+      await client.command(Protocol::Input.dispatch_key_event(
+        type: text ? 'keyDown' : 'rawKeyDown',
+        modifiers: modifiers,
+        windows_virtual_key_code: description[:key_code],
+        code: description[:code],
+        key: description[:key],
+        text: text,
+        unmodified_text: text,
+        auto_repeat: auto_repeat,
+        location: description[:location],
+        is_keypad: description[:location] == 3
+      ))
+    end
 
     # @param {string} key
-    # @return {number}
     #
-    #_modifierBit(key) {
-    #  if (key === 'Alt')
-    #    return 1;
-    #  if (key === 'Control')
-    #    return 2;
-    #  if (key === 'Meta')
-    #    return 4;
-    #  if (key === 'Shift')
-    #    return 8;
-    #  return 0;
-    #}
+    def up(key)
+      description = key_description_for_string key
 
-    #/**
-    # * @param {string} keyString
-    # * @return {KeyDescription}
-    # */
-    #_keyDescriptionForString(keyString) {
-    #  const shift = this._modifiers & 8;
-    #  const description = {
-    #    key: '',
-    #    keyCode: 0,
-    #    code: '',
-    #    text: '',
-    #    location: 0
-    #  };
+      @modifiers |= modifier_bit description[:key]
+      @_pressed_keys.delete description[:code]
 
-    #  const definition = keyDefinitions[keyString];
-    #  assert(definition, `Unknown key: "${keyString}"`);
+      await client.command(Protocol::Input.dispatch_key_event(
+        type: 'keyUp',
+        modifiers: modifiers,
+        key: description[:key],
+        windows_virtual_key_code: description[:key_code],
+        code: description[:code],
+        location: description[:location]
+      ))
+    end
 
-    #  if (definition.key)
-    #    description.key = definition.key;
-    #  if (shift && definition.shiftKey)
-    #    description.key = definition.shiftKey;
+    # @param {string} char
+    #
+    def sendCharacter(char)
+      await client.command(Protocol::Input.insert_text text: char)
+    end
 
-    #  if (definition.keyCode)
-    #    description.keyCode = definition.keyCode;
-    #  if (shift && definition.shiftKeyCode)
-    #    description.keyCode = definition.shiftKeyCode;
+    # @param {string} text
+    # @param {{delay: (number|undefined)}=} options
+    #
+    def type(text, delay: 0)
+      text.chars.each do |char|
+        if KEY_DEFINITIONS[char]
+          press char, { delay: delay }
+        else
+          send_character char
+        end
+        # if (delay)
+        #   await new Promise(f => setTimeout(f, delay));
+      end
+    end
 
-    #  if (definition.code)
-    #    description.code = definition.code;
+    # @param {string} key
+    # @param {!{delay?: number, text?: string}=} options
+    #
+    def press(key, delay: 0, text: nil)
+      down key, text: text
+      # if (delay !== null)
+      #   await new Promise(f => setTimeout(f, options.delay));
+      up key
+    end
 
-    #  if (definition.location)
-    #    description.location = definition.location;
+    private
 
-    #  if (description.key.length === 1)
-    #    description.text = description.key;
+      # @param {string} keyString
+      #
+      # @return {KeyDescription}
+      #
+      def key_description_for_string(key_string)
+        shift = modifiers & 8
+        description = {
+          key: '',
+          key_code: 0,
+          code: '',
+          text: '',
+          location: 0
+        }
 
-    #  if (definition.text)
-    #    description.text = definition.text;
-    #  if (shift && definition.shiftText)
-    #    description.text = definition.shiftText;
+        definition = KEY_DEFINITIONS[key_string]
+        raise "Unknown key: '#{key_string}'" if definition.nil?
 
-    #  // if any modifiers besides shift are pressed, no text should be sent
-    #  if (this._modifiers & ~8)
-    #    description.text = '';
+        if definition[:key]
+          description[:key] = definition[:key]
+        end
+        if shift && definition[:shift_key]
+          description[:key] = definition[:shift_key]
+        end
 
-    #  return description;
-    #}
+        if definition[:key_code]
+          description[:key_code] = definition[:key_code]
+        end
+        if shift && definition[:shift_key_code]
+          description[:key_code] = definition[:shift_key_code]
+        end
 
-    #/**
-    # * @param {string} key
-    # */
-    #async up(key) {
-    #  const description = this._keyDescriptionForString(key);
+        if definition[:code]
+          description[:code] = definition[:code]
+        end
 
-    #  this._modifiers &= ~this._modifierBit(description.key);
-    #  this._pressedKeys.delete(description.code);
-    #  await this._client.send('Input.dispatchKeyEvent', {
-    #    type: 'keyUp',
-    #    modifiers: this._modifiers,
-    #    key: description.key,
-    #    windowsVirtualKeyCode: description.keyCode,
-    #    code: description.code,
-    #    location: description.location
-    #  });
-    #}
+        if definition[:location]
+          description[:location] = definition[:location]
+        end
 
-    #/**
-    # * @param {string} char
-    # */
-    #async sendCharacter(char) {
-    #  await this._client.send('Input.insertText', {text: char});
-    #}
+        if description[:key].length == 1
+          description[:text] = description[:key]
+        end
 
-    #/**
-    # * @param {string} text
-    # * @param {{delay: (number|undefined)}=} options
-    # */
-    #async type(text, options) {
-    #  let delay = 0;
-    #  if (options && options.delay)
-    #    delay = options.delay;
-    #  for (const char of text) {
-    #    if (keyDefinitions[char])
-    #      await this.press(char, {delay});
-    #    else
-    #      await this.sendCharacter(char);
-    #    if (delay)
-    #      await new Promise(f => setTimeout(f, delay));
-    #  }
-    #}
+        if definition[:text]
+          description[:text] = definition[:text]
+        end
+        if shift && definition[:shift_text]
+          description[:text] = definition[:shift_text]
+        end
 
-    #/**
-    # * @param {string} key
-    # * @param {!{delay?: number, text?: string}=} options
-    # */
-    #async press(key, options = {}) {
-    #  const {delay = null} = options;
-    #  await this.down(key, options);
-    #  if (delay !== null)
-    #    await new Promise(f => setTimeout(f, options.delay));
-    #  await this.up(key);
-    #}
+        # if any modifiers besides shift are pressed, no text should be sent
+        unless (modifiers & ~8).zero?
+          description[:text] = ''
+        end
+
+        description
+      end
+
+      # @param {string} key
+      # @return {number}
+      #
+      def modifier_bit(key)
+        case key
+        when 'Alt'     then 1
+        when 'Control' then 2
+        when 'Meta'    then 4
+        when 'Shift'   then 8
+        else 0
+        end
+      end
   end
 end

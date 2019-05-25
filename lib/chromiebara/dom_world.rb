@@ -319,15 +319,14 @@ module Chromiebara
       handle.dispose
     end
 
-    # /**
-    #  * @param {string} selector
-    #  */
-    # async focus(selector) {
-    #   const handle = await this.$(selector);
-    #   assert(handle, 'No node found for selector: ' + selector);
-    #   await handle.focus();
-    #   await handle.dispose();
-    # }
+    # @param {string} selector
+    #
+    def focus(selector)
+      handle = query_selector selector
+      "No node found for selector: #{selector}" if handle.nil?
+      handle.focus
+      handle.dispose
+    end
 
     # /**
     #  * @param {string} selector

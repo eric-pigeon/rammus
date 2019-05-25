@@ -84,9 +84,9 @@ module Chromiebara
     #  await this._page.touchscreen.tap(x, y);
     #}
 
-    #async focus() {
-    #  await this.executionContext().evaluate(element => element.focus(), this);
-    #}
+    def focus
+      execution_context.evaluate 'element => element.focus()', self, function: true
+    end
 
     #/**
     # * @param {string} text

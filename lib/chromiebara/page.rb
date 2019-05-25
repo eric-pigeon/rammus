@@ -949,12 +949,11 @@ module Chromiebara
       main_frame.click selector, options
     end
 
-  # /**
-  #  * @param {string} selector
-  #  */
-  # focus(selector) {
-  #   return this.mainFrame().focus(selector);
-  # }
+    # @param {string} selector
+    #
+    def focus(selector)
+      main_frame.focus selector
+    end
 
   # /**
   #  * @param {string} selector

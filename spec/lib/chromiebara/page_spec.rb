@@ -13,301 +13,314 @@ module Chromiebara
       end
     end
 
-    describe '#cookies' do
-      it 'should return empty array without cookies' do
-        page.goto server.empty_page
-        expect(page.cookies).to eq []
-      end
+    context 'cookies' do
+      describe '#cookies' do
+        it 'should return empty array without cookies' do
+          page.goto server.empty_page
+          expect(page.cookies).to eq []
+        end
 
-      it 'should get a cookie' do
-        page.goto(server.empty_page)
-        page.evaluate("document.cookie = 'username=John Doe';")
-        expect(page.cookies).to eq([
-          {
-            "name" => 'username',
-            "value" => 'John Doe',
-            "domain" => 'localhost',
-            "path" => '/',
-            "expires" => -1,
-            "size" => 16,
-            "httpOnly" => false,
-            "secure" => false,
-            "session" => true
-          }
-        ])
-      end
+        it 'should get a cookie' do
+          page.goto(server.empty_page)
+          page.evaluate("document.cookie = 'username=John Doe';")
+          expect(page.cookies).to eq([
+            {
+              "name" => 'username',
+              "value" => 'John Doe',
+              "domain" => 'localhost',
+              "path" => '/',
+              "expires" => -1,
+              "size" => 16,
+              "httpOnly" => false,
+              "secure" => false,
+              "session" => true
+            }
+          ])
+        end
 
-      it 'should report httpOnly' do
-        page.goto server.domain + 'http-cookie'
-        cookie = page.cookies.first
-        expect(cookie['httpOnly']).to eq true
-      end
+        it 'should report httpOnly' do
+          page.goto server.domain + 'http-cookie'
+          cookie = page.cookies.first
+          expect(cookie['httpOnly']).to eq true
+        end
 
-      it 'should get multiple cookies' do
-        page.goto server.empty_page
+        it 'should get multiple cookies' do
+          page.goto server.empty_page
 
-        page.evaluate("document.cookie = 'username=John Doe'; document.cookie = 'password=1234';")
-        cookies = page.cookies.sort { |a, b| a["name"] <=> b["name"] }
-        expect(cookies).to eq([
-          {
-            "name" => 'password',
-            "value" => '1234',
-            "domain" => 'localhost',
-            "path" => '/',
-            "expires" => -1,
-            "size" => 12,
-            "httpOnly" => false,
-            "secure" => false,
-            "session" => true
-          },
-          {
-            "name" => 'username',
-            "value" => 'John Doe',
-            "domain" => 'localhost',
-            "path" => '/',
-            "expires" => -1,
-            "size" => 16,
-            "httpOnly" => false,
-            "secure" => false,
-            "session" => true
-          }
-        ])
-      end
+          page.evaluate("document.cookie = 'username=John Doe'; document.cookie = 'password=1234';")
+          cookies = page.cookies.sort { |a, b| a["name"] <=> b["name"] }
+          expect(cookies).to eq([
+            {
+              "name" => 'password',
+              "value" => '1234',
+              "domain" => 'localhost',
+              "path" => '/',
+              "expires" => -1,
+              "size" => 12,
+              "httpOnly" => false,
+              "secure" => false,
+              "session" => true
+            },
+            {
+              "name" => 'username',
+              "value" => 'John Doe',
+              "domain" => 'localhost',
+              "path" => '/',
+              "expires" => -1,
+              "size" => 16,
+              "httpOnly" => false,
+              "secure" => false,
+              "session" => true
+            }
+          ])
+        end
 
-      it 'should get cookies from multiple urls' do
-        page.set_cookie(
-          { url: 'https://foo.com', name: 'doggo', value: 'woofs' },
-          { url: 'https://bar.com', name: 'catto', value: 'purrs' },
-          { url: 'https://baz.com', name: 'birdo', value: 'tweets' }
-        )
-        cookies = page.cookies('https://foo.com', 'https://baz.com')
-        cookies.sort { |a, b| a["name"] <=> b["name"] }
-        expect(cookies).to eq([
-          {
-            "name" => 'birdo',
-            "value" => 'tweets',
-            "domain" => 'baz.com',
-            "path" => '/',
-            "expires" => -1,
-            "size" => 11,
-            "httpOnly" => false,
-            "secure" => true,
-            "session" => true
-          },
-          {
-            "name" => 'doggo',
-            "value" => 'woofs',
-            "domain" => 'foo.com',
-            "path" => '/',
-            "expires" => -1,
-            "size" => 10,
-            "httpOnly" => false,
-            "secure" => true,
-            "session" => true
-          }
-        ])
-      end
-    end
-
-    describe '#set_cookie' do
-      it 'sets cookies' do
-        page.goto server.empty_page
-
-        page.set_cookie name: 'password', value: '123456'
-        expect(page.evaluate 'document.cookie').to eq 'password=123456'
-      end
-
-      it 'should isolate cookies in browser contexts' do
-        context_2 = browser.create_context
-        page_2 = context_2.new_page
-
-        page.goto server.empty_page
-        page_2.goto server.empty_page
-
-        page.set_cookie name: 'page1cookie', value: 'page1value'
-        page_2.set_cookie name: 'page2cookie', value: 'page2value'
-
-        cookies_1 = page.cookies
-        cookies_2 = page_2.cookies
-        expect(cookies_1.length).to eq 1
-        expect(cookies_2.length).to eq 1
-
-        expect(cookies_1[0]["name"]).to eq 'page1cookie'
-        expect(cookies_1[0]["value"]).to eq 'page1value'
-
-        expect(cookies_2[0]["name"]).to eq 'page2cookie'
-        expect(cookies_2[0]["value"]).to eq 'page2value'
-
-        context_2.close
-      end
-
-      it 'should set multiple cookies' do
-        page.goto server.empty_page
-        page.set_cookie(
-          { name: 'password', value: '123456' },
-          { name: 'foo', value: 'bar' }
-        )
-        cookies = page.evaluate "document.cookie.split(';').map(cookie => cookie.trim()).sort();"
-        expect(cookies).to eq ["foo=bar", "password=123456"]
-      end
-
-      it 'should have expires set to -1 for session cookies' do
-        page.goto server.empty_page
-        page.set_cookie name: 'password', value: '123456'
-        cookie = page.cookies.first
-        expect(cookie["session"]).to eq true
-        expect(cookie["expires"]).to eq(-1)
-      end
-
-      it 'should set cookie with reasonable defaults' do
-        page.goto server.empty_page
-        page.set_cookie name: 'password', value: '123456'
-        expect(page.cookies).to eq [
-          "name" => 'password',
-          "value" => '123456',
-          "domain" => 'localhost',
-          "path" => '/',
-          "expires" => -1,
-          "size" => 14,
-          "httpOnly" => false,
-          "secure" => false,
-          "session" => true
-        ]
-      end
-
-      it 'should set a cookie with a path' do
-        page.goto server.domain + 'grid.html'
-        page.set_cookie(name: 'gridcookie', value: 'GRID', path: '/grid.html')
-        expect(page.cookies).to eq([
-          "name" => 'gridcookie',
-          "value" => 'GRID',
-          "domain" => 'localhost',
-          "path" => '/grid.html',
-          "expires" => -1,
-          "size" => 14,
-          "httpOnly" => false,
-          "secure" => false,
-          "session" => true
-        ])
-        expect(page.evaluate('document.cookie')).to eq 'gridcookie=GRID'
-        page.goto server.empty_page
-        expect(page.cookies()).to eq []
-        expect(page.evaluate 'document.cookie').to eq ''
-        page.goto server.domain + 'grid.html'
-        expect(page.evaluate 'document.cookie').to eq 'gridcookie=GRID'
-      end
-
-      it 'should not set a cookie on a blank page' do
-         page.goto 'about:blank'
-
-         expect {page.set_cookie({ name: 'example-cookie', value: 'best' }) }
-           .to raise_error ProtocolError, /At least one of the url and domain needs to be specified/
-      end
-
-      it 'should not set a cookie with blank page URL' do
-        page.goto server.empty_page
-        expect do
+        it 'should get cookies from multiple urls' do
           page.set_cookie(
-            { name: 'example-cookie', value: 'best' },
-            { url: 'about:blank', name: 'example-cookie-blank', value: 'best' }
+            { url: 'https://foo.com', name: 'doggo', value: 'woofs' },
+            { url: 'https://bar.com', name: 'catto', value: 'purrs' },
+            { url: 'https://baz.com', name: 'birdo', value: 'tweets' }
           )
-        end.to raise_error RuntimeError, /Blank page can not have cookie "example-cookie-blank"/
+          cookies = page.cookies('https://foo.com', 'https://baz.com')
+          cookies.sort { |a, b| a["name"] <=> b["name"] }
+          expect(cookies).to eq([
+            {
+              "name" => 'birdo',
+              "value" => 'tweets',
+              "domain" => 'baz.com',
+              "path" => '/',
+              "expires" => -1,
+              "size" => 11,
+              "httpOnly" => false,
+              "secure" => true,
+              "session" => true
+            },
+            {
+              "name" => 'doggo',
+              "value" => 'woofs',
+              "domain" => 'foo.com',
+              "path" => '/',
+              "expires" => -1,
+              "size" => 10,
+              "httpOnly" => false,
+              "secure" => true,
+              "session" => true
+            }
+          ])
+        end
       end
 
-      it 'should not set a cookie on a data URL page' do
-        page.goto 'data:,Hello%2C%20World!'
+      describe '#set_cookie' do
+        it 'sets cookies' do
+          page.goto server.empty_page
 
-        expect { page.set_cookie name: 'example-cookie', value: 'best' }
-          .to raise_error(ProtocolError, /At least one of the url and domain needs to be specified/)
+          page.set_cookie name: 'password', value: '123456'
+          expect(page.evaluate 'document.cookie').to eq 'password=123456'
+        end
+
+        it 'should isolate cookies in browser contexts' do
+          context_2 = browser.create_context
+          page_2 = context_2.new_page
+
+          page.goto server.empty_page
+          page_2.goto server.empty_page
+
+          page.set_cookie name: 'page1cookie', value: 'page1value'
+          page_2.set_cookie name: 'page2cookie', value: 'page2value'
+
+          cookies_1 = page.cookies
+          cookies_2 = page_2.cookies
+          expect(cookies_1.length).to eq 1
+          expect(cookies_2.length).to eq 1
+
+          expect(cookies_1[0]["name"]).to eq 'page1cookie'
+          expect(cookies_1[0]["value"]).to eq 'page1value'
+
+          expect(cookies_2[0]["name"]).to eq 'page2cookie'
+          expect(cookies_2[0]["value"]).to eq 'page2value'
+
+          context_2.close
+        end
+
+        it 'should set multiple cookies' do
+          page.goto server.empty_page
+          page.set_cookie(
+            { name: 'password', value: '123456' },
+            { name: 'foo', value: 'bar' }
+          )
+          cookies = page.evaluate "document.cookie.split(';').map(cookie => cookie.trim()).sort();"
+          expect(cookies).to eq ["foo=bar", "password=123456"]
+        end
+
+        it 'should have expires set to -1 for session cookies' do
+          page.goto server.empty_page
+          page.set_cookie name: 'password', value: '123456'
+          cookie = page.cookies.first
+          expect(cookie["session"]).to eq true
+          expect(cookie["expires"]).to eq(-1)
+        end
+
+        it 'should set cookie with reasonable defaults' do
+          page.goto server.empty_page
+          page.set_cookie name: 'password', value: '123456'
+          expect(page.cookies).to eq [
+            "name" => 'password',
+            "value" => '123456',
+            "domain" => 'localhost',
+            "path" => '/',
+            "expires" => -1,
+            "size" => 14,
+            "httpOnly" => false,
+            "secure" => false,
+            "session" => true
+          ]
+        end
+
+        it 'should set a cookie with a path' do
+          page.goto server.domain + 'grid.html'
+          page.set_cookie(name: 'gridcookie', value: 'GRID', path: '/grid.html')
+          expect(page.cookies).to eq([
+            "name" => 'gridcookie',
+            "value" => 'GRID',
+            "domain" => 'localhost',
+            "path" => '/grid.html',
+            "expires" => -1,
+            "size" => 14,
+            "httpOnly" => false,
+            "secure" => false,
+            "session" => true
+          ])
+          expect(page.evaluate('document.cookie')).to eq 'gridcookie=GRID'
+          page.goto server.empty_page
+          expect(page.cookies()).to eq []
+          expect(page.evaluate 'document.cookie').to eq ''
+          page.goto server.domain + 'grid.html'
+          expect(page.evaluate 'document.cookie').to eq 'gridcookie=GRID'
+        end
+
+        it 'should not set a cookie on a blank page' do
+           page.goto 'about:blank'
+
+           expect {page.set_cookie({ name: 'example-cookie', value: 'best' }) }
+             .to raise_error ProtocolError, /At least one of the url and domain needs to be specified/
+        end
+
+        it 'should not set a cookie with blank page URL' do
+          page.goto server.empty_page
+          expect do
+            page.set_cookie(
+              { name: 'example-cookie', value: 'best' },
+              { url: 'about:blank', name: 'example-cookie-blank', value: 'best' }
+            )
+          end.to raise_error RuntimeError, /Blank page can not have cookie "example-cookie-blank"/
+        end
+
+        it 'should not set a cookie on a data URL page' do
+          page.goto 'data:,Hello%2C%20World!'
+
+          expect { page.set_cookie name: 'example-cookie', value: 'best' }
+            .to raise_error(ProtocolError, /At least one of the url and domain needs to be specified/)
+        end
+
+        it 'should default to setting secure cookie for HTTPS websites' do
+          page.goto server.empty_page
+          secure_url = 'https://example.com'
+          page.set_cookie url: secure_url, name: 'foo', value: 'bar'
+          cookie, * = page.cookies secure_url
+          expect(cookie["secure"]).to eq true
+        end
+
+        it 'should be able to set unsecure cookie for HTTP website' do
+          page.goto server.empty_page
+          http_url = 'http://example.com'
+          page.set_cookie url: http_url, name: 'foo', value: 'bar'
+          cookie, * = page.cookies http_url
+          expect(cookie["secure"]).to eq false
+        end
+
+        it 'should set a cookie on a different domain' do
+          page.goto server.empty_page
+          page.set_cookie url: 'https://www.example.com', name: 'example-cookie', value: 'best'
+          expect(page.evaluate 'document.cookie').to eq ''
+          expect(page.cookies).to eq []
+          expect(page.cookies 'https://www.example.com').to eq [{
+            "name" => 'example-cookie',
+            "value" => 'best',
+            "domain" => 'www.example.com',
+            "path" => '/',
+            "expires" => -1,
+            "size" => 18,
+            "httpOnly" => false,
+            "secure" => true,
+            "session" => true
+          }]
+        end
+
+        xit 'should set cookies from a frame' do
+          page.goto server.domain + "/grid.html"
+          page.set_cookie name: 'localhost-cookie', value: 'best'
+          _function = <<~JAVASCRIPT
+            src => {
+               let fulfill;
+               const promise = new Promise(x => fulfill = x);
+               const iframe = document.createElement('iframe');
+               document.body.appendChild(iframe);
+               iframe.onload = fulfill;
+               iframe.src = src;
+               return promise;
+            }
+          JAVASCRIPT
+          # await page.evaluate(src => {
+          #   let fulfill;
+          #   const promise = new Promise(x => fulfill = x);
+          #   const iframe = document.createElement('iframe');
+          #   document.body.appendChild(iframe);
+          #   iframe.onload = fulfill;
+          #   iframe.src = src;
+          #   return promise;
+          # }, server.CROSS_PROCESS_PREFIX);
+          # await page.setCookie({name: '127-cookie', value: 'worst', url: server.CROSS_PROCESS_PREFIX});
+          # expect(await page.evaluate('document.cookie')).toBe('localhost-cookie=best');
+          # expect(await page.frames()[1].evaluate('document.cookie')).toBe('127-cookie=worst');
+          #
+          # expect(await page.cookies()).toEqual([{
+          #   name: 'localhost-cookie',
+          #   value: 'best',
+          #   domain: 'localhost',
+          #   path: '/',
+          #   expires: -1,
+          #   size: 20,
+          #   httpOnly: false,
+          #   secure: false,
+          #   session: true
+          # }]);
+          #
+          # expect(await page.cookies(server.CROSS_PROCESS_PREFIX)).toEqual([{
+          #   name: '127-cookie',
+          #   value: 'worst',
+          #   domain: '127.0.0.1',
+          #   path: '/',
+          #   expires: -1,
+          #   size: 15,
+          #   httpOnly: false,
+          #   secure: false,
+          #   session: true
+          # }]);
+        end
       end
 
-      it 'should default to setting secure cookie for HTTPS websites' do
-        page.goto server.empty_page
-        secure_url = 'https://example.com'
-        page.set_cookie url: secure_url, name: 'foo', value: 'bar'
-        cookie, * = page.cookies secure_url
-        expect(cookie["secure"]).to eq true
-      end
-
-      it 'should be able to set unsecure cookie for HTTP website' do
-        page.goto server.empty_page
-        http_url = 'http://example.com'
-        page.set_cookie url: http_url, name: 'foo', value: 'bar'
-        cookie, * = page.cookies http_url
-        expect(cookie["secure"]).to eq false
-      end
-
-      it 'should set a cookie on a different domain' do
-        page.goto server.empty_page
-        page.set_cookie url: 'https://www.example.com', name: 'example-cookie', value: 'best'
-        expect(page.evaluate 'document.cookie').to eq ''
-        expect(page.cookies).to eq []
-        expect(page.cookies 'https://www.example.com').to eq [{
-          "name" => 'example-cookie',
-          "value" => 'best',
-          "domain" => 'www.example.com',
-          "path" => '/',
-          "expires" => -1,
-          "size" => 18,
-          "httpOnly" => false,
-          "secure" => true,
-          "session" => true
-        }]
-      end
-
-      xit 'should set cookies from a frame' do
-        page.goto server.domain + "/grid.html"
-        page.set_cookie name: 'localhost-cookie', value: 'best'
-        # await page.evaluate(src => {
-        #   let fulfill;
-        #   const promise = new Promise(x => fulfill = x);
-        #   const iframe = document.createElement('iframe');
-        #   document.body.appendChild(iframe);
-        #   iframe.onload = fulfill;
-        #   iframe.src = src;
-        #   return promise;
-        # }, server.CROSS_PROCESS_PREFIX);
-        # await page.setCookie({name: '127-cookie', value: 'worst', url: server.CROSS_PROCESS_PREFIX});
-        # expect(await page.evaluate('document.cookie')).toBe('localhost-cookie=best');
-        # expect(await page.frames()[1].evaluate('document.cookie')).toBe('127-cookie=worst');
-        #
-        # expect(await page.cookies()).toEqual([{
-        #   name: 'localhost-cookie',
-        #   value: 'best',
-        #   domain: 'localhost',
-        #   path: '/',
-        #   expires: -1,
-        #   size: 20,
-        #   httpOnly: false,
-        #   secure: false,
-        #   session: true
-        # }]);
-        #
-        # expect(await page.cookies(server.CROSS_PROCESS_PREFIX)).toEqual([{
-        #   name: '127-cookie',
-        #   value: 'worst',
-        #   domain: '127.0.0.1',
-        #   path: '/',
-        #   expires: -1,
-        #   size: 15,
-        #   httpOnly: false,
-        #   secure: false,
-        #   session: true
-        # }]);
-      end
-    end
-
-    describe '#delete_cookies' do
-      it 'deletes cookies' do
-        page.goto server.empty_page
-        page.set_cookie(
-          { name: 'cookie1', value: '1' },
-          { name: 'cookie2', value: '2' },
-          { name: 'cookie3', value: '3' }
-        )
-        expect(page.evaluate 'document.cookie').to eq 'cookie1=1; cookie2=2; cookie3=3'
-        page.delete_cookie(name: 'cookie2')
-        expect(page.evaluate 'document.cookie').to eq 'cookie1=1; cookie3=3'
+      describe '#delete_cookies' do
+        it 'deletes cookies' do
+          page.goto server.empty_page
+          page.set_cookie(
+            { name: 'cookie1', value: '1' },
+            { name: 'cookie2', value: '2' },
+            { name: 'cookie3', value: '3' }
+          )
+          expect(page.evaluate 'document.cookie').to eq 'cookie1=1; cookie2=2; cookie3=3'
+          page.delete_cookie(name: 'cookie2')
+          expect(page.evaluate 'document.cookie').to eq 'cookie1=1; cookie3=3'
+        end
       end
     end
 
@@ -767,6 +780,157 @@ module Chromiebara
       end
     end
 
+    describe '#mouse' do
+      let(:dimensions) do
+        <<~JAVASCRIPT
+        () => {
+          const rect = document.querySelector('textarea').getBoundingClientRect();
+          return {
+            x: rect.left,
+            y: rect.top,
+            width: rect.width,
+            height: rect.height
+          };
+        }
+        JAVASCRIPT
+      end
+
+      it 'should click the document' do
+        javascript = <<~JAVASCRIPT
+        () => {
+          window.clickPromise = new Promise(resolve => {
+            document.addEventListener('click', event => {
+              resolve({
+                type: event.type,
+                detail: event.detail,
+                clientX: event.clientX,
+                clientY: event.clientY,
+                isTrusted: event.isTrusted,
+                button: event.button
+              });
+            });
+          });
+        }
+        JAVASCRIPT
+        page.evaluate javascript, function: true
+        page.mouse.click 50, 60
+        event = page.evaluate('() => window.clickPromise', function: true)
+        expect(event["type"]).to eq 'click'
+        expect(event["detail"]).to eq 1
+        expect(event["clientX"]).to eq 50
+        expect(event["clientY"]).to eq 60
+        expect(event["isTrusted"]).to eq true
+        expect(event["button"]).to eq 0
+      end
+
+      it 'should resize the textarea' do
+        page.goto server.domain + 'input/textarea.html'
+        textarea_dimensions = page.evaluate dimensions, function: true
+        x = textarea_dimensions["x"]
+        y = textarea_dimensions["y"]
+        width = textarea_dimensions["width"]
+        height = textarea_dimensions["height"]
+        mouse = page.mouse
+        mouse.move (x + width - 4), (y + height - 4)
+        mouse.down
+        mouse.move (x + width + 100), (y + height + 100)
+        mouse.up
+        new_textarea_dimensions = page.evaluate dimensions, function: true
+        expect(new_textarea_dimensions["width"]).to eq width + 104
+        expect(new_textarea_dimensions["height"]).to eq height + 104
+      end
+
+      it 'should select the text with mouse' do
+        page.goto server.domain + 'input/textarea.html'
+        page.focus 'textarea'
+        text = "This is the text that we are going to try to select. Let's see how it goes."
+        page.keyboard.type text
+        # Firefox needs an extra frame here after typing or it will fail to set the scrollTop
+        page.evaluate('() => new Promise(requestAnimationFrame)', function: true)
+        page.evaluate("() => document.querySelector('textarea').scrollTop = 0", function: true)
+        textarea_dimensions = page.evaluate dimensions, function: true
+        page.mouse.move textarea_dimensions["x"] + 2, textarea_dimensions["y"] + 2
+        page.mouse.down
+        page.mouse.move 100, 100
+        page.mouse.up
+        function = <<~JAVASCRIPT
+        () => {
+          const textarea = document.querySelector('textarea');
+          return textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
+        }
+        JAVASCRIPT
+        expect(page.evaluate function, function: true).to eq text
+      end
+
+      #it('should trigger hover state', async({page, server}) => {
+      #  await page.goto(server.PREFIX + '/input/scrollable.html');
+      #  await page.hover('#button-6');
+      #  expect(await page.evaluate(() => document.querySelector('button:hover').id)).toBe('button-6');
+      #  await page.hover('#button-2');
+      #  expect(await page.evaluate(() => document.querySelector('button:hover').id)).toBe('button-2');
+      #  await page.hover('#button-91');
+      #  expect(await page.evaluate(() => document.querySelector('button:hover').id)).toBe('button-91');
+      #});
+      #it_fails_ffox('should trigger hover state with removed window.Node', async({page, server}) => {
+      #  await page.goto(server.PREFIX + '/input/scrollable.html');
+      #  await page.evaluate(() => delete window.Node);
+      #  await page.hover('#button-6');
+      #  expect(await page.evaluate(() => document.querySelector('button:hover').id)).toBe('button-6');
+      #});
+      #it('should set modifier keys on click', async({page, server}) => {
+      #  await page.goto(server.PREFIX + '/input/scrollable.html');
+      #  await page.evaluate(() => document.querySelector('#button-3').addEventListener('mousedown', e => window.lastEvent = e, true));
+      #  const modifiers = {'Shift': 'shiftKey', 'Control': 'ctrlKey', 'Alt': 'altKey', 'Meta': 'metaKey'};
+      #  // In Firefox, the Meta modifier only exists on Mac
+      #  if (FFOX && os.platform() !== 'darwin')
+      #    delete modifiers['Meta'];
+      #  for (const modifier in modifiers) {
+      #    await page.keyboard.down(modifier);
+      #    await page.click('#button-3');
+      #    if (!(await page.evaluate(mod => window.lastEvent[mod], modifiers[modifier])))
+      #      throw new Error(modifiers[modifier] + ' should be true');
+      #    await page.keyboard.up(modifier);
+      #  }
+      #  await page.click('#button-3');
+      #  for (const modifier in modifiers) {
+      #    if ((await page.evaluate(mod => window.lastEvent[mod], modifiers[modifier])))
+      #      throw new Error(modifiers[modifier] + ' should be false');
+      #  }
+      #});
+      #it('should tween mouse movement', async({page, server}) => {
+      #  await page.mouse.move(100, 100);
+      #  await page.evaluate(() => {
+      #    window.result = [];
+      #    document.addEventListener('mousemove', event => {
+      #      window.result.push([event.clientX, event.clientY]);
+      #    });
+      #  });
+      #  await page.mouse.move(200, 300, {steps: 5});
+      #  expect(await page.evaluate('result')).toEqual([
+      #    [120, 140],
+      #    [140, 180],
+      #    [160, 220],
+      #    [180, 260],
+      #    [200, 300]
+      #  ]);
+      #});
+      #// @see https://crbug.com/929806
+      #xit('should work with mobile viewports and cross process navigations', async({page, server}) => {
+      #  await page.goto(server.EMPTY_PAGE);
+      #  await page.setViewport({width: 360, height: 640, isMobile: true});
+      #  await page.goto(server.CROSS_PROCESS_PREFIX + '/mobile.html');
+      #  await page.evaluate(() => {
+      #    document.addEventListener('click', event => {
+      #      window.result = {x: event.clientX, y: event.clientY};
+      #    });
+      #  });
+
+      #  await page.mouse.click(30, 40);
+
+      #  expect(await page.evaluate('result')).toEqual({x: 30, y: 40});
+      #});
+    end
+
     describe '#url' do
       it 'returns the pages current url' do
         expect(page.url).to eq "about:blank"
@@ -930,7 +1094,6 @@ module Chromiebara
       #  });
       #});
 
-
       #describe('ElementHandle.$', function() {
       #  it('should query existing element', async({page, server}) => {
       #    await page.goto(server.PREFIX + '/playground.html');
@@ -1016,7 +1179,6 @@ module Chromiebara
       #    expect(elements.length).toBe(0);
       #  });
       #});
-
 
       #describe('ElementHandle.$x', function() {
       #  it('should query existing element', async({page, server}) => {

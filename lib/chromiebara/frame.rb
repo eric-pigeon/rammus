@@ -193,12 +193,16 @@ module Chromiebara
       @_secondary_world.click selector, options
     end
 
-  # /**
-  #  * @param {string} selector
-  #  */
-  # async focus(selector) {
-  #   return this._secondaryWorld.focus(selector);
-  # }
+    # TODO make attr_reader
+    def secondary_world
+      @_secondary_world
+    end
+
+    # @param {string} selector
+    #
+    def focus(selector)
+      secondary_world.focus selector
+    end
 
   # /**
   #  * @param {string} selector
