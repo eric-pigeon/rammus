@@ -52,12 +52,11 @@ module Chromiebara
   #   return await this._frameManager.waitForFrameNavigation(this, options);
   # }
 
-  # /**
-  #  * @return {!Promise<!ExecutionContext>}
-  #  */
-  # executionContext() {
-  #   return this._mainWorld.executionContext();
-  # }
+    # @return {!Promise<!ExecutionContext>}
+    #
+    def execution_context
+      main_world.execution_context
+    end
 
   # /**
   #  * @param {Function|string} pageFunction
@@ -77,6 +76,11 @@ module Chromiebara
       @main_world.evaluate function, *args
     end
 
+    def evaluate_function(function, *args)
+      # TODO add evaluate_function to DOM world
+      main_world.evaluate function, *args, function: true
+    end
+
     # @param {string} selector
     # @return {!Promise<?Puppeteer.ElementHandle>}
     #
@@ -92,15 +96,14 @@ module Chromiebara
   #   return this._mainWorld.$x(expression);
   # }
 
-  # /**
-  #  * @param {string} selector
-  #  * @param {Function|string} pageFunction
-  #  * @param {!Array<*>} args
-  #  * @return {!Promise<(!Object|undefined)>}
-  #  */
-  # async $eval(selector, pageFunction, ...args) {
-  #   return this._mainWorld.$eval(selector, pageFunction, ...args);
-  # }
+    # @param {string} selector
+    # @param {Function|string} pageFunction
+    # @param {!Array<*>} args
+    # @return {!Promise<(!Object|undefined)>}
+    #
+    def query_selector_evaluate_function(selector, function, *args)
+      main_world.query_selector_evaluate_function selector, function, *args
+    end
 
   # /**
   #  * @param {string} selector

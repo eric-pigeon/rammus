@@ -234,15 +234,23 @@ module Chromiebara
       main_frame.query_selector selector
     end
 
-  # /**
-  #  * @param {Function|string} pageFunction
-  #  * @param {!Array<*>} args
-  #  * @return {!Promise<!Puppeteer.JSHandle>}
-  #  */
-  # async evaluateHandle(pageFunction, ...args) {
-  #   const context = await this.mainFrame().executionContext();
-  #   return context.evaluateHandle(pageFunction, ...args);
-  # }
+    # @param {Function|string} pageFunction
+    # @param {!Array<*>} args
+    #  @return {!Promise<!Puppeteer.JSHandle>}
+    #
+    def evaluate_handle(page_function, *args)
+      context = main_frame.execution_context
+      context.evaluate_handle page_function, *args
+    end
+
+    # @param {Function|string} page_function
+    # @param {!Array<*>} args
+    #  @return {!Promise<!Puppeteer.JSHandle>}
+    #
+    def evaluate_handle_function(page_function, *args)
+      context = main_frame.execution_context
+      context.evaluate_handle_function page_function, *args
+    end
 
   # /**
   #  * @param {!Puppeteer.JSHandle} prototypeHandle
@@ -253,15 +261,14 @@ module Chromiebara
   #   return context.queryObjects(prototypeHandle);
   # }
 
-  # /**
-  #  * @param {string} selector
-  #  * @param {Function|string} pageFunction
-  #  * @param {!Array<*>} args
-  #  * @return {!Promise<(!Object|undefined)>}
-  #  */
-  # async $eval(selector, pageFunction, ...args) {
-  #   return this.mainFrame().$eval(selector, pageFunction, ...args);
-  # }
+    # @param {string} selector
+    # @param {Function|string} pageFunction
+    # @param {!Array<*>} args
+    # @return {!Promise<(!Object|undefined)>}
+    #
+    def query_selector_evaluate_function(selector, page_function, *args)
+      main_frame.query_selector_evaluate_function selector, page_function, *args
+    end
 
   # /**
   #  * @param {string} selector

@@ -34,17 +34,16 @@ module Chromiebara
       self
     end
 
-    #/**
-    # * @return {!Promise<?Puppeteer.Frame>}
-    # */
-    #async contentFrame() {
-    #  const nodeInfo = await this._client.send('DOM.describeNode', {
-    #    objectId: this._remoteObject.objectId
-    #  });
-    #  if (typeof nodeInfo.node.frameId !== 'string')
-    #    return null;
-    #  return this._frameManager.frame(nodeInfo.node.frameId);
-    #}
+    # @return {!Promise<?Puppeteer.Frame>}
+    #
+    def content_frame
+      node_info = await client.command Protocol::DOM.describe_node(
+        object_id: remote_object["objectId"]
+      )
+      return unless node_info.dig("node", "frameId").is_a? String
+
+      frame_manager.frame node_info.dig("node", "frameId")
+    end
 
     #/**
     # * @return {!Promise<void|Protocol.DOM.getBoxModelReturnValue>}
@@ -227,20 +226,20 @@ module Chromiebara
     #  return result;
     #}
 
-    #/**
-    # * @param {string} selector
-    # * @param {Function|String} pageFunction
-    # * @param {!Array<*>} args
-    # * @return {!Promise<(!Object|undefined)>}
-    # */
-    #async $eval(selector, pageFunction, ...args) {
-    #  const elementHandle = await this.$(selector);
-    #  if (!elementHandle)
-    #    throw new Error(`Error: failed to find element matching selector "${selector}"`);
-    #  const result = await this.executionContext().evaluate(pageFunction, elementHandle, ...args);
-    #  await elementHandle.dispose();
-    #  return result;
-    #}
+    # @param {string} selector
+    # @param {Function|String} pageFunction
+    # @param {!Array<*>} args
+    # @return {!Promise<(!Object|undefined)>}
+    #
+    def query_selector_evaluate_function(selector, page_function, *args)
+      element_handle = query_selector selector
+      if element_handle.nil?
+        raise "Error: failed to find element matching selector '#{selector}'"
+      end
+      result = execution_context.evaluate_function page_function, element_handle, *args
+      element_handle.dispose
+      result
+    end
 
     #/**
     # * @param {string} selector

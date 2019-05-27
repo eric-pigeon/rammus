@@ -15,6 +15,21 @@ module SeverHelper
     )
   end
 
+  def attach_frame(page, frame_id, url)
+    function = <<~JAVASCRIPT
+    async function attachFrame(frameId, url) {
+      const frame = document.createElement('iframe');
+      frame.src = url;
+      frame.id = frameId;
+      document.body.appendChild(frame);
+      await new Promise(x => frame.onload = x);
+      return frame;
+    }
+    JAVASCRIPT
+    handle = page.evaluate_handle_function function, frame_id, url
+    handle.as_element.content_frame
+  end
+
   shared_context 'browser', browser: true do
     before(:context) { @_browser = Chromiebara::Launcher.launch }
 

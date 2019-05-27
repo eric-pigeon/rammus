@@ -1,6 +1,8 @@
 module Chromiebara
   RSpec.describe Page, browser: true do
-    let!(:context) { browser.create_context }
+    before { @_context = browser.create_context }
+    after { @_context.close }
+    let(:context) { @_context }
     let!(:page) { context.new_page }
 
     describe '#close' do
@@ -915,118 +917,123 @@ module Chromiebara
         keyboard.up 'Shift'
       end
 
-      #it('should not type canceled events', async({page, server}) => {
-      #  await page.goto(server.PREFIX + '/input/textarea.html');
-      #  await page.focus('textarea');
-      #  await page.evaluate(() => {
-      #    window.addEventListener('keydown', event => {
-      #      event.stopPropagation();
-      #      event.stopImmediatePropagation();
-      #      if (event.key === 'l')
-      #        event.preventDefault();
-      #      if (event.key === 'o')
-      #        event.preventDefault();
-      #    }, false);
-      #  });
-      #  await page.keyboard.type('Hello World!');
-      #  expect(await page.evaluate(() => textarea.value)).toBe('He Wrd!');
-      #});
-      #it('should specify repeat property', async({page, server}) => {
-      #  await page.goto(server.PREFIX + '/input/textarea.html');
-      #  await page.focus('textarea');
-      #  await page.evaluate(() => document.querySelector('textarea').addEventListener('keydown', e => window.lastEvent = e, true));
-      #  await page.keyboard.down('a');
-      #  expect(await page.evaluate(() => window.lastEvent.repeat)).toBe(false);
-      #  await page.keyboard.press('a');
-      #  expect(await page.evaluate(() => window.lastEvent.repeat)).toBe(true);
+      it 'should not type canceled events' do
+        page.goto server.domain + '/input/textarea.html'
+        page.focus 'textarea'
+        page.evaluate_function(
+          <<~JAVASCRIPT
+          () => {
+           window.addEventListener('keydown', event => {
+             event.stopPropagation();
+             event.stopImmediatePropagation();
+             if (event.key === 'l')
+               event.preventDefault();
+             if (event.key === 'o')
+               event.preventDefault();
+           }, false);
+         }
+         JAVASCRIPT
+        )
+        page.keyboard.type 'Hello World!'
+        expect(page.evaluate 'textarea.value').to eq 'He Wrd!'
+      end
 
-      #  await page.keyboard.down('b');
-      #  expect(await page.evaluate(() => window.lastEvent.repeat)).toBe(false);
-      #  await page.keyboard.down('b');
-      #  expect(await page.evaluate(() => window.lastEvent.repeat)).toBe(true);
+      it 'should specify repeat property' do
+        page.goto server.domain + '/input/textarea.html'
+        page.focus 'textarea'
+        page.evaluate("document.querySelector('textarea').addEventListener('keydown', e => window.lastEvent = e, true)")
+        page.keyboard.down 'a'
+        expect(page.evaluate 'window.lastEvent.repeat').to eq false
+        page.keyboard.press 'a'
+        expect(page.evaluate 'window.lastEvent.repeat').to eq true
 
-      #  await page.keyboard.up('a');
-      #  await page.keyboard.down('a');
-      #  expect(await page.evaluate(() => window.lastEvent.repeat)).toBe(false);
-      #});
-      #it('should type all kinds of characters', async({page, server}) => {
-      #  await page.goto(server.PREFIX + '/input/textarea.html');
-      #  await page.focus('textarea');
-      #  const text = 'This text goes onto two lines.\nThis character is 嗨.';
-      #  await page.keyboard.type(text);
-      #  expect(await page.evaluate('result')).toBe(text);
-      #});
-      #it('should specify location', async({page, server}) => {
-      #  await page.goto(server.PREFIX + '/input/textarea.html');
-      #  await page.evaluate(() => {
-      #    window.addEventListener('keydown', event => window.keyLocation = event.location, true);
-      #  });
-      #  const textarea = await page.$('textarea');
+        page.keyboard.down 'b'
+        expect(page.evaluate 'window.lastEvent.repeat').to eq false
+        page.keyboard.down 'b'
+        expect(page.evaluate 'window.lastEvent.repeat').to eq true
 
-      #  await textarea.press('Digit5');
-      #  expect(await page.evaluate('keyLocation')).toBe(0);
+        page.keyboard.up'a'
+        page.keyboard.down'a'
+        expect(page.evaluate 'window.lastEvent.repeat').to eq false
+      end
 
-      #  await textarea.press('ControlLeft');
-      #  expect(await page.evaluate('keyLocation')).toBe(1);
+      it 'should type all kinds of characters' do
+        page.goto server.domain + '/input/textarea.html'
+        page.focus 'textarea'
+        text = "This text goes onto two lines.\nThis character is 嗨.";
+        page.keyboard.type text
+        expect(page.evaluate('result')).to eq text
+      end
 
-      #  await textarea.press('ControlRight');
-      #  expect(await page.evaluate('keyLocation')).toBe(2);
+      it 'should specify location' do
+        page.goto server.domain + '/input/textarea.html'
+        page.evaluate "window.addEventListener('keydown', event => window.keyLocation = event.location, true);"
 
-      #  await textarea.press('NumpadSubtract');
-      #  expect(await page.evaluate('keyLocation')).toBe(3);
-      #});
+        textarea = page.query_selector 'textarea'
 
-      #it('should throw on unknown keys', async({page, server}) => {
-      #  let error = await page.keyboard.press('NotARealKey').catch(e => e);
-      #  expect(error.message).toBe('Unknown key: "NotARealKey"');
+        textarea.press 'Digit5'
+        expect(page.evaluate 'keyLocation').to eq 0
 
-      #  error = await page.keyboard.press('ё').catch(e => e);
-      #  expect(error && error.message).toBe('Unknown key: "ё"');
+        textarea.press 'ControlLeft'
+        expect(page.evaluate 'keyLocation').to eq 1
 
-      #  error = await page.keyboard.press('😊').catch(e => e);
-      #  expect(error && error.message).toBe('Unknown key: "😊"');
-      #});
+        textarea.press 'ControlRight'
+        expect(page.evaluate 'keyLocation').to eq 2
 
-      #it('should type emoji', async({page, server}) => {
-      #  await page.goto(server.PREFIX + '/input/textarea.html');
-      #  await page.type('textarea', '👹 Tokyo street Japan 🇯🇵');
-      #  expect(await page.$eval('textarea', textarea => textarea.value)).toBe('👹 Tokyo street Japan 🇯🇵');
-      #});
+        textarea.press 'NumpadSubtract'
+        expect(page.evaluate 'keyLocation').to eq 3
+      end
 
-      #it('should type emoji into an iframe', async({page, server}) => {
-      #  await page.goto(server.EMPTY_PAGE);
-      #  await utils.attachFrame(page, 'emoji-test', server.PREFIX + '/input/textarea.html');
-      #  const frame = page.frames()[1];
-      #  const textarea = await frame.$('textarea');
-      #  await textarea.type('👹 Tokyo street Japan 🇯🇵');
-      #  expect(await frame.$eval('textarea', textarea => textarea.value)).toBe('👹 Tokyo street Japan 🇯🇵');
-      #});
+      it 'should throw on unknown keys' do
+        expect { page.keyboard.press('NotARealKey') }.to raise_error RuntimeError, "Unknown key: 'NotARealKey'"
 
-      #it('should press the meta key', async({page}) => {
-      #  await page.evaluate(() => {
-      #    window.result = null;
-      #    document.addEventListener('keydown', event => {
-      #      window.result = [event.key, event.code, event.metaKey];
-      #    });
-      #  });
-      #  await page.keyboard.press('Meta');
-      #  const [key, code, metaKey] = await page.evaluate('result');
-      #  if (FFOX && os.platform() !== 'darwin')
-      #    expect(key).toBe('OS');
-      #  else
-      #    expect(key).toBe('Meta');
+        expect { page.keyboard.press('ё') }.to raise_error RuntimeError, "Unknown key: 'ё'"
 
-      #  if (FFOX)
-      #    expect(code).toBe('OSLeft');
-      #  else
-      #    expect(code).toBe('MetaLeft');
+        expect { page.keyboard.press('😊') }.to raise_error RuntimeError, "Unknown key: '😊'"
+      end
 
-      #  if (FFOX && os.platform() !== 'darwin')
-      #    expect(metaKey).toBe(false);
-      #  else
-      #    expect(metaKey).toBe(true);
+      it'should type emoji' do
+        page.goto server.domain + '/input/textarea.html'
+        page.type 'textarea', '👹 Tokyo street Japan 🇯🇵'
+        expect(page.query_selector_evaluate_function 'textarea', 'textarea => textarea.value').to eq '👹 Tokyo street Japan 🇯🇵'
+      end
 
-      #});
+      it 'should type emoji into an iframe' do
+        page.goto server.empty_page
+        attach_frame page, 'emoji-test', server.domain + 'input/textarea.html'
+        frame = page.frames[1]
+        textarea = frame.query_selector 'textarea'
+        textarea.type '👹 Tokyo street Japan 🇯🇵'
+        expect(frame.query_selector_evaluate_function 'textarea', 'textarea => textarea.value').to eq '👹 Tokyo street Japan 🇯🇵'
+      end
+
+      it 'should press the meta key' do
+        function = <<~JAVASCRIPT
+        () => {
+          window.result = null;
+          document.addEventListener('keydown', event => {
+            window.result = [event.key, event.code, event.metaKey];
+          });
+        }
+        JAVASCRIPT
+        page.evaluate_function function
+        page.keyboard.press 'Meta'
+        key, code, meta_key = page.evaluate 'result'
+        # if (FFOX && os.platform() !== 'darwin')
+        #   expect(key).toBe('OS');
+        # else
+           expect(key).to eq 'Meta'
+
+        # if (FFOX)
+        #   expect(code).toBe('OSLeft');
+        # else
+           expect(code).to eq 'MetaLeft'
+
+        # if (FFOX && os.platform() !== 'darwin')
+        #   expect(metaKey).toBe(false);
+        # else
+          expect(meta_key).to eq true
+      end
     end
 
     describe '#mouse' do

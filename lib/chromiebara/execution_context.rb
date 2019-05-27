@@ -60,6 +60,20 @@ module Chromiebara
       result
     end
 
+    def evaluate_function(page_function, *args)
+      handle = evaluate_handle_function page_function, *args
+      result = handle.json_value
+      # const result = await handle.jsonValue().catch(error => {
+      #   if (error.message.includes('Object reference chain is too long'))
+      #     return;
+      #   if (error.message.includes('Object couldn\'t be returned by value'))
+      #     return;
+      #   throw error;
+      # });
+      handle.dispose
+      result
+    end
+
     def evaluate_handle_function(page_function, *args)
       suffix = "//# sourceURL=#{EVALUATION_SCRIPT_URL}"
       function_text = page_function

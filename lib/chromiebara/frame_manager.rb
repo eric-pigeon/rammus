@@ -171,13 +171,12 @@ module Chromiebara
       @_frames.values
     end
 
-    # /**
-    #  * @param {!string} frameId
-    #  * @return {?Frame}
-    #  */
-    # frame(frameId) {
-    #   return this._frames.get(frameId) || null;
-    # }
+    # @param {!string} frameId
+    # @return {?Frame}
+    #
+    def frame(frame_id)
+      @_frames[frame_id]
+    end
 
     # /**
     #  * @param {!Protocol.Page.Frame} framePayload
