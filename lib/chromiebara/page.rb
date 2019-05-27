@@ -96,41 +96,17 @@ module Chromiebara
       # });
     end
 
-  # /**
-  #  * @return {!Puppeteer.Target}
-  #  */
-  # target() {
-  #   return this._target;
-  # }
+    # @return {!Puppeteer.Browser}
+    #
+    def browser
+      target.browser
+    end
 
-  # /**
-  #  * @return {!Puppeteer.Browser}
-  #  */
-  # browser() {
-  #   return this._target.browser();
-  # }
-
-  # /**
-  #  * @return {!Puppeteer.BrowserContext}
-  #  */
-  # browserContext() {
-  #   return this._target.browserContext();
-  # }
-
-  # _onTargetCrashed() {
-  #   this.emit('error', new Error('Page crashed!'));
-  # }
-
-  # /**
-  #  * @param {!Protocol.Log.entryAddedPayload} event
-  #  */
-  # _onLogEntryAdded(event) {
-  #   const {level, text, args, source, url, lineNumber} = event.entry;
-  #   if (args)
-  #     args.map(arg => helper.releaseObject(this._client, arg));
-  #   if (source !== 'worker')
-  #     this.emit(Events.Page.Console, new ConsoleMessage(level, text, [], {url, lineNumber}));
-  # }
+    # @return {!Puppeteer.BrowserContext}
+    #
+    def browser_context
+      target.browser_context
+    end
 
     # @return [Chromiebara::Frame]
     #
@@ -154,7 +130,6 @@ module Chromiebara
     def browser
       target.browser
     end
-
 
   # /**
   #  * @return {!Touchscreen}
@@ -577,13 +552,6 @@ module Chromiebara
   #   assert(dialogType, 'Unknown javascript dialog type: ' + event.type);
   #   const dialog = new Dialog(this._client, dialogType, event.message, event.defaultPrompt);
   #   this.emit(Events.Page.Dialog, dialog);
-  # }
-
-  # /**
-  #  * @return {!string}
-  #  */
-  # url() {
-  #   return this.mainFrame().url();
   # }
 
     # * @return {!Promise<string>}
@@ -1035,10 +1003,25 @@ module Chromiebara
   # waitForFunction(pageFunction, options = {}, ...args) {
   #   return this.mainFrame().waitForFunction(pageFunction, options, ...args);
   # }
+
     private
 
       def client
         @client ||= target.session
       end
+
+      # _onTargetCrashed() {
+      #   this.emit('error', new Error('Page crashed!'));
+      # }
+
+      #  * @param {!Protocol.Log.entryAddedPayload} event
+      #  */
+      # _onLogEntryAdded(event) {
+      #   const {level, text, args, source, url, lineNumber} = event.entry;
+      #   if (args)
+      #     args.map(arg => helper.releaseObject(this._client, arg));
+      #   if (source !== 'worker')
+      #     this.emit(Events.Page.Console, new ConsoleMessage(level, text, [], {url, lineNumber}));
+      # }
   end
 end
