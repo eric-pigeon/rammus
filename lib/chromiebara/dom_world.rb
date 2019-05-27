@@ -98,16 +98,14 @@ module Chromiebara
     #   return value;
     # }
 
-    # /**
-    #  * @param {string} selector
-    #  * @param {Function|string} pageFunction
-    #  * @param {!Array<*>} args
-    #  * @return {!Promise<(!Object|undefined)>}
-    #  */
-    # async $eval(selector, pageFunction, ...args) {
-    #   const document = await this._document();
-    #   return document.$eval(selector, pageFunction, ...args);
-    # }
+    # @param {string} selector
+    # @param {Function|string} pageFunction
+    # @param {!Array<*>} args
+    # @return {!Promise<(!Object|undefined)>}
+    #
+    def query_selector_evaluate_function(selector, page_function, *args)
+      document.query_selector_evaluate_function selector, page_function, *args
+    end
 
     # /**
     #  * @param {string} selector
