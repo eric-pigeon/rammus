@@ -27,7 +27,7 @@ module Chromiebara
       text ||= description[:text]
 
       await client.command(Protocol::Input.dispatch_key_event(
-        type: text ? 'keyDown' : 'rawKeyDown',
+        type: text != "" ? 'keyDown' : 'rawKeyDown',
         modifiers: modifiers,
         windows_virtual_key_code: description[:key_code],
         code: description[:code],
@@ -45,7 +45,7 @@ module Chromiebara
     def up(key)
       description = key_description_for_string key
 
-      @modifiers |= modifier_bit description[:key]
+      @modifiers &= ~(modifier_bit description[:key])
       @_pressed_keys.delete description[:code]
 
       await client.command(Protocol::Input.dispatch_key_event(
@@ -60,7 +60,7 @@ module Chromiebara
 
     # @param {string} char
     #
-    def sendCharacter(char)
+    def send_character(char)
       await client.command(Protocol::Input.insert_text text: char)
     end
 

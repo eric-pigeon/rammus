@@ -88,23 +88,21 @@ module Chromiebara
       execution_context.evaluate 'element => element.focus()', self, function: true
     end
 
-    #/**
-    # * @param {string} text
-    # * @param {{delay: (number|undefined)}=} options
-    # */
-    #async type(text, options) {
-    #  await this.focus();
-    #  await this._page.keyboard.type(text, options);
-    #}
+    # @param {string} text
+    # @param {{delay: (number|undefined)}=} options
+    #
+    def type(text, delay: nil)
+      focus
+      page.keyboard.type text, delay: delay
+    end
 
-    #/**
-    # * @param {string} key
-    # * @param {!{delay?: number, text?: string}=} options
-    # */
-    #async press(key, options) {
-    #  await this.focus();
-    #  await this._page.keyboard.press(key, options);
-    #}
+    # @param {string} key
+    # @param {!{delay?: number, text?: string}=} options
+    #
+    def press(key, delay: nil)
+      focus
+      page.keyboard.press key, delay: delay
+    end
 
     #/**
     # * @return {!Promise<?{x: number, y: number, width: number, height: number}>}

@@ -1,5 +1,5 @@
 module Chromiebara
- KEY_DEFINITIONS = {
+  KEY_DEFINITIONS = {
     '0' => { key_code: 48, key: '0', code: 'Digit0' },
     '1' => { key_code: 49, key: '1', code: 'Digit1' },
     '2' => { key_code: 50, key: '2', code: 'Digit2' },
