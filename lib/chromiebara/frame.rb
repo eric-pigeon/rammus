@@ -77,13 +77,12 @@ module Chromiebara
       @main_world.evaluate function, *args
     end
 
-  # /**
-  #  * @param {string} selector
-  #  * @return {!Promise<?Puppeteer.ElementHandle>}
-  #  */
-  # async $(selector) {
-  #   return this._mainWorld.$(selector);
-  # }
+    # @param {string} selector
+    # @return {!Promise<?Puppeteer.ElementHandle>}
+    #
+    def query_selector(selector)
+      main_world.query_selector selector
+    end
 
   # /**
   #  * @param {string} expression
@@ -227,14 +226,13 @@ module Chromiebara
   #   return this._secondaryWorld.tap(selector);
   # }
 
-  # /**
-  #  * @param {string} selector
-  #  * @param {string} text
-  #  * @param {{delay: (number|undefined)}=} options
-  #  */
-  # async type(selector, text, options) {
-  #   return this._mainWorld.type(selector, text, options);
-  # }
+    # @param {string} selector
+    # @param {string} text
+    # @param {{delay: (number|undefined)}=} options
+    #
+    def type(selector, text, delay: nil)
+      main_world.type selector, text, delay: delay
+    end
 
   # /**
   #  * @param {(string|number|Function)} selectorOrFunctionOrTimeout

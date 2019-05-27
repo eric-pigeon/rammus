@@ -227,13 +227,12 @@ module Chromiebara
   #   this._timeoutSettings.setDefaultTimeout(timeout);
   # }
 
-  # /**
-  #  * @param {string} selector
-  #  * @return {!Promise<?Puppeteer.ElementHandle>}
-  #  */
-  # async $(selector) {
-  #   return this.mainFrame().$(selector);
-  # }
+    # @param {string} selector
+    # @return {!Promise<?Puppeteer.ElementHandle>}
+    #
+    def query_selector(selector)
+      main_frame.query_selector selector
+    end
 
   # /**
   #  * @param {Function|string} pageFunction
@@ -750,7 +749,13 @@ module Chromiebara
     #  * @return {!Promise<*>}
     #
     def evaluate(function, *args)
+      # TODO make remove calls to this where function: true is passed and
+      # replace with calls to evaluate_function
       main_frame.evaluate function, *args
+    end
+
+    def evaluate_function(function, *args)
+      main_frame.evaluate function, *args, function: true
     end
 
   # /**
@@ -978,14 +983,13 @@ module Chromiebara
   #   return this.mainFrame().tap(selector);
   # }
 
-  # /**
-  #  * @param {string} selector
-  #  * @param {string} text
-  #  * @param {{delay: (number|undefined)}=} options
-  #  */
-  # type(selector, text, options) {
-  #   return this.mainFrame().type(selector, text, options);
-  # }
+    # @param {string} selector
+    # @param {string} text
+    # @param {{delay: (number|undefined)}=} options
+    #
+    def type(selector, text, delay: nil)
+      main_frame.type selector, text, delay: delay
+    end
 
   # /**
   #  * @param {(string|number|Function)} selectorOrFunctionOrTimeout

@@ -373,17 +373,16 @@ module Chromiebara
     #   await handle.dispose();
     # }
 
-    # /**
-    #  * @param {string} selector
-    #  * @param {string} text
-    #  * @param {{delay: (number|undefined)}=} options
-    #  */
-    # async type(selector, text, options) {
-    #   const handle = await this.$(selector);
-    #   assert(handle, 'No node found for selector: ' + selector);
-    #   await handle.type(text, options);
-    #   await handle.dispose();
-    # }
+    # @param {string} selector
+    # @param {string} text
+    # @param {{delay: (number|undefined)}=} options
+    #
+    def type(selector, text, delay: nil)
+      handle = query_selector selector
+      raise "No node found for selector: #{selector}" if handle.nil?
+      handle.type text, delay: delay
+      handle.dispose
+    end
 
     # /**
     #  * @param {string} selector

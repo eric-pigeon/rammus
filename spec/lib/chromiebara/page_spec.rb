@@ -780,6 +780,255 @@ module Chromiebara
       end
     end
 
+    describe '#keyboard' do
+      it 'should type into a text area' do
+        page.evaluate_function "() => {
+          const textarea = document.createElement('textarea');
+          document.body.appendChild(textarea);
+          textarea.focus();
+        }"
+        text = 'Hello world. I am the text that was typed!'
+        page.keyboard.type text
+        expect(page.evaluate_function '() => document.querySelector("textarea").value').to eq text
+      end
+
+      it 'should press the metaKey' do
+        page.evaluate_function"() => {
+          window.keyPromise = new Promise(resolve => document.addEventListener('keydown', event => resolve(event.key)));
+        }"
+        page.keyboard.press 'Meta'
+        # FOX && os.platform() !== 'darwin'
+        expect(page.evaluate('keyPromise')).to eq 'Meta'
+      end
+
+      it 'should move with the arrow keys' do
+        page.goto server.domain + '/input/textarea.html'
+        page.type 'textarea', 'Hello World!'
+        expect(page.evaluate_function "() => document.querySelector('textarea').value").to eq 'Hello World!'
+        'World!'.length.times { page.keyboard.press 'ArrowLeft' }
+        page.keyboard.type 'inserted '
+        expect(page.evaluate_function "() => document.querySelector('textarea').value").to eq 'Hello inserted World!'
+        page.keyboard.down 'Shift'
+        'inserted!'.length.times { page.keyboard.press 'ArrowLeft' }
+        page.keyboard.up 'Shift'
+        page.keyboard.press 'Backspace'
+        expect(page.evaluate_function "() => document.querySelector('textarea').value").to eq 'Hello World!'
+      end
+
+      it 'should send a character with ElementHandle.press' do
+        page.goto server.domain + '/input/textarea.html'
+        textarea = page.query_selector 'textarea'
+        textarea.press 'a'
+        expect(page.evaluate "document.querySelector('textarea').value").to eq 'a'
+
+        page.evaluate "window.addEventListener('keydown', e => e.preventDefault(), true)"
+
+        textarea.press 'b'
+        expect(page.evaluate "document.querySelector('textarea').value").to eq 'a'
+      end
+
+      #it_fails_ffox('ElementHandle.press should support |text| option', async({page, server}) => {
+      #  await page.goto(server.PREFIX + '/input/textarea.html');
+      #  const textarea = await page.$('textarea');
+      #  await textarea.press('a', {text: 'ё'});
+      #  expect(await page.evaluate(() => document.querySelector('textarea').value)).toBe('ё');
+      #});
+
+      it 'should send a character with send_character' do
+         page.goto server.domain + '/input/textarea.html'
+         page.focus 'textarea'
+         page.keyboard.send_character '嗨'
+
+         expect(page.evaluate "document.querySelector('textarea').value").to eq '嗨'
+         page.evaluate "window.addEventListener('keydown', e => e.preventDefault(), true)"
+         page.keyboard.send_character 'a'
+         expect(page.evaluate "document.querySelector('textarea').value").to eq '嗨a'
+      end
+
+      it 'should report shift_key' do
+        page.goto server.domain + '/input/keyboard.html'
+        keyboard = page.keyboard
+        code_for_key = { 'Shift' => 16, 'Alt' => 18, 'Control' => 17 }
+
+        code_for_key.each do |modifier_key, code|
+          keyboard.down modifier_key
+          expect(page.evaluate 'getResult()').to eq "Keydown: #{modifier_key} #{modifier_key}Left #{code} [#{modifier_key}]"
+          keyboard.down '!'
+          # # Shift+! will generate a keypress
+          if  modifier_key == 'Shift'
+            expect(page.evaluate 'getResult()').to eq "Keydown: ! Digit1 49 [#{modifier_key}]\nKeypress: ! Digit1 33 33 [#{modifier_key}]"
+          else
+            expect(page.evaluate 'getResult()').to eq "Keydown: ! Digit1 49 [#{modifier_key}]"
+          end
+
+          keyboard.up '!'
+          expect(page.evaluate 'getResult()').to eq "Keyup: ! Digit1 49 [#{modifier_key}]"
+          keyboard.up modifier_key
+          expect(page.evaluate 'getResult()').to eq "Keyup: #{modifier_key} #{modifier_key}Left #{code} []"
+        end
+      end
+
+      it 'should report multiple modifiers' do
+        page.goto server.domain + '/input/keyboard.html'
+        keyboard = page.keyboard
+        keyboard.down 'Control'
+        expect(page.evaluate "getResult()").to eq 'Keydown: Control ControlLeft 17 [Control]'
+        keyboard.down 'Alt'
+        expect(page.evaluate "getResult()").to eq 'Keydown: Alt AltLeft 18 [Alt Control]'
+        keyboard.down ';'
+        expect(page.evaluate "getResult()").to eq 'Keydown: ; Semicolon 186 [Alt Control]'
+        keyboard.up ';'
+        expect(page.evaluate "getResult()").to eq 'Keyup: ; Semicolon 186 [Alt Control]'
+        keyboard.up 'Control'
+        expect(page.evaluate "getResult()").to eq 'Keyup: Control ControlLeft 17 [Alt]'
+        keyboard.up 'Alt'
+        expect(page.evaluate "getResult()").to eq 'Keyup: Alt AltLeft 18 []'
+      end
+
+      it 'should send proper codes while typing' do
+        page.goto server.domain + '/input/keyboard.html'
+        page.keyboard.type '!'
+        expect(page.evaluate "getResult()").to eq [
+          'Keydown: ! Digit1 49 []',
+          'Keypress: ! Digit1 33 33 []',
+          'Keyup: ! Digit1 49 []'
+        ].join("\n")
+        page.keyboard.type '^'
+        expect(page.evaluate "getResult()").to eq [
+          'Keydown: ^ Digit6 54 []',
+          'Keypress: ^ Digit6 94 94 []',
+           'Keyup: ^ Digit6 54 []'
+        ].join("\n")
+      end
+
+      it 'should send proper codes while typing with shift' do
+        page.goto server.domain + '/input/keyboard.html'
+        keyboard = page.keyboard
+        keyboard.down 'Shift'
+        page.keyboard.type '~'
+        expect(page.evaluate "getResult()").to eq [
+          'Keydown: Shift ShiftLeft 16 [Shift]',
+          'Keydown: ~ Backquote 192 [Shift]', #// 192 is ` keyCode
+          'Keypress: ~ Backquote 126 126 [Shift]', #// 126 is ~ charCode
+          'Keyup: ~ Backquote 192 [Shift]'
+        ].join("\n")
+        keyboard.up 'Shift'
+      end
+
+      #it('should not type canceled events', async({page, server}) => {
+      #  await page.goto(server.PREFIX + '/input/textarea.html');
+      #  await page.focus('textarea');
+      #  await page.evaluate(() => {
+      #    window.addEventListener('keydown', event => {
+      #      event.stopPropagation();
+      #      event.stopImmediatePropagation();
+      #      if (event.key === 'l')
+      #        event.preventDefault();
+      #      if (event.key === 'o')
+      #        event.preventDefault();
+      #    }, false);
+      #  });
+      #  await page.keyboard.type('Hello World!');
+      #  expect(await page.evaluate(() => textarea.value)).toBe('He Wrd!');
+      #});
+      #it('should specify repeat property', async({page, server}) => {
+      #  await page.goto(server.PREFIX + '/input/textarea.html');
+      #  await page.focus('textarea');
+      #  await page.evaluate(() => document.querySelector('textarea').addEventListener('keydown', e => window.lastEvent = e, true));
+      #  await page.keyboard.down('a');
+      #  expect(await page.evaluate(() => window.lastEvent.repeat)).toBe(false);
+      #  await page.keyboard.press('a');
+      #  expect(await page.evaluate(() => window.lastEvent.repeat)).toBe(true);
+
+      #  await page.keyboard.down('b');
+      #  expect(await page.evaluate(() => window.lastEvent.repeat)).toBe(false);
+      #  await page.keyboard.down('b');
+      #  expect(await page.evaluate(() => window.lastEvent.repeat)).toBe(true);
+
+      #  await page.keyboard.up('a');
+      #  await page.keyboard.down('a');
+      #  expect(await page.evaluate(() => window.lastEvent.repeat)).toBe(false);
+      #});
+      #it('should type all kinds of characters', async({page, server}) => {
+      #  await page.goto(server.PREFIX + '/input/textarea.html');
+      #  await page.focus('textarea');
+      #  const text = 'This text goes onto two lines.\nThis character is 嗨.';
+      #  await page.keyboard.type(text);
+      #  expect(await page.evaluate('result')).toBe(text);
+      #});
+      #it('should specify location', async({page, server}) => {
+      #  await page.goto(server.PREFIX + '/input/textarea.html');
+      #  await page.evaluate(() => {
+      #    window.addEventListener('keydown', event => window.keyLocation = event.location, true);
+      #  });
+      #  const textarea = await page.$('textarea');
+
+      #  await textarea.press('Digit5');
+      #  expect(await page.evaluate('keyLocation')).toBe(0);
+
+      #  await textarea.press('ControlLeft');
+      #  expect(await page.evaluate('keyLocation')).toBe(1);
+
+      #  await textarea.press('ControlRight');
+      #  expect(await page.evaluate('keyLocation')).toBe(2);
+
+      #  await textarea.press('NumpadSubtract');
+      #  expect(await page.evaluate('keyLocation')).toBe(3);
+      #});
+
+      #it('should throw on unknown keys', async({page, server}) => {
+      #  let error = await page.keyboard.press('NotARealKey').catch(e => e);
+      #  expect(error.message).toBe('Unknown key: "NotARealKey"');
+
+      #  error = await page.keyboard.press('ё').catch(e => e);
+      #  expect(error && error.message).toBe('Unknown key: "ё"');
+
+      #  error = await page.keyboard.press('😊').catch(e => e);
+      #  expect(error && error.message).toBe('Unknown key: "😊"');
+      #});
+
+      #it('should type emoji', async({page, server}) => {
+      #  await page.goto(server.PREFIX + '/input/textarea.html');
+      #  await page.type('textarea', '👹 Tokyo street Japan 🇯🇵');
+      #  expect(await page.$eval('textarea', textarea => textarea.value)).toBe('👹 Tokyo street Japan 🇯🇵');
+      #});
+
+      #it('should type emoji into an iframe', async({page, server}) => {
+      #  await page.goto(server.EMPTY_PAGE);
+      #  await utils.attachFrame(page, 'emoji-test', server.PREFIX + '/input/textarea.html');
+      #  const frame = page.frames()[1];
+      #  const textarea = await frame.$('textarea');
+      #  await textarea.type('👹 Tokyo street Japan 🇯🇵');
+      #  expect(await frame.$eval('textarea', textarea => textarea.value)).toBe('👹 Tokyo street Japan 🇯🇵');
+      #});
+
+      #it('should press the meta key', async({page}) => {
+      #  await page.evaluate(() => {
+      #    window.result = null;
+      #    document.addEventListener('keydown', event => {
+      #      window.result = [event.key, event.code, event.metaKey];
+      #    });
+      #  });
+      #  await page.keyboard.press('Meta');
+      #  const [key, code, metaKey] = await page.evaluate('result');
+      #  if (FFOX && os.platform() !== 'darwin')
+      #    expect(key).toBe('OS');
+      #  else
+      #    expect(key).toBe('Meta');
+
+      #  if (FFOX)
+      #    expect(code).toBe('OSLeft');
+      #  else
+      #    expect(code).toBe('MetaLeft');
+
+      #  if (FFOX && os.platform() !== 'darwin')
+      #    expect(metaKey).toBe(false);
+      #  else
+      #    expect(metaKey).toBe(true);
+
+      #});
+    end
+
     describe '#mouse' do
       let(:dimensions) do
         <<~JAVASCRIPT
