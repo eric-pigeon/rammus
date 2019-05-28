@@ -61,8 +61,11 @@ module Chromiebara
     # * @return {!Promise<*>}
     #
     def evaluate(function, *args)
-    #   const context = await this.executionContext();
       execution_context.evaluate function, *args
+    end
+
+    def evaluate_function(function, *args)
+      execution_context.evaluate_function function, *args
     end
 
     # @param {string} selector
@@ -70,9 +73,6 @@ module Chromiebara
     #
     def query_selector(selector)
       document.query_selector selector
-    #   const document = await this._document();
-    #   const value = await document.$(selector);
-    #   return value;
     end
 
     # @return {!Promise<!Puppeteer.ElementHandle>}
@@ -132,14 +132,17 @@ module Chromiebara
     # * @return {!Promise<String>}
     #
     def content
-      # return await this.evaluate(() => {
-      #   let retVal = '';
-      #   if (document.doctype)
-      #     retVal = new XMLSerializer().serializeToString(document.doctype);
-      #   if (document.documentElement)
-      #     retVal += document.documentElement.outerHTML;
-      #   return retVal;
-      # });
+      function = <<~JAVASCRIPT
+      () => {
+        let retVal = '';
+        if (document.doctype)
+          retVal = new XMLSerializer().serializeToString(document.doctype);
+        if (document.documentElement)
+          retVal += document.documentElement.outerHTML;
+        return retVal;
+      }
+      JAVASCRIPT
+      evaluate_function function
     end
 
     #  * @param {string} html
@@ -326,15 +329,14 @@ module Chromiebara
       handle.dispose
     end
 
-    # /**
-    #  * @param {string} selector
-    #  */
-    # async hover(selector) {
-    #   const handle = await this.$(selector);
-    #   assert(handle, 'No node found for selector: ' + selector);
-    #   await handle.hover();
-    #   await handle.dispose();
-    # }
+    # @param {string} selector
+    #
+    def hover(selector)
+      handle = query_selector selector
+      raise "No node found for selector: #{selector}" if handle.nil?
+      handle.hover
+      handle.dispose
+    end
 
     # /**
     # * @param {string} selector

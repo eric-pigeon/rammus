@@ -206,12 +206,11 @@ module Chromiebara
       secondary_world.focus selector
     end
 
-  # /**
-  #  * @param {string} selector
-  #  */
-  # async hover(selector) {
-  #   return this._secondaryWorld.hover(selector);
-  # }
+    # @param {string} selector
+    #
+    def hover(selector)
+      secondary_world.hover selector
+    end
 
   # /**
   # * @param {string} selector

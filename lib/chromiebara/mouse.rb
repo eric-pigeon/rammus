@@ -29,8 +29,8 @@ module Chromiebara
         await client.command Protocol::Input.dispatch_mouse_event(
           type: 'mouseMoved',
           button: @_button,
-          x: from_x + (@_x - from_x) * ((i + 1) / steps),
-          y: from_y + (@_y - from_y) * ((i + 1) / steps),
+          x: from_x + (@_x - from_x) * ((i + 1).to_f / steps),
+          y: from_y + (@_y - from_y) * ((i + 1).to_f / steps),
           modifiers: keyboard.modifiers
         )
       end
