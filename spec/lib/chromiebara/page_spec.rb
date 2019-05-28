@@ -1118,73 +1118,81 @@ module Chromiebara
         expect(page.evaluate function, function: true).to eq text
       end
 
-      #it('should trigger hover state', async({page, server}) => {
-      #  await page.goto(server.PREFIX + '/input/scrollable.html');
-      #  await page.hover('#button-6');
-      #  expect(await page.evaluate(() => document.querySelector('button:hover').id)).toBe('button-6');
-      #  await page.hover('#button-2');
-      #  expect(await page.evaluate(() => document.querySelector('button:hover').id)).toBe('button-2');
-      #  await page.hover('#button-91');
-      #  expect(await page.evaluate(() => document.querySelector('button:hover').id)).toBe('button-91');
-      #});
-      #it_fails_ffox('should trigger hover state with removed window.Node', async({page, server}) => {
-      #  await page.goto(server.PREFIX + '/input/scrollable.html');
-      #  await page.evaluate(() => delete window.Node);
-      #  await page.hover('#button-6');
-      #  expect(await page.evaluate(() => document.querySelector('button:hover').id)).toBe('button-6');
-      #});
-      #it('should set modifier keys on click', async({page, server}) => {
-      #  await page.goto(server.PREFIX + '/input/scrollable.html');
-      #  await page.evaluate(() => document.querySelector('#button-3').addEventListener('mousedown', e => window.lastEvent = e, true));
-      #  const modifiers = {'Shift': 'shiftKey', 'Control': 'ctrlKey', 'Alt': 'altKey', 'Meta': 'metaKey'};
-      #  // In Firefox, the Meta modifier only exists on Mac
-      #  if (FFOX && os.platform() !== 'darwin')
-      #    delete modifiers['Meta'];
-      #  for (const modifier in modifiers) {
-      #    await page.keyboard.down(modifier);
-      #    await page.click('#button-3');
-      #    if (!(await page.evaluate(mod => window.lastEvent[mod], modifiers[modifier])))
-      #      throw new Error(modifiers[modifier] + ' should be true');
-      #    await page.keyboard.up(modifier);
-      #  }
-      #  await page.click('#button-3');
-      #  for (const modifier in modifiers) {
-      #    if ((await page.evaluate(mod => window.lastEvent[mod], modifiers[modifier])))
-      #      throw new Error(modifiers[modifier] + ' should be false');
-      #  }
-      #});
-      #it('should tween mouse movement', async({page, server}) => {
-      #  await page.mouse.move(100, 100);
-      #  await page.evaluate(() => {
-      #    window.result = [];
-      #    document.addEventListener('mousemove', event => {
-      #      window.result.push([event.clientX, event.clientY]);
-      #    });
-      #  });
-      #  await page.mouse.move(200, 300, {steps: 5});
-      #  expect(await page.evaluate('result')).toEqual([
-      #    [120, 140],
-      #    [140, 180],
-      #    [160, 220],
-      #    [180, 260],
-      #    [200, 300]
-      #  ]);
-      #});
+      it 'should trigger hover state' do
+        page.goto server.domain + 'input/scrollable.html'
+
+        page.hover '#button-6'
+        expect(page.evaluate "document.querySelector('button:hover').id").to eq 'button-6'
+        page.hover '#button-2'
+        expect(page.evaluate "document.querySelector('button:hover').id").to eq 'button-2'
+        page.hover '#button-91'
+        expect(page.evaluate "document.querySelector('button:hover').id").to eq 'button-91'
+      end
+
+      it 'should trigger hover state with removed window.Node' do
+        page.goto server.domain + 'input/scrollable.html'
+        page.evaluate 'delete window.Node'
+        page.hover '#button-6'
+        expect(page.evaluate "document.querySelector('button:hover').id").to eq 'button-6'
+      end
+
+      it 'should set modifier keys on click' do
+        page.goto server.domain + 'input/scrollable.html'
+        page.evaluate "document.querySelector('#button-3').addEventListener('mousedown', e => window.lastEvent = e, true)"
+        modifiers = { 'Shift' => 'shiftKey', 'Control' => 'ctrlKey', 'Alt' => 'altKey', 'Meta' => 'metaKey' }
+        # In Firefox, the Meta modifier only exists on Mac
+        # if (FFOX && os.platform() !== 'darwin')
+        #   delete modifiers['Meta'];
+        # end
+        modifiers.each do |modifier, key|
+          page.keyboard.down modifier
+          page.click '#button-3'
+          expect(page.evaluate_function "mod => window.lastEvent[mod]", key).to eq true
+          page.keyboard.up modifier
+        end
+        page.click '#button-3'
+        modifiers.each do |modifier, key|
+          expect(page.evaluate_function "mod => window.lastEvent[mod]", key).to eq false
+        end
+      end
+
+      it 'should tween mouse movement' do
+        page.mouse.move 100, 100
+        function = <<~JAVASCRIPT
+        () => {
+          window.result = [];
+          document.addEventListener('mousemove', event => {
+            window.result.push([event.clientX, event.clientY]);
+          });
+        }
+        JAVASCRIPT
+        page.evaluate_function function
+        page.mouse.move 200, 300, steps: 5
+        expect(page.evaluate 'result').to eq [
+          [120, 140],
+          [140, 180],
+          [160, 220],
+          [180, 260],
+          [200, 300]
+        ]
+      end
+
       #// @see https://crbug.com/929806
-      #xit('should work with mobile viewports and cross process navigations', async({page, server}) => {
-      #  await page.goto(server.EMPTY_PAGE);
-      #  await page.setViewport({width: 360, height: 640, isMobile: true});
-      #  await page.goto(server.CROSS_PROCESS_PREFIX + '/mobile.html');
-      #  await page.evaluate(() => {
-      #    document.addEventListener('click', event => {
-      #      window.result = {x: event.clientX, y: event.clientY};
-      #    });
-      #  });
+      xit 'should work with mobile viewports and cross process navigations' do
+        # TODO
+        # page.goto server.empty_page
+        # page.set_viewport width: 360, height: 640, isMobile: true
+        # await page.goto(server.CROSS_PROCESS_PREFIX + '/mobile.html');
+        # await page.evaluate(() => {
+        #   document.addEventListener('click', event => {
+        #     window.result = {x: event.clientX, y: event.clientY};
+        #   });
+        # });
 
-      #  await page.mouse.click(30, 40);
+        # await page.mouse.click(30, 40);
 
-      #  expect(await page.evaluate('result')).toEqual({x: 30, y: 40});
-      #});
+        # expect(await page.evaluate('result')).toEqual({x: 30, y: 40});
+      end
     end
 
     describe '#url' do
@@ -1204,6 +1212,7 @@ module Chromiebara
 
     describe 'set_content' do
       let(:expected_output) { '<html><head></head><body><div>hello</div></body></html>' }
+
       it 'sets page content' do
         page.set_content('<div>hello</div>')
         result = page.content

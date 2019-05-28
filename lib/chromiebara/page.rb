@@ -935,12 +935,11 @@ module Chromiebara
       main_frame.focus selector
     end
 
-  # /**
-  #  * @param {string} selector
-  #  */
-  # hover(selector) {
-  #   return this.mainFrame().hover(selector);
-  # }
+    # @param {string} selector
+    #
+    def hover(selector)
+      main_frame.hover selector
+    end
 
   # /**
   #  * @param {string} selector

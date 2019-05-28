@@ -54,11 +54,11 @@ module Chromiebara
     #  }).catch(error => debugError(error));
     #}
 
-    #async hover() {
-    #  await this._scrollIntoViewIfNeeded();
-    #  const {x, y} = await this._clickablePoint();
-    #  await this._page.mouse.move(x, y);
-    #}
+    def hover()
+      scroll_into_view_if_needed
+      point = clickable_point
+      page.mouse.move point[:x], point[:y]
+    end
 
     # * @param {!{delay?: number, button?: "left"|"right"|"middle", clickCount?: number}=} options
     #
