@@ -297,12 +297,11 @@ module Chromiebara
   #   return this._mainWorld.waitForFunction(pageFunction, options, ...args);
   # }
 
-  # /**
   #  * @return {!Promise<string>}
   #  */
-  # async title() {
-  #   return this._secondaryWorld.title();
-  # }
+  def title
+    secondary_world.title
+  end
 
   private
 

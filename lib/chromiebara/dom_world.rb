@@ -419,12 +419,11 @@ module Chromiebara
     #   return new WaitTask(this, pageFunction, 'function', polling, timeout, ...args).promise;
     # }
 
-    # /**
     #  * @return {!Promise<string>}
     #  */
-    # async title() {
-    #   return this.evaluate(() => document.title);
-    # }
+    def title
+      evaluate('document.title')
+    end
 
     # /**
     #  * @param {string} selectorOrXPath

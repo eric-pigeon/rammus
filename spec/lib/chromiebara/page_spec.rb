@@ -1204,7 +1204,7 @@ module Chromiebara
     end
 
     describe '#title' do
-      xit 'should return the page title' do
+      it 'should return the page title' do
         page.goto server.domain + "/title.html"
         expect(page.title).to eq 'Woof-Woof'
       end
@@ -1218,6 +1218,7 @@ module Chromiebara
         result = page.content
         expect(result).to eq expected_output
       end
+
       #it('should work with doctype', async({page, server}) => {
       #  const doctype = '<!DOCTYPE html>';
       #  await page.setContent(`${doctype}<div>hello</div>`);
