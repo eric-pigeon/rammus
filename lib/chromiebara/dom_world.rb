@@ -1,5 +1,7 @@
 module Chromiebara
   class DOMWorld
+    include Promise::Await
+
     attr_reader :frame
 
     # @param [Chromiebara::FrameManager] frame_manager
@@ -14,20 +16,22 @@ module Chromiebara
       # /** @type {?Promise<!Puppeteer.ElementHandle>} */
       # this._documentPromise = null;
       # /** @type {!Promise<!Puppeteer.ExecutionContext>} */
+      @_context_promise = nil
       # this._contextPromise;
       # this._contextResolveCallback = null;
-      # set_context nil
+      @_context_resolve_callback = nil
+      set_context nil
       #
       # /** @type {!Set<!WaitTask>} */
       # this._waitTasks = new Set();
       @_detached = false
-      @context = nil
+      # @context = nil
     end
 
     #  * @return {boolean}
     #  */
     def has_context?
-      !@context.nil?
+      @_context_resolve_callback.nil?
     end
 
     # _detach() {
@@ -43,7 +47,7 @@ module Chromiebara
       # if (this._detached)
       #   throw new Error(`Execution Context is not available in detached frame "${this._frame.url()}" (are you trying to evaluate?)`);
       # return this._contextPromise;
-      @context
+      await @_context_promise
     end
 
     # /**
@@ -481,13 +485,14 @@ module Chromiebara
       #
       def set_context(context)
         if context
-          @context = context
+          @_context_resolve_callback.(context)
+          @_context_resolve_callback = nil
           #     this._contextResolveCallback.call(null, context);
           #     this._contextResolveCallback = null;
           #     for (const waitTask of this._waitTasks)
           #       waitTask.rerun();
         else
-          @context = nil
+          @_context_promise, @_context_resolve_callback, _reject = Promise.create
           #     this._documentPromise = null;
           #     this._contextPromise = new Promise(fulfill => {
           #       this._contextResolveCallback = fulfill;
