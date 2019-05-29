@@ -77,11 +77,11 @@ module Chromiebara
     #  await this._client.send('DOM.setFileInputFiles', { objectId, files });
     #}
 
-    #async tap() {
-    #  await this._scrollIntoViewIfNeeded();
-    #  const {x, y} = await this._clickablePoint();
-    #  await this._page.touchscreen.tap(x, y);
-    #}
+    def tap
+      scroll_into_view_if_needed
+      point = clickable_point
+      page.touchscreen.tap point[:x], point[:y]
+    end
 
     def focus
       execution_context.evaluate 'element => element.focus()', self, function: true

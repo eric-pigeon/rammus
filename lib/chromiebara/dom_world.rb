@@ -373,15 +373,14 @@ module Chromiebara
     #   }, values);
     # }
 
-    # /**
-    #  * @param {string} selector
-    #  */
-    # async tap(selector) {
-    #   const handle = await this.$(selector);
-    #   assert(handle, 'No node found for selector: ' + selector);
-    #   await handle.tap();
-    #   await handle.dispose();
-    # }
+    # @param [String] selector
+    #
+    def touchscreen_tap(selector)
+      handle = query_selector selector
+      raise "No node found for selector: #{selector}" if handle.nil?
+      handle.tap
+      handle.dispose
+    end
 
     # @param {string} selector
     # @param {string} text
