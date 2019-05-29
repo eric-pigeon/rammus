@@ -5,6 +5,7 @@ require 'concurrent'
 
 module Chromiebara
   class ProtocolError < StandardError; end
+  class TimeoutError < StandardError; end
 
   require 'chromiebara/event_emitter'
   require 'chromiebara/promise'

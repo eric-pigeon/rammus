@@ -71,10 +71,7 @@ module Chromiebara
     def navigate_frame(frame, url, referrer: nil, timeout: nil, wait_until: nil)
       # referrer || network_manager.extrea_http_headers['referer']
       wait_until ||= [:load]
-      # timeout ||= timeout_settings.navigation_timeou
-
-      # TODO just hacking this in here
-      # client.command Protocol::Page.navigate url: url, referrer: referrer, frame_id: frame.id
+      # timeout ||= timeout_settings.navigation_timeout
 
       watcher = LifecycleWatcher.new self, frame, wait_until, timeout
       await client.command Protocol::Page.navigate url: url, referrer: referrer, frame_id: frame.id

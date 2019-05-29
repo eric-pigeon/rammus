@@ -1219,27 +1219,28 @@ module Chromiebara
         expect(result).to eq expected_output
       end
 
-      #it('should work with doctype', async({page, server}) => {
-      #  const doctype = '<!DOCTYPE html>';
-      #  await page.setContent(`${doctype}<div>hello</div>`);
-      #  const result = await page.content();
-      #  expect(result).toBe(`${doctype}${expectedOutput}`);
-      #});
-      #it('should work with HTML 4 doctype', async({page, server}) => {
-      #  const doctype = '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" ' +
-      #    '"http://www.w3.org/TR/html4/strict.dtd">';
-      #  await page.setContent(`${doctype}<div>hello</div>`);
-      #  const result = await page.content();
-      #  expect(result).toBe(`${doctype}${expectedOutput}`);
-      #});
-      #it_fails_ffox('should respect timeout', async({page, server}) => {
-      #  const imgPath = '/img.png';
-      #  // stall for image
-      #  server.setRoute(imgPath, (req, res) => {});
-      #  let error = null;
-      #  await page.setContent(`<img src="${server.PREFIX + imgPath}"></img>`, {timeout: 1}).catch(e => error = e);
-      #  expect(error).toBeInstanceOf(puppeteer.errors.TimeoutError);
-      #});
+      it 'should work with doctype' do
+        doctype = '<!DOCTYPE html>'
+        page.set_content "#{doctype}<div>hello</div>"
+        result = page.content
+        expect(result).to eq "#{doctype}#{expected_output}"
+      end
+
+      it 'should work with HTML 4 doctype' do
+        doctype = '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">'
+        page.set_content "#{doctype}<div>hello</div>"
+        result = page.content
+        expect(result).to eq "#{doctype}#{expected_output}"
+      end
+
+      it 'should respect timeout' do
+        pending 'raise a better error in lifecyclewatcher'
+        img_path = 'timeout-img.png'
+        expect do
+          page.set_content("<img src='#{server.domain + img_path}'></img>", timeout: 0.01)
+        end.to raise_error Timeout::Error
+      end
+
       #it_fails_ffox('should respect default navigation timeout', async({page, server}) => {
       #  page.setDefaultNavigationTimeout(1);
       #  const imgPath = '/img.png';
