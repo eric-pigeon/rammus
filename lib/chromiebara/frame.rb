@@ -221,12 +221,11 @@ module Chromiebara
   #   return this._secondaryWorld.select(selector, ...values);
   # }
 
-  # /**
-  #  * @param {string} selector
-  #  */
-  # async tap(selector) {
-  #   return this._secondaryWorld.tap(selector);
-  # }
+    # @param [String] selector
+    #
+    def touchscreen_tap(selector)
+      secondary_world.touchscreen_tap selector
+    end
 
     # @param {string} selector
     # @param {string} text

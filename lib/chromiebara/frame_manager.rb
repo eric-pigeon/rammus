@@ -1,4 +1,5 @@
 require 'chromiebara/execution_context'
+require 'chromiebara/network_manager'
 
 module Chromiebara
   class FrameManager
@@ -11,15 +12,18 @@ module Chromiebara
       'FrameManager.LifecycleEvent'
     end
 
-    attr_reader :client, :page
+    attr_reader :client, :page, :network_manager
 
     # @param [Chromiebara::CDPSession] client
     # @param [Chromiebara::Page] page
     #
-    def initialize(client, page)
+    def initialize(client, page, ignore_https_errors)
       super()
       @client = client
       @page = page
+
+      @network_manager = NetworkManager.new(client, self, ignore_https_errors)
+
       # @type [Hash<String, Frame>]
       @_frames = {}
       # @type [Hash<Integer, ExecutionContext>]

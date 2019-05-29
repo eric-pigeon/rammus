@@ -24,4 +24,9 @@ module Chromiebara
   require 'chromiebara/frame'
   require 'chromiebara/frame_manager'
   require 'chromiebara/protocol_logger'
+  require 'chromiebara/device_descriptors'
+
+  def self.devices
+    DEVICE_DESCRIPTORS
+  end
 end

@@ -1,5 +1,8 @@
 require 'chromiebara/keyboard'
 require 'chromiebara/mouse'
+require 'chromiebara/touchscreen'
+require 'chromiebara/frame_manager'
+require 'chromiebara/emulation_manager'
 require 'Chromiebara/timeout_settings'
 
 module Chromiebara
@@ -8,7 +11,7 @@ module Chromiebara
     extend Promise::Await
     extend Forwardable
 
-    attr_reader :target, :frame_manager, :javascript_enabled, :keyboard, :mouse
+    attr_reader :target, :frame_manager, :javascript_enabled, :keyboard, :mouse, :touchscreen
     delegate [:url] => :main_frame
 
     def self.create(target, default_viewport: nil)
@@ -32,11 +35,12 @@ module Chromiebara
       @keyboard = Keyboard.new client
       @mouse =  Mouse.new client, keyboard
       @_timeoutSettings =  TimeoutSettings.new
-      # this._touchscreen = new Touchscreen(client, this._keyboard);
+      @touchscreen = Touchscreen.new client, keyboard
       # this._accessibility = new Accessibility(client);
-      @frame_manager = FrameManager.new(client, self)
+      # TODO ignore_https_errors
+      @frame_manager = FrameManager.new(client, self, false)
       # this._frameManager = new FrameManager(client, this, ignoreHTTPSErrors, this._timeoutSettings);
-      # this._emulationManager = new EmulationManager(client);
+      @_emulation_manager = EmulationManager.new client
       # this._tracing = new Tracing(client);
       # /** @type {!Map<string, Function>} */
       # this._pageBindings = new Map();
@@ -388,12 +392,11 @@ module Chromiebara
   #   return this._frameManager.networkManager().setExtraHTTPHeaders(headers);
   # }
 
-  # /**
-  #  * @param {string} userAgent
-  #  */
-  # async setUserAgent(userAgent) {
-  #   return this._frameManager.networkManager().setUserAgent(userAgent);
-  # }
+    # @param [String] user_agent
+    #
+    def set_user_agent(user_agent)
+      frame_manager.network_manager.set_user_agent user_agent
+    end
 
   # /**
   #  * @return {!Promise<!Metrics>}
@@ -574,17 +577,17 @@ module Chromiebara
       main_frame.goto url, referrer: referrer, timeout: timeout, wait_until: wait_until
     end
 
-  # /**
-  #  * @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
-  #  * @return {!Promise<?Puppeteer.Response>}
-  #  */
-  # async reload(options) {
-  #   const [response] = await Promise.all([
-  #     this.waitForNavigation(options),
-  #     this._client.send('Page.reload')
-  #   ]);
-  #   return response;
-  # }
+    # @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
+    # @return {!Promise<?Puppeteer.Response>}
+    #
+    def reload(options = {})
+      # TODO
+    #   const [response] = await Promise.all([
+    #     this.waitForNavigation(options),
+    #     this._client.send('Page.reload')
+    #   ]);
+    #   return response;
+    end
 
   # /**
   #  * @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
@@ -666,15 +669,12 @@ module Chromiebara
   #   await this._client.send('Page.bringToFront');
   # }
 
-  # /**
-  #  * @param {!{viewport: !Puppeteer.Viewport, userAgent: string}} options
-  #  */
-  # async emulate(options) {
-  #   await Promise.all([
-  #     this.setViewport(options.viewport),
-  #     this.setUserAgent(options.userAgent)
-  #   ]);
-  # }
+    # @param {!{viewport: !Puppeteer.Viewport, userAgent: string}} options
+    #
+    def emulate(user_agent:, viewport:)
+      set_viewport viewport
+      set_user_agent user_agent
+    end
 
   # /**
   #  * @param {boolean} enabled
@@ -701,15 +701,15 @@ module Chromiebara
   #   await this._client.send('Emulation.setEmulatedMedia', {media: mediaType || ''});
   # }
 
-  # /**
-  #  * @param {!Puppeteer.Viewport} viewport
-  #  */
-  # async setViewport(viewport) {
-  #   const needsReload = await this._emulationManager.emulateViewport(viewport);
-  #   this._viewport = viewport;
-  #   if (needsReload)
-  #     await this.reload();
-  # }
+    # @param {!Puppeteer.Viewport} viewport
+    #
+    # # TODO move to keyword args from EmulationManager#emulate_viewport
+    def set_viewport(viewport)
+      needs_reload = @_emulation_manager.emulate_viewport viewport
+      @_viewport = viewport
+
+      reload if needs_reload
+    end
 
   # /**
   #  * @return {?Puppeteer.Viewport}
@@ -950,12 +950,11 @@ module Chromiebara
   #   return this.mainFrame().select(selector, ...values);
   # }
 
-  # /**
-  #  * @param {string} selector
-  #  */
-  # tap(selector) {
-  #   return this.mainFrame().tap(selector);
-  # }
+    #  @param [String] selector
+    #
+    def touchscreen_tap(selector)
+      main_frame.touchscreen_tap selector
+    end
 
     # @param {string} selector
     # @param {string} text
