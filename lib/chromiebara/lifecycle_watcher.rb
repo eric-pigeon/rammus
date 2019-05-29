@@ -14,7 +14,7 @@ module Chromiebara
       @frame_manager = frame_manager
       @frame = frame
       @_initial_loader_id = frame.loader_id
-      @timeout = timeout
+      @timeout = timeout || 2
       @_expected_lifecycle = Array(wait_until).map do |event|
         PROTOCOL_MAPPING.fetch event
       end.to_set
@@ -31,7 +31,7 @@ module Chromiebara
 
     # TODO
     def await_complete
-      await lifecycle_promise
+      await lifecycle_promise, @timeout
       # @_complete_promise.await
     end
 
@@ -158,10 +158,12 @@ module Chromiebara
 #  }
 #
 
-#  dispose() {
-#    helper.removeEventListeners(this._eventListeners);
-#    clearTimeout(this._maximumTimer);
-#  }
+    def dispose
+      # TODO
+      # helper.removeEventListeners(this._eventListeners);
+      # clearTimeout(this._maximumTimer);
+    end
+
     private
 
       PROTOCOL_MAPPING = {

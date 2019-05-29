@@ -2,7 +2,7 @@ module Chromiebara
   class DOMWorld
     include Promise::Await
 
-    attr_reader :frame
+    attr_reader :frame_manager, :frame
 
     # @param [Chromiebara::FrameManager] frame_manager
     # @param [Chromiebara::Frame] frame
@@ -157,13 +157,19 @@ module Chromiebara
       # timeout = this._timeoutSettings.navigationTimeout(),
       # We rely upon the fact that document.open() will reset frame lifecycle with "init"
       # lifecycle event. @see https://crrev.com/608658
-      # TODO make this the funcion version for string quote nightmares
-      evaluate("document.open(); document.write('#{html}'); document.close();")
-      # await this.evaluate(html => {
-      #   document.open();
-      #   document.write(html);
-      #   document.close();
-      # }, html);
+
+      watcher = LifecycleWatcher.new frame_manager, frame, wait_until, timeout
+      function = <<~JAVASCRIPT
+      html => {
+        document.open();
+        document.write(html);
+        document.close();
+      }
+      JAVASCRIPT
+      evaluate_function function, html
+      watcher.await_complete
+    ensure
+      watcher.dispose
       # const watcher = new LifecycleWatcher(this._frameManager, this._frame, waitUntil, timeout);
       # const error = await Promise.race([
       #   watcher.timeoutOrTerminationPromise(),

@@ -1,5 +1,6 @@
 require 'chromiebara/keyboard'
 require 'chromiebara/mouse'
+require 'Chromiebara/timeout_settings'
 
 module Chromiebara
   class Page
@@ -27,11 +28,10 @@ module Chromiebara
     private_class_method :new
     def initialize(target)
       @_closed = false
-      # this._client = client;
       @target = target
       @keyboard = Keyboard.new client
       @mouse =  Mouse.new client, keyboard
-      # this._timeoutSettings = new TimeoutSettings();
+      @_timeoutSettings =  TimeoutSettings.new
       # this._touchscreen = new Touchscreen(client, this._keyboard);
       # this._accessibility = new Accessibility(client);
       @frame_manager = FrameManager.new(client, self)
