@@ -115,28 +115,28 @@ module Chromiebara
       #   }
     end
 
-    # /**
-    #  * @param {!Puppeteer.Frame} frame
-    #  * @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
-    #  * @return {!Promise<?Puppeteer.Response>}
-    #  */
-    # async waitForFrameNavigation(frame, options = {}) {
-    #   assertNoLegacyNavigationOptions(options);
-    #   const {
-    #     waitUntil = ['load'],
-    #     timeout = this._timeoutSettings.navigationTimeout(),
-    #   } = options;
-    #   const watcher = new LifecycleWatcher(this, frame, waitUntil, timeout);
-    #   const error = await Promise.race([
-    #     watcher.timeoutOrTerminationPromise(),
-    #     watcher.sameDocumentNavigationPromise(),
-    #     watcher.newDocumentNavigationPromise()
-    #   ]);
-    #   watcher.dispose();
-    #   if (error)
-    #     throw error;
-    #   return watcher.navigationResponse();
-    # }
+    # @param {!Puppeteer.Frame} frame
+    # @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
+    # @return {!Promise<?Puppeteer.Response>}
+    #
+    def wait_for_frame_navigation(frame, timeout: nil, wait_until: nil)
+      wait_until ||= [:load]
+      # const {
+      #   waitUntil = ['load'],
+      #   timeout = this._timeoutSettings.navigationTimeout(),
+      # } = options;
+      watcher = LifecycleWatcher.new self, frame, wait_until, timeout
+      # const watcher = new LifecycleWatcher(this, frame, waitUntil, timeout);
+      # const error = await Promise.race([
+      #   watcher.timeoutOrTerminationPromise(),
+      #   watcher.sameDocumentNavigationPromise(),
+      #   watcher.newDocumentNavigationPromise()
+      # ]);
+      # watcher.dispose();
+      # if (error)
+      #   throw error;
+      # return watcher.navigationResponse();
+    end
 
     # /**
     #  * @param {!Protocol.Page.FrameTree} frameTree

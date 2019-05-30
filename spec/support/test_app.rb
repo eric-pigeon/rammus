@@ -4,6 +4,8 @@ require 'rack'
 require 'yaml'
 
 class TestApp < Sinatra::Base
+  set :protection, except: :frame_options
+
   get '/empty' do
   end
 

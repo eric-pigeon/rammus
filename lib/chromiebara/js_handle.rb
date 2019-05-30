@@ -83,12 +83,11 @@ module Chromiebara
       Util.value_from_remote_object remote_object
     end
 
-    # /**
-    #  * @return {?Puppeteer.ElementHandle}
-    #  */
-    # asElement() {
-    #   return null;
-    # }
+    # @return {?Puppeteer.ElementHandle}
+    #
+    def as_element
+      nil
+    end
 
     def dispose
       return if @_disposed
@@ -98,8 +97,7 @@ module Chromiebara
         await client.command(Protocol::Runtime.release_object object_id: remote_object["objectId"]).catch do |error|
           # Exceptions might happen in case of a page been navigated or closed.
           # Swallow these since they are harmless and we don't leak anything in this case.
-          # TODO
-          raise error
+          # TODO warn about this
         end
       end
     end

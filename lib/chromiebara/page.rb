@@ -1,3 +1,4 @@
+require 'chromiebara/accessibility'
 require 'chromiebara/keyboard'
 require 'chromiebara/mouse'
 require 'chromiebara/touchscreen'
@@ -11,7 +12,7 @@ module Chromiebara
     extend Promise::Await
     extend Forwardable
 
-    attr_reader :target, :frame_manager, :javascript_enabled, :keyboard, :mouse, :touchscreen
+    attr_reader :target, :frame_manager, :javascript_enabled, :keyboard, :mouse, :touchscreen, :accessibility
     delegate [:url] => :main_frame
 
     def self.create(target, default_viewport: nil)
@@ -36,7 +37,7 @@ module Chromiebara
       @mouse =  Mouse.new client, keyboard
       @_timeoutSettings =  TimeoutSettings.new
       @touchscreen = Touchscreen.new client, keyboard
-      # this._accessibility = new Accessibility(client);
+      @accessibility = Accessibility.new client
       # TODO ignore_https_errors
       @frame_manager = FrameManager.new(client, self, false)
       # this._frameManager = new FrameManager(client, this, ignoreHTTPSErrors, this._timeoutSettings);
@@ -154,13 +155,6 @@ module Chromiebara
   #  */
   # get tracing() {
   #   return this._tracing;
-  # }
-
-  # /**
-  #  * @return {!Accessibility}
-  #  */
-  # get accessibility() {
-  #   return this._accessibility;
   # }
 
     # An array of all frames attached to the page
@@ -589,13 +583,13 @@ module Chromiebara
     #   return response;
     end
 
-  # /**
-  #  * @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
-  #  * @return {!Promise<?Puppeteer.Response>}
-  #  */
-  # async waitForNavigation(options = {}) {
-  #   return await this._frameManager.mainFrame().waitForNavigation(options);
-  # }
+    # @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
+    # @return {!Promise<?Puppeteer.Response>}
+    #
+    def wait_for_navigation(options = {})
+      # TODO
+      await frame_manager.main_frame.wait_for_navigation options
+    end
 
   # /**
   #  * @param {(string|Function)} urlOrPredicate
@@ -676,15 +670,14 @@ module Chromiebara
       set_user_agent user_agent
     end
 
-  # /**
-  #  * @param {boolean} enabled
-  #  */
-  # async setJavaScriptEnabled(enabled) {
-  #   if (this._javascriptEnabled === enabled)
-  #     return;
-  #   this._javascriptEnabled = enabled;
-  #   await this._client.send('Emulation.setScriptExecutionDisabled', { value: !enabled });
-  # }
+    # @param [Boolean] enabled
+    #
+    def set_javascript_enabled(enabled)
+      return if javascript_enabled == enabled
+
+      @javascript_enabled = enabled
+      client.command Protocol::Emulation.set_script_execution_disabled value: !javascript_enabled
+    end
 
   # /**
   #  * @param {boolean} enabled

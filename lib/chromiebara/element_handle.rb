@@ -62,7 +62,7 @@ module Chromiebara
 
     # * @param {!{delay?: number, button?: "left"|"right"|"middle", clickCount?: number}=} options
     #
-    def click(options)
+    def click(options = {})
       scroll_into_view_if_needed
       point = clickable_point
       page.mouse.click(point[:x], point[:y], options)

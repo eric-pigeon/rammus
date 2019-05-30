@@ -44,13 +44,12 @@ module Chromiebara
       frame_manager.navigate_frame self, url, referrer: referrer, timeout: timeout, wait_until: wait_until
     end
 
-  # /**
-  #  * @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
-  #  * @return {!Promise<?Puppeteer.Response>}
-  #  */
-  # async waitForNavigation(options) {
-  #   return await this._frameManager.waitForFrameNavigation(this, options);
-  # }
+    # @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
+    # @return {!Promise<?Puppeteer.Response>}
+    #
+    def wait_for_navigation(options)
+      frame_manager.wait_for_frame_navigation self, options
+    end
 
     # @return {!Promise<!ExecutionContext>}
     #
