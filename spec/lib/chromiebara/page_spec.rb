@@ -5,6 +5,295 @@ module Chromiebara
     let(:context) { @_context }
     let!(:page) { context.new_page }
 
+    describe 'Accessibility' do
+      def find_focused_node(node)
+        return node if node[:focused]
+
+        node.fetch(:children, []).each do |child|
+          focused_child = find_focused_node child
+          return focused_child unless focused_child.nil?
+        end
+        nil
+      end
+
+      it 'returns accessibility tree' do
+        page.goto server.domain + 'accessibility.html'
+        expected = {
+          role: 'WebArea',
+          name: 'Accessibility Test',
+          children: [
+            { role: 'text', name: 'Hello World' },
+            { role: 'heading', name: 'Inputs', level: 1 },
+            { role: 'textbox', name: 'Empty input', focused: true },
+            { role: 'textbox', name: 'readonly input', readonly: true },
+            { role: 'textbox', name: 'disabled input', disabled: true },
+            { role: 'textbox', name: 'Input with whitespace', value: '  ' },
+            { role: 'textbox', name: '', value: 'value only' },
+            { role: 'textbox', name: 'placeholder', value: 'and a value' },
+            { role: 'textbox', name: 'placeholder', value: 'and a value', description: 'This is a description!' },
+            { role: 'combobox', name: '', value: 'First Option', children: [
+              { role: 'menuitem', name: 'First Option', selected: true },
+              { role: 'menuitem', name: 'Second Option' }]
+            }
+          ]
+        }
+        expect(page.accessibility.snapshot).to eq expected
+      end
+
+      it 'should report uninteresting nodes' do
+        page.set_content "<textarea autofocus>hi</textarea>"
+
+        expected = {
+          role: 'textbox',
+          name: '',
+          value: 'hi',
+          focused: true,
+          multiline: true,
+          children: [{
+            role: 'GenericContainer',
+            name: '',
+            children: [{
+              role: 'text', name: 'hi'
+            }]
+          }]
+        }
+        expect(find_focused_node(page.accessibility.snapshot interesting_only: false)).to eq expected
+      end
+
+      it 'returns roledescription' do
+        page.set_content '<div tabIndex=-1 aria-roledescription="foo">Hi</div>'
+        snapshot = page.accessibility.snapshot
+        expect(snapshot[:children][0][:roledescription]).to eq 'foo'
+      end
+
+      it ' returns orientation' do
+        page.set_content '<a href="" role="slider" aria-orientation="vertical">11</a>'
+        snapshot = page.accessibility.snapshot
+        expect(snapshot[:children][0][:orientation]).to eq 'vertical'
+      end
+
+      it 'returns autocomplete' do
+        page.set_content '<input type="number" aria-autocomplete="list" />'
+        snapshot = page.accessibility.snapshot
+        expect(snapshot[:children][0][:autocomplete]).to eq 'list'
+      end
+
+      it 'returns multiselectable' do
+        page.set_content '<div role="grid" tabIndex=-1 aria-multiselectable=true>hey</div>'
+        snapshot = page.accessibility.snapshot
+        expect(snapshot[:children][0][:multiselectable]).to eq true
+      end
+
+      it 'returns keyshortcuts' do
+        page.set_content '<div role="grid" tabIndex=-1 aria-keyshortcuts="foo">hey</div>'
+        snapshot = page.accessibility.snapshot
+        expect(snapshot[:children][0][:keyshortcuts]).to eq 'foo'
+      end
+
+      context 'filtering child of leaf nodes' do
+        it 'should not report text nodes inside controls' do
+          content = <<~HTML
+          <div role="tablist">
+            <div role="tab" aria-selected="true"><b>Tab1</b></div>
+            <div role="tab">Tab2</div>
+          </div>
+          HTML
+          page.set_content content
+          expected = {
+            role: 'WebArea',
+            name: '',
+            children: [
+              { role: 'tab', name: 'Tab1', selected: true },
+              { role: 'tab', name: 'Tab2' }
+            ]
+          }
+          expect(page.accessibility.snapshot).to eq expected
+        end
+
+        it 'rich text editable fields should have children' do
+          content = <<~HTML
+          <div contenteditable="true">
+            Edit this image: <img src="fakeimage.png" alt="my fake image">
+          </div>
+          HTML
+          page.set_content content
+
+          expected = {
+            role: 'GenericContainer',
+            name: '',
+            value: 'Edit this image: ',
+            children: [
+              { role: 'text', name: 'Edit this image:' },
+              { role: 'img', name: 'my fake image' }
+            ]
+          }
+          snapshot = page.accessibility.snapshot
+          expect(snapshot[:children][0]).to eq expected
+        end
+
+        it 'rich text editable fields with role should have children' do
+          content = <<~HTML
+          <div contenteditable="true" role='textbox'>
+            Edit this image: <img src="fakeimage.png" alt="my fake image">
+          </div>
+          HTML
+          page.set_content content
+          expected = {
+            role: 'textbox',
+            name: '',
+            value: 'Edit this image: ',
+            children: [
+              { role: 'text', name: 'Edit this image:' },
+              { role: 'img', name: 'my fake image' }
+            ]
+          }
+          snapshot = page.accessibility.snapshot
+          expect(snapshot[:children][0]).to eq expected
+        end
+
+        # TODO
+        # // Firefox does not support contenteditable="plaintext-only".
+        # !FFOX && describe('plaintext contenteditable', function() {
+        #   it('plain text field with role should not have children', async function({page}) {
+        #     await page.setContent(`
+        #     <div contenteditable="plaintext-only" role='textbox'>Edit this image:<img src="fakeimage.png" alt="my fake image"></div>`);
+        #     const snapshot = await page.accessibility.snapshot();
+        #     expect(snapshot.children[0]).toEqual({
+        #       role: 'textbox',
+        #       name: '',
+        #       value: 'Edit this image:'
+        #     });
+        #   });
+        #   it('plain text field without role should not have content', async function({page}) {
+        #     await page.setContent(`
+        #     <div contenteditable="plaintext-only">Edit this image:<img src="fakeimage.png" alt="my fake image"></div>`);
+        #     const snapshot = await page.accessibility.snapshot();
+        #     expect(snapshot.children[0]).toEqual({
+        #       role: 'GenericContainer',
+        #       name: ''
+        #     });
+        #   });
+        #   it('plain text field with tabindex and without role should not have content', async function({page}) {
+        #     await page.setContent(`
+        #     <div contenteditable="plaintext-only" tabIndex=0>Edit this image:<img src="fakeimage.png" alt="my fake image"></div>`);
+        #     const snapshot = await page.accessibility.snapshot();
+        #     expect(snapshot.children[0]).toEqual({
+        #       role: 'GenericContainer',
+        #       name: ''
+        #     });
+        #   });
+        # });
+
+        it 'non editable textbox with role and tabIndex and label should not have children' do
+          content = <<~HTML
+          <div role="textbox" tabIndex=0 aria-checked="true" aria-label="my favorite textbox">
+            this is the inner content
+            <img alt="yo" src="fakeimg.png">
+          </div>
+          HTML
+          page.set_content content
+          expected = {
+            role: 'textbox',
+            name: 'my favorite textbox',
+            value: 'this is the inner content '
+          }
+          snapshot = page.accessibility.snapshot
+          expect(snapshot[:children][0]).to eq expected
+        end
+
+        it 'checkbox with and tabIndex and label should not have children' do
+          content = <<~HTML
+          <div role="checkbox" tabIndex=0 aria-checked="true" aria-label="my favorite checkbox">
+            this is the inner content
+            <img alt="yo" src="fakeimg.png">
+          </div>
+          HTML
+          page.set_content content
+          expected = {
+            role: 'checkbox',
+            name: 'my favorite checkbox',
+            checked: true
+          }
+
+          snapshot = page.accessibility.snapshot
+          expect(snapshot[:children][0]).to eq expected
+        end
+
+        it 'checkbox without label should not have children' do
+          content = <<~HTML
+          <div role="checkbox" aria-checked="true">
+            this is the inner content
+            <img alt="yo" src="fakeimg.png">
+          </div>
+          HTML
+          page.set_content content
+          expected = {
+            role: 'checkbox',
+            name: 'this is the inner content yo',
+            checked: true
+          }
+          snapshot = page.accessibility.snapshot
+          expect(snapshot[:children][0]).to eq expected
+        end
+
+        describe 'root option' do
+          it 'should work a button' do
+            page.set_content "<button>My Button</button>"
+
+            button = page.query_selector 'button'
+            expect(page.accessibility.snapshot root: button).to eq(role: 'button', name: 'My Button')
+          end
+
+          it 'should work an input' do
+            page.set_content '<input title="My Input" value="My Value">'
+
+            input = page.query_selector 'input'
+            expect(page.accessibility.snapshot(root: input)).to eq(role: 'textbox', name: 'My Input', value: 'My Value')
+          end
+
+          it 'should work a menu' do
+            content = <<~HTML
+            <div role="menu" title="My Menu">
+              <div role="menuitem">First Item</div>
+              <div role="menuitem">Second Item</div>
+              <div role="menuitem">Third Item</div>
+            </div>
+            HTML
+            page.set_content content
+
+            menu = page.query_selector 'div[role="menu"]'
+            expect(page.accessibility.snapshot(root: menu)).to eq({
+              role: 'menu',
+              name: 'My Menu',
+              children: [
+                { role: 'menuitem', name: 'First Item' },
+                { role: 'menuitem', name: 'Second Item' },
+                { role: 'menuitem', name: 'Third Item' }
+              ]
+            })
+          end
+
+          it 'should return null when the element is no longer in DOM' do
+            page.set_content "<button>My Button</button>"
+            button = page.query_selector 'button'
+            page.query_selector_evaluate_function 'button', 'button => button.remove()'
+            expect(page.accessibility.snapshot(root: button)).to eq nil
+          end
+
+          it 'should support the interesting_only option' do
+            page.set_content "<div><button>My Button</button></div>"
+            div = page.query_selector 'div'
+            expect(page.accessibility.snapshot(root: div)).to eq nil
+            expect(page.accessibility.snapshot(root: div, interesting_only: false)).to eq({
+              role: 'GenericContainer',
+              name: '',
+              children: [ { role: 'button', name: 'My Button' } ] }
+            )
+          end
+        end
+      end
+    end
+
     describe '#close' do
       it 'should not be visible in browser.pages' do
         new_page = browser.new_page
@@ -333,210 +622,236 @@ module Chromiebara
         expect(page.evaluate 'result').to eq 'Clicked'
       end
 
-      #it('should click svg', async({page, server}) => {
-      #  await page.setContent(`
-      #    <svg height="100" width="100">
-      #      <circle onclick="javascript:window.__CLICKED=42" cx="50" cy="50" r="40" stroke="black" stroke-width="3" fill="red" />
-      #    </svg>
-      #  `);
-      #  await page.click('circle');
-      #  expect(await page.evaluate(() => window.__CLICKED)).toBe(42);
-      #});
-      #it_fails_ffox('should click the button if window.Node is removed', async({page, server}) => {
-      #  await page.goto(server.PREFIX + '/input/button.html');
-      #  await page.evaluate(() => delete window.Node);
-      #  await page.click('button');
-      #  expect(await page.evaluate(() => result)).toBe('Clicked');
-      #});
-      #// @see https://github.com/GoogleChrome/puppeteer/issues/4281
-      #it('should click on a span with an inline element inside', async({page, server}) => {
-      #  await page.setContent(`
-      #    <style>
-      #    span::before {
-      #      content: 'q';
-      #    }
-      #    </style>
-      #    <span onclick='javascript:window.CLICKED=42'></span>
-      #  `);
-      #  await page.click('span');
-      #  expect(await page.evaluate(() => window.CLICKED)).toBe(42);
-      #});
-      #it('should click the button after navigation ', async({page, server}) => {
-      #  await page.goto(server.PREFIX + '/input/button.html');
-      #  await page.click('button');
-      #  await page.goto(server.PREFIX + '/input/button.html');
-      #  await page.click('button');
-      #  expect(await page.evaluate(() => result)).toBe('Clicked');
-      #});
-      #it_fails_ffox('should click with disabled javascript', async({page, server}) => {
-      #  await page.setJavaScriptEnabled(false);
-      #  await page.goto(server.PREFIX + '/wrappedlink.html');
-      #  await Promise.all([
-      #    page.click('a'),
-      #    page.waitForNavigation()
-      #  ]);
-      #  expect(page.url()).toBe(server.PREFIX + '/wrappedlink.html#clicked');
-      #});
-      #it_fails_ffox('should click when one of inline box children is outside of viewport', async({page, server}) => {
-      #  await page.setContent(`
-      #    <style>
-      #    i {
-      #      position: absolute;
-      #      top: -1000px;
-      #    }
-      #    </style>
-      #    <span onclick='javascript:window.CLICKED = 42;'><i>woof</i><b>doggo</b></span>
-      #  `);
-      #  await page.click('span');
-      #  expect(await page.evaluate(() => window.CLICKED)).toBe(42);
-      #});
-      #it('should select the text by triple clicking', async({page, server}) => {
-      #  await page.goto(server.PREFIX + '/input/textarea.html');
-      #  await page.focus('textarea');
-      #  const text = 'This is the text that we are going to try to select. Let\'s see how it goes.';
-      #  await page.keyboard.type(text);
-      #  await page.click('textarea');
-      #  await page.click('textarea', {clickCount: 2});
-      #  await page.click('textarea', {clickCount: 3});
-      #  expect(await page.evaluate(() => {
-      #    const textarea = document.querySelector('textarea');
-      #    return textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
-      #  })).toBe(text);
-      #});
-      #it('should click offscreen buttons', async({page, server}) => {
-      #  await page.goto(server.PREFIX + '/offscreenbuttons.html');
-      #  const messages = [];
-      #  page.on('console', msg => messages.push(msg.text()));
-      #  for (let i = 0; i < 11; ++i) {
-      #    // We might've scrolled to click a button - reset to (0, 0).
-      #    await page.evaluate(() => window.scrollTo(0, 0));
-      #    await page.click(`#btn${i}`);
-      #  }
-      #  expect(messages).toEqual([
-      #    'button #0 clicked',
-      #    'button #1 clicked',
-      #    'button #2 clicked',
-      #    'button #3 clicked',
-      #    'button #4 clicked',
-      #    'button #5 clicked',
-      #    'button #6 clicked',
-      #    'button #7 clicked',
-      #    'button #8 clicked',
-      #    'button #9 clicked',
-      #    'button #10 clicked'
-      #  ]);
-      #});
+      it 'should click svg' do
+        content = <<~SVG
+          <svg height="100" width="100">
+            <circle onclick="javascript:window.__CLICKED=42" cx="50" cy="50" r="40" stroke="black" stroke-width="3" fill="red" />
+          </svg>
+        SVG
+        page
+        page.set_content content
+        page.click 'circle'
+        expect(page.evaluate 'window.__CLICKED').to eq 42
+      end
 
-      #it('should click wrapped links', async({page, server}) => {
-      #  await page.goto(server.PREFIX + '/wrappedlink.html');
-      #  await page.click('a');
-      #  expect(await page.evaluate(() => window.__clicked)).toBe(true);
-      #});
+      it 'should click the button if window.Node is removed' do
+        page.goto server.domain + 'input/button.html'
+        page.evaluate 'delete window.Node'
+        page.click 'button'
+        expect(page.evaluate 'result').to eq 'Clicked'
+      end
 
-      #it('should click on checkbox input and toggle', async({page, server}) => {
-      #  await page.goto(server.PREFIX + '/input/checkbox.html');
-      #  expect(await page.evaluate(() => result.check)).toBe(null);
-      #  await page.click('input#agree');
-      #  expect(await page.evaluate(() => result.check)).toBe(true);
-      #  expect(await page.evaluate(() => result.events)).toEqual([
-      #    'mouseover',
-      #    'mouseenter',
-      #    'mousemove',
-      #    'mousedown',
-      #    'mouseup',
-      #    'click',
-      #    'input',
-      #    'change',
-      #  ]);
-      #  await page.click('input#agree');
-      #  expect(await page.evaluate(() => result.check)).toBe(false);
-      #});
+      it 'should click on a span with an inline element inside' do
+        content = <<~HTML
+          <style>
+          span::before {
+            content: 'q';
+          }
+          </style>
+          <span onclick='javascript:window.CLICKED=42'></span>
+        HTML
+        page.set_content content
+        page.click 'span'
+        expect(page.evaluate 'window.CLICKED').to eq 42
+      end
 
-      #it('should click on checkbox label and toggle', async({page, server}) => {
-      #  await page.goto(server.PREFIX + '/input/checkbox.html');
-      #  expect(await page.evaluate(() => result.check)).toBe(null);
-      #  await page.click('label[for="agree"]');
-      #  expect(await page.evaluate(() => result.check)).toBe(true);
-      #  expect(await page.evaluate(() => result.events)).toEqual([
-      #    'click',
-      #    'input',
-      #    'change',
-      #  ]);
-      #  await page.click('label[for="agree"]');
-      #  expect(await page.evaluate(() => result.check)).toBe(false);
-      #});
+      it 'should click the button after navigation ' do
+        page.goto server.domain + 'input/button.html'
+        page.click 'button'
+        page.goto server.domain + 'input/button.html'
+        page.click 'button'
+        expect(page.evaluate 'result').to eq 'Clicked'
+      end
 
-      #it('should fail to click a missing button', async({page, server}) => {
-      #  await page.goto(server.PREFIX + '/input/button.html');
-      #  let error = null;
-      #  await page.click('button.does-not-exist').catch(e => error = e);
-      #  expect(error.message).toBe('No node found for selector: button.does-not-exist');
-      #});
-      #// @see https://github.com/GoogleChrome/puppeteer/issues/161
-      #it('should not hang with touch-enabled viewports', async({page, server}) => {
-      #  await page.setViewport(puppeteer.devices['iPhone 6'].viewport);
-      #  await page.mouse.down();
-      #  await page.mouse.move(100, 10);
-      #  await page.mouse.up();
-      #});
-      #it('should scroll and click the button', async({page, server}) => {
-      #  await page.goto(server.PREFIX + '/input/scrollable.html');
-      #  await page.click('#button-5');
-      #  expect(await page.evaluate(() => document.querySelector('#button-5').textContent)).toBe('clicked');
-      #  await page.click('#button-80');
-      #  expect(await page.evaluate(() => document.querySelector('#button-80').textContent)).toBe('clicked');
-      #});
-      #it('should double click the button', async({page, server}) => {
-      #  await page.goto(server.PREFIX + '/input/button.html');
-      #  await page.evaluate(() => {
-      #    window.double = false;
-      #    const button = document.querySelector('button');
-      #    button.addEventListener('dblclick', event => {
-      #      window.double = true;
-      #    });
-      #  });
-      #  const button = await page.$('button');
-      #  await button.click({ clickCount: 2 });
-      #  expect(await page.evaluate('double')).toBe(true);
-      #  expect(await page.evaluate('result')).toBe('Clicked');
-      #});
-      #it('should click a partially obscured button', async({page, server}) => {
-      #  await page.goto(server.PREFIX + '/input/button.html');
-      #  await page.evaluate(() => {
-      #    const button = document.querySelector('button');
-      #    button.textContent = 'Some really long text that will go offscreen';
-      #    button.style.position = 'absolute';
-      #    button.style.left = '368px';
-      #  });
-      #  await page.click('button');
-      #  expect(await page.evaluate(() => window.result)).toBe('Clicked');
-      #});
-      #it('should click a rotated button', async({page, server}) => {
-      #  await page.goto(server.PREFIX + '/input/rotatedButton.html');
-      #  await page.click('button');
-      #  expect(await page.evaluate(() => result)).toBe('Clicked');
-      #});
-      #it('should fire contextmenu event on right click', async({page, server}) => {
-      #  await page.goto(server.PREFIX + '/input/scrollable.html');
-      #  await page.click('#button-8', {button: 'right'});
-      #  expect(await page.evaluate(() => document.querySelector('#button-8').textContent)).toBe('context menu');
-      #});
-      #// @see https://github.com/GoogleChrome/puppeteer/issues/206
-      #it('should click links which cause navigation', async({page, server}) => {
-      #  await page.setContent(`<a href="${server.EMPTY_PAGE}">empty.html</a>`);
-      #  // This await should not hang.
-      #  await page.click('a');
-      #});
-      #it('should click the button inside an iframe', async({page, server}) => {
-      #  await page.goto(server.EMPTY_PAGE);
-      #  await page.setContent('<div style="width:100px;height:100px">spacer</div>');
-      #  await utils.attachFrame(page, 'button-test', server.PREFIX + '/input/button.html');
-      #  const frame = page.frames()[1];
-      #  const button = await frame.$('button');
-      #  await button.click();
-      #  expect(await frame.evaluate(() => window.result)).toBe('Clicked');
-      #});
-      #// @see https://github.com/GoogleChrome/puppeteer/issues/4110
+      xit 'should click with disabled javascript' do
+        # TODO
+        page.set_javascript_enabled false
+        page.goto server.domain + 'wrappedlink.html'
+        page.click 'a'
+        page.wait_for_navigation
+        expect(page.url).to eq server.domain + 'wrappedlink.html#clicked'
+      end
+
+      it 'should click when one of inline box children is outside of viewport' do
+        content = <<~HTML
+          <style>
+          i {
+            position: absolute;
+            top: -1000px;
+          }
+          </style>
+          <span onclick='javascript:window.CLICKED = 42;'><i>woof</i><b>doggo</b></span>
+        HTML
+        page.set_content content
+        page.click 'span'
+        expect(page.evaluate 'window.CLICKED').to eq 42
+      end
+
+      it 'should select the text by triple clicking' do
+        page.goto server.domain + 'input/textarea.html'
+        page.focus 'textarea'
+        text = "This is the text that we are going to try to select. Let's see how it goes."
+        page.keyboard.type text
+        page.click 'textarea'
+        page.click 'textarea', click_count: 2
+        page.click 'textarea', click_count: 3
+        function = <<~JAVASCRIPT
+        () => {
+          const textarea = document.querySelector('textarea');
+          return textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
+        }
+        JAVASCRIPT
+        expect(page.evaluate_function function).to eq text
+      end
+
+      xit 'should click offscreen buttons' do
+        page.goto server.domain + 'offscreenbuttons.html'
+        # const messages = [];
+        # page.on('console', msg => messages.push(msg.text()));
+        # for (let i = 0; i < 11; ++i) {
+        #   // We might've scrolled to click a button - reset to (0, 0).
+        #   await page.evaluate(() => window.scrollTo(0, 0));
+        #   await page.click(`#btn${i}`);
+        # }
+        # expect(messages).toEqual([
+        #   'button #0 clicked',
+        #   'button #1 clicked',
+        #   'button #2 clicked',
+        #   'button #3 clicked',
+        #   'button #4 clicked',
+        #   'button #5 clicked',
+        #   'button #6 clicked',
+        #   'button #7 clicked',
+        #   'button #8 clicked',
+        #   'button #9 clicked',
+        #   'button #10 clicked'
+        # ]);
+      end
+
+      it 'should click wrapped links' do
+        page.goto server.domain + 'wrappedlink.html'
+        page.click 'a'
+        expect(page.evaluate 'window.__clicked').to eq true
+      end
+
+      it 'should click on checkbox input and toggle' do
+        page.goto server.domain + 'input/checkbox.html'
+        expect(page.evaluate 'result.check').to eq nil
+        page.click 'input#agree'
+        expect(page.evaluate 'result.check').to eq true
+        expect(page.evaluate 'result.events').to eq [
+          'mouseover',
+          'mouseenter',
+          'mousemove',
+          'mousedown',
+          'mouseup',
+          'click',
+          'input',
+          'change',
+        ]
+        page.click 'input#agree'
+        expect(page.evaluate 'result.check').to eq false
+      end
+
+      it 'should click on checkbox label and toggle' do
+        page.goto server.domain + 'input/checkbox.html'
+        expect(page.evaluate 'result.check').to eq nil
+        page.click 'label[for="agree"]'
+        expect(page.evaluate 'result.check').to eq true
+        expect(page.evaluate 'result.events').to eq [
+          'click',
+          'input',
+          'change',
+        ]
+        page.click 'label[for="agree"]'
+        expect(page.evaluate 'result.check').to eq false
+      end
+
+      it 'should fail to click a missing button' do
+        page.goto server.domain + 'input/checkbox.html'
+        expect { page.click 'button.does-not-exist' }
+          .to raise_error 'No node found for selector: button.does-not-exist'
+      end
+
+      # @see https://github.com/GoogleChrome/puppeteer/issues/161
+      it 'should not hang with touch-enabled viewports' do
+        page.set_viewport Chromiebara.devices['iPhone 6'][:viewport]
+        page.mouse.down
+        page.mouse.move(100, 10)
+        page.mouse.up
+      end
+
+      it 'should scroll and click the button' do
+        page.goto server.domain + 'input/scrollable.html'
+        page.click '#button-5'
+        expect(page.evaluate "document.querySelector('#button-5').textContent").to eq 'clicked'
+        page.click '#button-80'
+        expect(page.evaluate "document.querySelector('#button-80').textContent").to eq 'clicked'
+      end
+
+      it 'should double click the button' do
+        page.goto server.domain + 'input/button.html'
+        function = <<~JAVASCRIPT
+        () => {
+          window.double = false;
+          const button = document.querySelector('button');
+          button.addEventListener('dblclick', event => {
+            window.double = true;
+          });
+        }
+        JAVASCRIPT
+        page.evaluate_function function
+        button = page.query_selector 'button'
+        button.click click_count: 2
+        expect(page.evaluate 'double').to eq true
+        expect(page.evaluate 'result').to eq 'Clicked'
+      end
+
+      it 'should click a partially obscured button' do
+        page.goto server.domain + 'input/button.html'
+        function = <<~JAVASCRIPT
+        () => {
+          const button = document.querySelector('button');
+          button.textContent = 'Some really long text that will go offscreen';
+          button.style.position = 'absolute';
+          button.style.left = '368px';
+        }
+        JAVASCRIPT
+        page.evaluate_function function
+        page.click 'button'
+        expect(page.evaluate 'window.result').to eq 'Clicked'
+      end
+
+      it 'should click a rotated button' do
+        page.goto server.domain + 'input/rotatedButton.html'
+        page.click 'button'
+        expect(page.evaluate 'window.result').to eq 'Clicked'
+      end
+
+      it 'should fire contextmenu event on right click' do
+        page.goto server.domain + 'input/scrollable.html'
+        page.click '#button-8', button: 'right'
+        expect(page.evaluate "document.querySelector('#button-8').textContent").to eq 'context menu'
+      end
+
+      # @see https://github.com/GoogleChrome/puppeteer/issues/206
+      it 'should click links which cause navigation' do
+        page.set_content("<a href='#{server.domain}'>empty.html</a>");
+        # This await should not hang.
+        page.click 'a'
+      end
+
+      it 'should click the button inside an iframe' do
+        page.goto server.domain
+        page.set_content '<div style="width:100px;height:100px">spacer</div>'
+        attach_frame page, 'button-test', server.domain + 'input/button.html'
+        frame = page.frames[1]
+        button = frame.query_selector 'button'
+        button.click
+        expect(frame.evaluate 'window.result').to eq 'Clicked'
+      end
+
+      # @see https://github.com/GoogleChrome/puppeteer/issues/4110
       #xit('should click the button with fixed position inside an iframe', async({page, server}) => {
       #  await page.goto(server.EMPTY_PAGE);
       #  await page.setViewport({width: 500, height: 500});
@@ -547,16 +862,17 @@ module Chromiebara
       #  await frame.click('button');
       #  expect(await frame.evaluate(() => window.result)).toBe('Clicked');
       #});
-      #it('should click the button with deviceScaleFactor set', async({page, server}) => {
-      #  await page.setViewport({width: 400, height: 400, deviceScaleFactor: 5});
-      #  expect(await page.evaluate(() => window.devicePixelRatio)).toBe(5);
-      #  await page.setContent('<div style="width:100px;height:100px">spacer</div>');
-      #  await utils.attachFrame(page, 'button-test', server.PREFIX + '/input/button.html');
-      #  const frame = page.frames()[1];
-      #  const button = await frame.$('button');
-      #  await button.click();
-      #  expect(await frame.evaluate(() => window.result)).toBe('Clicked');
-      #});
+
+      it 'should click the button with device_scale_factor set' do
+        page.set_viewport width: 400, height: 400, device_scale_factor: 5
+        expect(page.evaluate 'window.devicePixelRatio').to eq 5
+        page.set_content '<div style="width:100px;height:100px">spacer</div>'
+        attach_frame page, 'button-test', server.domain + 'input/button.html'
+        frame = page.frames[1]
+        button = frame.query_selector 'button'
+        button.click
+        expect(frame.evaluate 'window.result').to eq 'Clicked'
+      end
     end
 
     describe '#evaluate' do
@@ -1258,6 +1574,7 @@ module Chromiebara
         end.to raise_error Timeout::Error
       end
 
+      # TODO
       #it_fails_ffox('should respect default navigation timeout', async({page, server}) => {
       #  page.setDefaultNavigationTimeout(1);
       #  const imgPath = '/img.png';
@@ -1301,6 +1618,7 @@ module Chromiebara
     end
 
     context 'query selector' do
+      # TODO
       #describe('Page.$eval', function() {
       #  it('should work', async({page, server}) => {
       #    await page.setContent('<section id="testAttribute">43543</section>');
@@ -1334,6 +1652,7 @@ module Chromiebara
       #});
 
       describe '#query_selector' do
+        # TODO
         #it('should query existing element', async({page, server}) => {
         #  await page.setContent('<section>test</section>');
         #  const element = await page.$('section');
@@ -1345,6 +1664,7 @@ module Chromiebara
         #});
       end
 
+      # TODO
       #describe('Page.$$', function() {
       #  it('should query existing elements', async({page, server}) => {
       #    await page.setContent('<div>A</div><br/><div>B</div>');
@@ -1360,6 +1680,7 @@ module Chromiebara
       #  });
       #});
 
+      # TODO
       #describe('Path.$x', function() {
       #  it('should query existing element', async({page, server}) => {
       #    await page.setContent('<section>test</section>');
@@ -1378,6 +1699,7 @@ module Chromiebara
       #  });
       #});
 
+      # TODO
       #describe('ElementHandle.$', function() {
       #  it('should query existing element', async({page, server}) => {
       #    await page.goto(server.PREFIX + '/playground.html');
@@ -1389,6 +1711,7 @@ module Chromiebara
       #    expect(content).toBe('A');
       #  });
 
+      # TODO
       #  it('should return null for non-existing element', async({page, server}) => {
       #    await page.setContent('<html><body><div class="second"><div class="inner">B</div></div></body></html>');
       #    const html = await page.$('html');
@@ -1396,6 +1719,7 @@ module Chromiebara
       #    expect(second).toBe(null);
       #  });
       #});
+
       #describe('ElementHandle.$eval', function() {
       #  it('should work', async({page, server}) => {
       #    await page.setContent('<html><body><div class="tweet"><div class="like">100</div><div class="retweets">10</div></div></body></html>');
@@ -1420,6 +1744,7 @@ module Chromiebara
       #    expect(errorMessage).toBe(`Error: failed to find element matching selector ".a"`);
       #  });
       #});
+
       #describe('ElementHandle.$$eval', function() {
       #  it('should work', async({page, server}) => {
       #    await page.setContent('<html><body><div class="tweet"><div class="like">100</div><div class="like">10</div></div></body></html>');
