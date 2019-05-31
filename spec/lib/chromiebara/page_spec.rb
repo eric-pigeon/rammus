@@ -875,6 +875,35 @@ module Chromiebara
       end
     end
 
+    describe 'dialog' do
+      it 'should fire event on diaglod' do
+        page.on :dialog do |dialog|
+          expect(dialog.type).to eq :alert
+          expect(dialog.default_value).to eq ''
+          expect(dialog.message).to eq 'yo'
+          dialog.accept
+        end
+        page.evaluate "alert('yo')"
+      end
+      #it('should allow accepting prompts', async({page, server}) => {
+      #  page.on('dialog', dialog => {
+      #    expect(dialog.type()).toBe('prompt');
+      #    expect(dialog.defaultValue()).toBe('yes.');
+      #    expect(dialog.message()).toBe('question?');
+      #    dialog.accept('answer!');
+      #  });
+      #  const result = await page.evaluate(() => prompt('question?', 'yes.'));
+      #  expect(result).toBe('answer!');
+      #});
+      #it('should dismiss the prompt', async({page, server}) => {
+      #  page.on('dialog', dialog => {
+      #    dialog.dismiss();
+      #  });
+      #  const result = await page.evaluate(() => prompt('question?'));
+      #  expect(result).toBe(null);
+      #});
+    end
+
     describe '#evaluate' do
       context 'passing javascript function' do
         it 'transfers NaN' do
