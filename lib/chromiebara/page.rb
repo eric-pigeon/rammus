@@ -2,6 +2,7 @@ require 'chromiebara/accessibility'
 require 'chromiebara/keyboard'
 require 'chromiebara/mouse'
 require 'chromiebara/touchscreen'
+require 'chromiebara/dialog'
 require 'chromiebara/frame_manager'
 require 'chromiebara/emulation_manager'
 require 'Chromiebara/timeout_settings'
@@ -9,6 +10,7 @@ require 'Chromiebara/timeout_settings'
 module Chromiebara
   class Page
     include Promise::Await
+    include EventEmitter
     extend Promise::Await
     extend Forwardable
 
@@ -31,6 +33,7 @@ module Chromiebara
 
     private_class_method :new
     def initialize(target)
+      super()
       @_closed = false
       @target = target
       @keyboard = Keyboard.new client
@@ -90,7 +93,7 @@ module Chromiebara
       # client.on('Page.loadEventFired', event => this.emit(Events.Page.Load));
       # client.on('Runtime.consoleAPICalled', event => this._onConsoleAPI(event));
       # client.on('Runtime.bindingCalled', event => this._onBindingCalled(event));
-      # client.on('Page.javascriptDialogOpening', event => this._onDialog(event));
+      client.on Protocol::Page.javascript_dialog_opening, method(:on_dialog)
       # client.on('Runtime.exceptionThrown', exception => this._handleException(exception.exceptionDetails));
       # client.on('Inspector.targetCrashed', event => this._onTargetCrashed());
       # client.on('Performance.metrics', event => this._emitMetrics(event));
@@ -534,21 +537,6 @@ module Chromiebara
   #   } : {};
   #   const message = new ConsoleMessage(type, textTokens.join(' '), args, location);
   #   this.emit(Events.Page.Console, message);
-  # }
-
-  # _onDialog(event) {
-  #   let dialogType = null;
-  #   if (event.type === 'alert')
-  #     dialogType = Dialog.Type.Alert;
-  #   else if (event.type === 'confirm')
-  #     dialogType = Dialog.Type.Confirm;
-  #   else if (event.type === 'prompt')
-  #     dialogType = Dialog.Type.Prompt;
-  #   else if (event.type === 'beforeunload')
-  #     dialogType = Dialog.Type.BeforeUnload;
-  #   assert(dialogType, 'Unknown javascript dialog type: ' + event.type);
-  #   const dialog = new Dialog(this._client, dialogType, event.message, event.defaultPrompt);
-  #   this.emit(Events.Page.Dialog, dialog);
   # }
 
     # * @return {!Promise<string>}
@@ -1014,5 +1002,20 @@ module Chromiebara
       #   if (source !== 'worker')
       #     this.emit(Events.Page.Console, new ConsoleMessage(level, text, [], {url, lineNumber}));
       # }
+
+      def on_dialog(event)
+        dialog_type =
+          case event["type"]
+          when 'alert' then Dialog::ALERT
+          when 'confirm' then Dialog::CONFIRM
+          when 'prompt' then DIALOG::PROMPT
+          when 'beforeunload' then DIALOG::BEFORE_UNLOAD
+          else
+            raise "Unknown javascript dialog type: #{event["type"]}"
+          end
+        dialog = Dialog.new client, dialog_type, event["message"], event["defaultPrompt"]
+
+        emit :dialog, dialog
+      end
   end
 end
