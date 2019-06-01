@@ -37,6 +37,7 @@ module Chromiebara
 
       DEFAULT_ARGS = [
         '--disable-background-networking',
+        '--enable-features=NetworkService,NetworkServiceInProcess',
         '--disable-background-timer-throttling',
         '--disable-backgrounding-occluded-windows',
         '--disable-breakpad',
@@ -44,25 +45,24 @@ module Chromiebara
         '--disable-default-apps',
         '--disable-dev-shm-usage',
         '--disable-extensions',
-        # TODO: Support OOOPIF. @see https://github.com/GoogleChrome/puppeteer/issues/2548
-        # BlinkGenPropertyTrees disabled due to crbug.com/937609
         '--disable-features=site-per-process,TranslateUI,BlinkGenPropertyTrees',
         '--disable-hang-monitor',
         '--disable-ipc-flooding-protection',
-        '--disable-infobars',
+        # '--disable-infobars',
         '--disable-popup-blocking',
         '--disable-prompt-on-repost',
         '--disable-renderer-backgrounding',
         '--disable-sync',
         '--force-color-profile=srgb',
-        '--disable-session-crashed-bubble',
+        # '--disable-session-crashed-bubble',
         '--metrics-recording-only',
         '--no-first-run',
-        '--safebrowsing-disable-auto-update',
+        # '--safebrowsing-disable-auto-update',
         '--enable-automation',
         '--password-store=basic',
         '--use-mock-keychain',
-        '--keep-alive-for-test',
+        'about:blank',
+        # '--keep-alive-for-test',
       ]
 
       def self.executable_path
