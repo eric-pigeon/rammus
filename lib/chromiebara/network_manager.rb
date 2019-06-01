@@ -42,11 +42,12 @@ module Chromiebara
     #   this._client.on('Network.loadingFailed', this._onLoadingFailed.bind(this));
     end
 
-    # async initialize() {
-    #   await this._client.send('Network.enable');
-    #   if (this._ignoreHTTPSErrors)
-    #     await this._client.send('Security.setIgnoreCertificateErrors', {ignore: true});
-    # }
+    def start
+      await client.command Protocol::Network.enable
+      if @_ignore_https_errors
+        await client.command Protocol::Security.set_ignore_certificate_errors ignore: true
+      end
+    end
 
     # /**
     #  * @param {?{username: string, password: string}} credentials

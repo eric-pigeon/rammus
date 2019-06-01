@@ -885,16 +885,18 @@ module Chromiebara
         end
         page.evaluate "alert('yo')"
       end
-      #it('should allow accepting prompts', async({page, server}) => {
-      #  page.on('dialog', dialog => {
-      #    expect(dialog.type()).toBe('prompt');
-      #    expect(dialog.defaultValue()).toBe('yes.');
-      #    expect(dialog.message()).toBe('question?');
-      #    dialog.accept('answer!');
-      #  });
-      #  const result = await page.evaluate(() => prompt('question?', 'yes.'));
-      #  expect(result).toBe('answer!');
-      #});
+
+      it 'should allow accepting prompts' do
+        page.on :dialog do |dialog|
+          expect(dialog.type).to eq :prompt
+          expect(dialog.default_value).to eq 'yes.'
+          expect(dialog.message) .to eq 'question?'
+          dialog.accept 'answer!'
+        end
+        result = page.evaluate_function "() => prompt('question?', 'yes.')"
+        expect(result).to eq 'answer!'
+      end
+
       #it('should dismiss the prompt', async({page, server}) => {
       #  page.on('dialog', dialog => {
       #    dialog.dismiss();

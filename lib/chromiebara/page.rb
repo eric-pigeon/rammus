@@ -1008,8 +1008,8 @@ module Chromiebara
           case event["type"]
           when 'alert' then Dialog::ALERT
           when 'confirm' then Dialog::CONFIRM
-          when 'prompt' then DIALOG::PROMPT
-          when 'beforeunload' then DIALOG::BEFORE_UNLOAD
+          when 'prompt' then Dialog::PROMPT
+          when 'beforeunload' then Dialog::BEFORE_UNLOAD
           else
             raise "Unknown javascript dialog type: #{event["type"]}"
           end

@@ -22,7 +22,7 @@ module Chromiebara
       @client = client
       @page = page
 
-      @network_manager = NetworkManager.new(client, self, ignore_https_errors)
+      @network_manager = NetworkManager.new client, self, ignore_https_errors
 
       # @type [Hash<String, Frame>]
       @_frames = {}
@@ -52,7 +52,7 @@ module Chromiebara
        Promise.all(
         client.command(Protocol::Page.set_lifecycle_events_enabled enabled: true),
         client.command(Protocol::Runtime.enable).then { ensure_isolated_world UTILITY_WORLD_NAME },
-        # this._networkManager.initialize(),
+        network_manager.start
       )
     end
 
