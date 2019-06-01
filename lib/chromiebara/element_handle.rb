@@ -45,15 +45,6 @@ module Chromiebara
       frame_manager.frame node_info.dig("node", "frameId")
     end
 
-    #/**
-    # * @return {!Promise<void|Protocol.DOM.getBoxModelReturnValue>}
-    # */
-    #_getBoxModel() {
-    #  return this._client.send('DOM.getBoxModel', {
-    #    objectId: this._remoteObject.objectId
-    #  }).catch(error => debugError(error));
-    #}
-
     def hover()
       scroll_into_view_if_needed
       point = clickable_point
@@ -103,43 +94,41 @@ module Chromiebara
       page.keyboard.press key, delay: delay
     end
 
-    #/**
-    # * @return {!Promise<?{x: number, y: number, width: number, height: number}>}
-    # */
-    #async boundingBox() {
-    #  const result = await this._getBoxModel();
+    # @return {!Promise<?{x: number, y: number, width: number, height: number}>}
+    #
+    def bounding_box
+     result = get_box_model
 
-    #  if (!result)
-    #    return null;
+     return if result.nil?
 
-    #  const quad = result.model.border;
-    #  const x = Math.min(quad[0], quad[2], quad[4], quad[6]);
-    #  const y = Math.min(quad[1], quad[3], quad[5], quad[7]);
-    #  const width = Math.max(quad[0], quad[2], quad[4], quad[6]) - x;
-    #  const height = Math.max(quad[1], quad[3], quad[5], quad[7]) - y;
+     quad = result.dig "model", "border"
+     x = [quad[0], quad[2], quad[4], quad[6]].min
+     y = [quad[1], quad[3], quad[5], quad[7]].min
+     width = [quad[0], quad[2], quad[4], quad[6]].max - x
+     height = [quad[1], quad[3], quad[5], quad[7]].max - y
 
-    #  return {x, y, width, height};
-    #}
+     { x: x, y: y, width: width, height: height }
+    end
 
-    #/**
-    # * @return {!Promise<?BoxModel>}
-    # */
-    #async boxModel() {
-    #  const result = await this._getBoxModel();
+    # @return {!Promise<?BoxModel>}
+    #
+    def box_model
+      result = get_box_model
 
-    #  if (!result)
-    #    return null;
+      return if result.nil?
 
-    #  const {content, padding, border, margin, width, height} = result.model;
-    #  return {
-    #    content: this._fromProtocolQuad(content),
-    #    padding: this._fromProtocolQuad(padding),
-    #    border: this._fromProtocolQuad(border),
-    #    margin: this._fromProtocolQuad(margin),
-    #    width,
-    #    height
-    #  };
-    #}
+      model = result["model"]
+
+        #const {content, padding, border, margin, width, height} = result.model;
+      {
+        content: from_protocol_quad(model["content"]),
+        padding: from_protocol_quad(model["padding"]),
+        border: from_protocol_quad(model["border"]),
+        margin: from_protocol_quad(model["margin"]),
+        width: model["width"],
+        height: model["height"]
+      }
+    end
 
     #/**
     # *
@@ -286,21 +275,23 @@ module Chromiebara
     #  return result;
     #}
 
-    #/**
-    # * @returns {!Promise<boolean>}
-    # */
-    #isIntersectingViewport() {
-    #  return this.executionContext().evaluate(async element => {
-    #    const visibleRatio = await new Promise(resolve => {
-    #      const observer = new IntersectionObserver(entries => {
-    #        resolve(entries[0].intersectionRatio);
-    #        observer.disconnect();
-    #      });
-    #      observer.observe(element);
-    #    });
-    #    return visibleRatio > 0;
-    #  }, this);
-    #}
+    # @returns {!Promise<boolean>}
+    #
+    def is_intersecting_viewport
+      function = <<~JAVASCRIPT
+      async element => {
+        const visibleRatio = await new Promise(resolve => {
+          const observer = new IntersectionObserver(entries => {
+            resolve(entries[0].intersectionRatio);
+            observer.disconnect();
+          });
+          observer.observe(element);
+        });
+        return visibleRatio > 0;
+      }
+      JAVASCRIPT
+      execution_context.evaluate_function function, self
+    end
 
     private
 
@@ -329,19 +320,19 @@ module Chromiebara
           }
         JAVASCRIPT
         error = execution_context.evaluate function, self, page.javascript_enabled, function: true
-        raise 'TODO' if error
+        raise error if error
       end
 
       # @return {!Promise<!{x: number, y: number}>}
       #
       def clickable_point
         result, layout_metrics = await Promise.all(
-          client.command(Protocol::DOM.get_content_quads object_id: remote_object["objectId"]),
+          client.command(Protocol::DOM.get_content_quads object_id: remote_object["objectId"]).catch { |error| }, # TODO
           client.command(Protocol::Page.get_layout_metrics)
         )
 
         if !result || !result.fetch("quads", []).length
-          rasie 'Node is either not visible or not an HTMLElement'
+          raise 'Node is either not visible or not an HTMLElement'
         end
 
         # Filter out quads that have too small area to click into.
@@ -403,6 +394,14 @@ module Chromiebara
           area += (p1[:x] * p2[:y] - p2[:x] * p1[:y]) / 2;
         end
         area.abs
+      end
+
+      # @return {!Promise<void|Protocol.DOM.getBoxModelReturnValue>}
+      #
+      def get_box_model
+        await client.command(Protocol::DOM.get_box_model(
+          object_id: remote_object["objectId"]
+        )).catch { |_error| } # TODO
       end
   end
 end

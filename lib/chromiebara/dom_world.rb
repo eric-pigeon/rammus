@@ -50,15 +50,13 @@ module Chromiebara
       await @_context_promise
     end
 
-    # /**
-    #  * @param {Function|string} pageFunction
-    #  * @param {!Array<*>} args
-    #  * @return {!Promise<!Puppeteer.JSHandle>}
-    #  */
-    # async evaluateHandle(pageFunction, ...args) {
-    #   const context = await this.executionContext();
-    #   return context.evaluateHandle(pageFunction, ...args);
-    # }
+    # @param {Function|string} pageFunction
+    # @param {!Array<*>} args
+    # @return {!Promise<!Puppeteer.JSHandle>}
+    #
+    def evaluate_handle(page_function, *args)
+      execution_context.evaluate_handle page_function, *args
+    end
 
     # * @param {Function|string} pageFunction
     # * @param {!Array<*>} args
@@ -70,6 +68,11 @@ module Chromiebara
 
     def evaluate_function(function, *args)
       execution_context.evaluate_function function, *args
+    end
+
+    # TODO
+    def evaluate_handle_function(function, *args)
+      execution_context.evaluate_handle_function function, *args
     end
 
     # @param {string} selector
