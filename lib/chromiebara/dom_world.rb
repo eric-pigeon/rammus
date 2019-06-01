@@ -184,76 +184,71 @@ module Chromiebara
 
     end
 
-    # /**
-    #  * @param {!{url?: string, path?: string, content?: string, type?: string}} options
-    #  * @return {!Promise<!Puppeteer.ElementHandle>}
-    #  */
-    # async addScriptTag(options) {
-    #   const {
-    #     url = null,
-    #     path = null,
-    #     content = null,
-    #     type = ''
-    #   } = options;
-    #   if (url !== null) {
-    #     try {
-    #       const context = await this.executionContext();
-    #       return (await context.evaluateHandle(addScriptUrl, url, type)).asElement();
-    #     } catch (error) {
-    #       throw new Error(`Loading script from ${url} failed`);
-    #     }
-    #   }
+    # @param {!{url?: string, path?: string, content?: string, type?: string}} options
+    # @return {!Promise<!Puppeteer.ElementHandle>}
+    #
+    def add_script_tag(url: nil, path: nil, content: nil, type: '')
 
-    #   if (path !== null) {
-    #     let contents = await readFileAsync(path, 'utf8');
-    #     contents += '//# sourceURL=' + path.replace(/\n/g, '');
-    #     const context = await this.executionContext();
-    #     return (await context.evaluateHandle(addScriptContent, contents, type)).asElement();
-    #   }
+      #/**
+      # * @param {string} url
+      # * @param {string} type
+      # * @return {!Promise<!HTMLElement>}
+      # */
+      add_script_url = <<~JAVASCRIPT
+      async function addScriptUrl(url, type) {
+        const script = document.createElement('script');
+        script.src = url;
+        if (type)
+          script.type = type;
+        const promise = new Promise((res, rej) => {
+          script.onload = res;
+          script.onerror = rej;
+        });
+        document.head.appendChild(script);
+        await promise;
+        return script;
+      }
+      JAVASCRIPT
 
-    #   if (content !== null) {
-    #     const context = await this.executionContext();
-    #     return (await context.evaluateHandle(addScriptContent, content, type)).asElement();
-    #   }
+      if url != nil
+        begin
+          execution_context.evaluate_handle_function(add_script_url, url, type).as_element
+        rescue => _error
+          raise "Loading script from #{url} failed"
+        end
+      end
 
-    #   throw new Error('Provide an object with a `url`, `path` or `content` property');
+      #if (path !== null) {
+      #  let contents = await readFileAsync(path, 'utf8');
+      #  contents += '//# sourceURL=' + path.replace(/\n/g, '');
+      #  const context = await this.executionContext();
+      #  return (await context.evaluateHandle(addScriptContent, contents, type)).asElement();
+      #}
 
-    #   /**
-    #    * @param {string} url
-    #    * @param {string} type
-    #    * @return {!Promise<!HTMLElement>}
-    #    */
-    #   async function addScriptUrl(url, type) {
-    #     const script = document.createElement('script');
-    #     script.src = url;
-    #     if (type)
-    #       script.type = type;
-    #     const promise = new Promise((res, rej) => {
-    #       script.onload = res;
-    #       script.onerror = rej;
-    #     });
-    #     document.head.appendChild(script);
-    #     await promise;
-    #     return script;
-    #   }
+      #if (content !== null) {
+      #  const context = await this.executionContext();
+      #  return (await context.evaluateHandle(addScriptContent, content, type)).asElement();
+      #}
 
-    #   /**
-    #    * @param {string} content
-    #    * @param {string} type
-    #    * @return {!HTMLElement}
-    #    */
-    #   function addScriptContent(content, type = 'text/javascript') {
-    #     const script = document.createElement('script');
-    #     script.type = type;
-    #     script.text = content;
-    #     let error = null;
-    #     script.onerror = e => error = e;
-    #     document.head.appendChild(script);
-    #     if (error)
-    #       throw error;
-    #     return script;
-    #   }
-    # }
+      #throw new Error('Provide an object with a `url`, `path` or `content` property');
+
+      #/**
+      # * @param {string} content
+      # * @param {string} type
+      # * @return {!HTMLElement}
+      # */
+      #function addScriptContent(content, type = 'text/javascript') {
+      #  const script = document.createElement('script');
+      #  script.type = type;
+      #  script.text = content;
+      #  let error = null;
+      #  script.onerror = e => error = e;
+      #  document.head.appendChild(script);
+      #  if (error)
+      #    throw error;
+      #  return script;
+      #}
+    end
 
     # /**
     #  * @param {!{url?: string, path?: string, content?: string}} options
