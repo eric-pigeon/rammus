@@ -30,12 +30,10 @@ module Chromiebara
       await @_client.command Protocol::Page.handle_java_script_dialog accept: true, prompt_text: prompt_text
     end
 
-    #async dismiss() {
-    #  assert(!this._handled, 'Cannot dismiss dialog which is already handled!');
-    #  this._handled = true;
-    #  await this._client.send('Page.handleJavaScriptDialog', {
-    #    accept: false
-    #  });
-    #}
+    def dismiss
+      raise 'Cannot dismiss dialog which is already handled!' if @_handled
+      @_handled = true
+      await @_client.command Protocol::Page.handle_java_script_dialog accept: false
+    end
   end
 end

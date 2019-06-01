@@ -897,13 +897,13 @@ module Chromiebara
         expect(result).to eq 'answer!'
       end
 
-      #it('should dismiss the prompt', async({page, server}) => {
-      #  page.on('dialog', dialog => {
-      #    dialog.dismiss();
-      #  });
-      #  const result = await page.evaluate(() => prompt('question?'));
-      #  expect(result).toBe(null);
-      #});
+      it 'should dismiss the prompt' do
+        page.on :dialog do |dialog|
+          dialog.dismiss
+        end
+        result = page.evaluate_function "() => prompt('question?')"
+        expect(result).to eq nil
+      end
     end
 
     describe '#evaluate' do

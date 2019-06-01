@@ -1,6 +1,6 @@
 module Chromiebara
   class Frame
-    attr_reader :id, :frame_manager, :child_frames, :loader_id, :main_world
+    attr_reader :id, :frame_manager, :loader_id, :main_world
 
     # @param [Chromiebara::FrameManager] frame_manager
     # @param [Chromiebara::CPDSession] client
@@ -27,7 +27,8 @@ module Chromiebara
       # /** @type {!Set<!Frame>} */
       @child_frames = Set.new
       if parent_frame
-        parent_frame.child_frames.add self
+        # TODO
+        parent_frame.instance_variable_get(:@child_frames).add self
       end
     end
 
@@ -57,14 +58,18 @@ module Chromiebara
       main_world.execution_context
     end
 
-  # /**
-  #  * @param {Function|string} pageFunction
-  #  * @param {!Array<*>} args
-  #  * @return {!Promise<!Puppeteer.JSHandle>}
-  #  */
-  # async evaluateHandle(pageFunction, ...args) {
-  #   return this._mainWorld.evaluateHandle(pageFunction, ...args);
-  # }
+    # @param {Function|string} pageFunction
+    # @param {!Array<*>} args
+    # @return {!Promise<!Puppeteer.JSHandle>}
+    #
+    def evaluate_handle(page_function, *args)
+      main_world.evaluate_handle page_function, *args
+    end
+
+    # TODO
+    def evaluate_handle_function(page_function, *args)
+      main_world.evaluate_handle_function page_function, *args
+    end
 
     # TODO
     #  * @param {Function|string} pageFunction
@@ -157,12 +162,11 @@ module Chromiebara
   #   return this._parentFrame;
   # }
 
-  # /**
-  #  * @return {!Array.<!Frame>}
-  #  */
-  # childFrames() {
-  #   return Array.from(this._childFrames);
-  # }
+    # @return {!Array.<!Frame>}
+    #
+    def child_frames
+      @child_frames.to_a
+    end
 
   # /**
   #  * @return {boolean}
