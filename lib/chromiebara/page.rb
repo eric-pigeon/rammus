@@ -51,7 +51,7 @@ module Chromiebara
       # this._coverage = new Coverage(client);
       @javascript_enabled = true
       # /** @type {?Puppeteer.Viewport} */
-      # this._viewport = null;
+      @_viewport = nil
 
       # this._screenshotTaskQueue = screenshotTaskQueue;
 
@@ -327,13 +327,11 @@ module Chromiebara
     end
   end
 
-  # /**
-  #  * @param {!{url?: string, path?: string, content?: string, type?: string}} options
-  #  * @return {!Promise<!Puppeteer.ElementHandle>}
-  #  */
-  # async addScriptTag(options) {
-  #   return this.mainFrame().addScriptTag(options);
-  # }
+    # @return {!Promise<!Puppeteer.ElementHandle>}
+    #
+    def add_script_tag(url: nil, path: nil, content: nil, type: nil)
+      main_frame.add_script_tag url: url, path: path, content: content, type: type
+    end
 
   # /**
   #  * @param {!{url?: string, path?: string, content?: string}} options
@@ -674,13 +672,12 @@ module Chromiebara
   #   await this._client.send('Page.setBypassCSP', { enabled });
   # }
 
-  # /**
-  #  * @param {?string} mediaType
-  #  */
-  # async emulateMedia(mediaType) {
-  #   assert(mediaType === 'screen' || mediaType === 'print' || mediaType === null, 'Unsupported media type: ' + mediaType);
-  #   await this._client.send('Emulation.setEmulatedMedia', {media: mediaType || ''});
-  # }
+    # @param {?string} mediaType
+    #
+    def emulate_media(media_type = nil)
+      raise "Unsupported media type: #{media_type}" unless ['screen', 'print', nil].include? media_type
+      client.command Protocol::Emulation.set_emulated_media media: media_type || ''
+    end
 
     # @param {!Puppeteer.Viewport} viewport
     #
@@ -692,12 +689,11 @@ module Chromiebara
       reload if needs_reload
     end
 
-  # /**
-  #  * @return {?Puppeteer.Viewport}
-  #  */
-  # viewport() {
-  #   return this._viewport;
-  # }
+    # @return {?Puppeteer.Viewport}
+    #
+    def viewport
+      @_viewport
+    end
 
     # TODO
     #  * @param {Function|string} pageFunction

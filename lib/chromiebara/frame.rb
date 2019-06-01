@@ -175,13 +175,12 @@ module Chromiebara
   #   return this._detached;
   # }
 
-  # /**
-  #  * @param {!{url?: string, path?: string, content?: string, type?: string}} options
-  #  * @return {!Promise<!Puppeteer.ElementHandle>}
-  #  */
-  # async addScriptTag(options) {
-  #   return this._mainWorld.addScriptTag(options);
-  # }
+    #  * @param {!{url?: string, path?: string, content?: string, type?: string}} options
+    #  * @return {!Promise<!Puppeteer.ElementHandle>}
+    #  */
+    def add_script_tag(url: nil, path: nil, content: nil, type: nil)
+      main_world.add_script_tag url: url, path: path, content: content, type: type
+    end
 
   # /**
   #  * @param {!{url?: string, path?: string, content?: string}} options

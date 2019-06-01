@@ -31,7 +31,7 @@ module Chromiebara
 
       reload_needed = @_emulating_mobile != is_mobile || @_has_touch != has_touch
       @_emulating_mobile = is_mobile
-      @_hasTouch = has_touch
+      @_has_touch = has_touch
       reload_needed
     end
   end
