@@ -118,8 +118,6 @@ module Chromiebara
       return if result.nil?
 
       model = result["model"]
-
-        #const {content, padding, border, margin, width, height} = result.model;
       {
         content: from_protocol_quad(model["content"]),
         padding: from_protocol_quad(model["padding"]),
@@ -195,25 +193,26 @@ module Chromiebara
       end
     end
 
-    #/**
-    # * @param {string} selector
-    # * @return {!Promise<!Array<!ElementHandle>>}
-    # */
-    #async $$(selector) {
-    #  const arrayHandle = await this.executionContext().evaluateHandle(
-    #      (element, selector) => element.querySelectorAll(selector),
-    #      this, selector
-    #  );
-    #  const properties = await arrayHandle.getProperties();
-    #  await arrayHandle.dispose();
-    #  const result = [];
-    #  for (const property of properties.values()) {
-    #    const elementHandle = property.asElement();
-    #    if (elementHandle)
-    #      result.push(elementHandle);
-    #  }
-    #  return result;
-    #}
+    # @param {string} selector
+    # @return {!Promise<!Array<!ElementHandle>>}
+    #
+    def query_selector_all(selector)
+      array_handle = execution_context.evaluate_handle_function(
+        "(element, selector) => element.querySelectorAll(selector)",
+        self,
+        selector
+      )
+      properties = array_handle.get_properties
+      array_handle.dispose
+
+      properties.values.map do |property|
+        element_handle = property.as_element
+
+        next if element_handle.nil?
+
+        element_handle
+      end.compact
+    end
 
     # @param {string} selector
     # @param {Function|String} pageFunction
@@ -230,50 +229,51 @@ module Chromiebara
       result
     end
 
-    #/**
-    # * @param {string} selector
-    # * @param {Function|String} pageFunction
-    # * @param {!Array<*>} args
-    # * @return {!Promise<(!Object|undefined)>}
-    # */
-    #async $$eval(selector, pageFunction, ...args) {
-    #  const arrayHandle = await this.executionContext().evaluateHandle(
-    #      (element, selector) => Array.from(element.querySelectorAll(selector)),
-    #      this, selector
-    #  );
+    # @param {string} selector
+    # @param {Function|String} pageFunction
+    # @param {!Array<*>} args
+    # @return {!Promise<(!Object|undefined)>}
+    #
+    def query_selector_all_evaluate_function(selector, page_function, *args)
+      array_handle = execution_context.evaluate_handle_function(
+        "(element, selector) => Array.from(element.querySelectorAll(selector))",
+        self,
+        selector
+      )
 
-    #  const result = await this.executionContext().evaluate(pageFunction, arrayHandle, ...args);
-    #  await arrayHandle.dispose();
-    #  return result;
-    #}
+      result = execution_context.evaluate_function page_function, array_handle, *args
+      array_handle.dispose
+      result
+    end
 
-    #/**
-    # * @param {string} expression
-    # * @return {!Promise<!Array<!ElementHandle>>}
-    # */
-    #async $x(expression) {
-    #  const arrayHandle = await this.executionContext().evaluateHandle(
-    #      (element, expression) => {
-    #        const document = element.ownerDocument || element;
-    #        const iterator = document.evaluate(expression, element, null, XPathResult.ORDERED_NODE_ITERATOR_TYPE);
-    #        const array = [];
-    #        let item;
-    #        while ((item = iterator.iterateNext()))
-    #          array.push(item);
-    #        return array;
-    #      },
-    #      this, expression
-    #  );
-    #  const properties = await arrayHandle.getProperties();
-    #  await arrayHandle.dispose();
-    #  const result = [];
-    #  for (const property of properties.values()) {
-    #    const elementHandle = property.asElement();
-    #    if (elementHandle)
-    #      result.push(elementHandle);
-    #  }
-    #  return result;
-    #}
+    # @param {string} expression
+    # @return {!Promise<!Array<!ElementHandle>>}
+    #
+    def xpath(expression)
+      function = <<~JAVASCRIPT
+      (element, expression) => {
+        const document = element.ownerDocument || element;
+        const iterator = document.evaluate(expression, element, null, XPathResult.ORDERED_NODE_ITERATOR_TYPE);
+        const array = [];
+        let item;
+        while ((item = iterator.iterateNext()))
+          array.push(item);
+        return array;
+      }
+      JAVASCRIPT
+      array_handle = execution_context.evaluate_handle_function function, self, expression
+
+      properties = array_handle.get_properties
+      array_handle.dispose
+
+      properties.values.map do |property|
+        element_handle = property.as_element
+
+        next if element_handle.nil?
+
+        element_handle
+      end.compact
+    end
 
     # @returns {!Promise<boolean>}
     #
