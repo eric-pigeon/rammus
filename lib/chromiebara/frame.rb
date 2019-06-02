@@ -92,13 +92,12 @@ module Chromiebara
       main_world.query_selector selector
     end
 
-  # /**
-  #  * @param {string} expression
-  #  * @return {!Promise<!Array<!Puppeteer.ElementHandle>>}
-  #  */
-  # async $x(expression) {
-  #   return this._mainWorld.$x(expression);
-  # }
+    # @param {string} expression
+    # @return {!Promise<!Array<!Puppeteer.ElementHandle>>}
+    #
+    def xpath(expression)
+      main_world.xpath expression
+    end
 
     # @param {string} selector
     # @param {Function|string} pageFunction
@@ -109,23 +108,21 @@ module Chromiebara
       main_world.query_selector_evaluate_function selector, function, *args
     end
 
-  # /**
-  #  * @param {string} selector
-  #  * @param {Function|string} pageFunction
-  #  * @param {!Array<*>} args
-  #  * @return {!Promise<(!Object|undefined)>}
-  #  */
-  # async $$eval(selector, pageFunction, ...args) {
-  #   return this._mainWorld.$$eval(selector, pageFunction, ...args);
-  # }
+    # @param {string} selector
+    # @param {Function|string} pageFunction
+    # @param {!Array<*>} args
+    # @return {!Promise<(!Object|undefined)>}
+    #
+    def query_selector_all_evaluate_function(selector, page_function, *args)
+      main_world.query_selector_all_evaluate_function selector, page_function, *args
+    end
 
-  # /**
-  #  * @param {string} selector
-  #  * @return {!Promise<!Array<!Puppeteer.ElementHandle>>}
-  #  */
-  # async $$(selector) {
-  #   return this._mainWorld.$$(selector);
-  # }
+    # @param {string} selector
+    # @return {!Promise<!Array<!Puppeteer.ElementHandle>>}
+    #
+    def query_selector_all(selector)
+       main_world.query_selector_all selector
+    end
 
     #  @return {!Promise<String>}
     #
@@ -140,12 +137,11 @@ module Chromiebara
       @_secondary_world.set_content html, timeout: timeout, wait_until: wait_until
     end
 
-  # /**
-  #  * @return {string}
-  #  */
-  # name() {
-  #   return this._name || '';
-  # }
+    #  * @return {string}
+    #  */
+    # name() {
+    #   return this._name || '';
+    # }
 
     # Frame's URL
     #
@@ -155,12 +151,11 @@ module Chromiebara
       @_url
     end
 
-  # /**
-  #  * @return {?Frame}
-  #  */
-  # parentFrame() {
-  #   return this._parentFrame;
-  # }
+    #  * @return {?Frame}
+    #  */
+    # parentFrame() {
+    #   return this._parentFrame;
+    # }
 
     # @return {!Array.<!Frame>}
     #
@@ -168,12 +163,11 @@ module Chromiebara
       @child_frames.to_a
     end
 
-  # /**
-  #  * @return {boolean}
-  #  */
-  # isDetached() {
-  #   return this._detached;
-  # }
+    #  * @return {boolean}
+    #  */
+    # isDetached() {
+    #   return this._detached;
+    # }
 
     #  * @param {!{url?: string, path?: string, content?: string, type?: string}} options
     #  * @return {!Promise<!Puppeteer.ElementHandle>}
@@ -182,13 +176,12 @@ module Chromiebara
       main_world.add_script_tag url: url, path: path, content: content, type: type
     end
 
-  # /**
-  #  * @param {!{url?: string, path?: string, content?: string}} options
-  #  * @return {!Promise<!Puppeteer.ElementHandle>}
-  #  */
-  # async addStyleTag(options) {
-  #   return this._mainWorld.addStyleTag(options);
-  # }
+    #  * @param {!{url?: string, path?: string, content?: string}} options
+    #  * @return {!Promise<!Puppeteer.ElementHandle>}
+    #  */
+    # async addStyleTag(options) {
+    #   return this._mainWorld.addStyleTag(options);
+    # }
 
     # @param {string} selector
     # @param {!{delay?: number, button?: "left"|"right"|"middle", clickCount?: number}=} options
@@ -214,14 +207,13 @@ module Chromiebara
       secondary_world.hover selector
     end
 
-  # /**
-  # * @param {string} selector
-  # * @param {!Array<string>} values
-  # * @return {!Promise<!Array<string>>}
-  # */
-  # select(selector, ...values){
-  #   return this._secondaryWorld.select(selector, ...values);
-  # }
+    # * @param {string} selector
+    # * @param {!Array<string>} values
+    # * @return {!Promise<!Array<string>>}
+    # */
+    # select(selector, ...values){
+    #   return this._secondaryWorld.select(selector, ...values);
+    # }
 
     # @param [String] selector
     #
@@ -237,115 +229,114 @@ module Chromiebara
       main_world.type selector, text, delay: delay
     end
 
-  # /**
-  #  * @param {(string|number|Function)} selectorOrFunctionOrTimeout
-  #  * @param {!Object=} options
-  #  * @param {!Array<*>} args
-  #  * @return {!Promise<?Puppeteer.JSHandle>}
-  #  */
-  # waitFor(selectorOrFunctionOrTimeout, options = {}, ...args) {
-  #   const xPathPattern = '//';
+    # /**
+    #  * @param {(string|number|Function)} selectorOrFunctionOrTimeout
+    #  * @param {!Object=} options
+    #  * @param {!Array<*>} args
+    #  * @return {!Promise<?Puppeteer.JSHandle>}
+    #  */
+    # waitFor(selectorOrFunctionOrTimeout, options = {}, ...args) {
+    #   const xPathPattern = '//';
 
-  #   if (helper.isString(selectorOrFunctionOrTimeout)) {
-  #     const string = /** @type {string} */ (selectorOrFunctionOrTimeout);
-  #     if (string.startsWith(xPathPattern))
-  #       return this.waitForXPath(string, options);
-  #     return this.waitForSelector(string, options);
-  #   }
-  #   if (helper.isNumber(selectorOrFunctionOrTimeout))
-  #     return new Promise(fulfill => setTimeout(fulfill, /** @type {number} */ (selectorOrFunctionOrTimeout)));
-  #   if (typeof selectorOrFunctionOrTimeout === 'function')
-  #     return this.waitForFunction(selectorOrFunctionOrTimeout, options, ...args);
-  #   return Promise.reject(new Error('Unsupported target type: ' + (typeof selectorOrFunctionOrTimeout)));
-  # }
+    #   if (helper.isString(selectorOrFunctionOrTimeout)) {
+    #     const string = /** @type {string} */ (selectorOrFunctionOrTimeout);
+    #     if (string.startsWith(xPathPattern))
+    #       return this.waitForXPath(string, options);
+    #     return this.waitForSelector(string, options);
+    #   }
+    #   if (helper.isNumber(selectorOrFunctionOrTimeout))
+    #     return new Promise(fulfill => setTimeout(fulfill, /** @type {number} */ (selectorOrFunctionOrTimeout)));
+    #   if (typeof selectorOrFunctionOrTimeout === 'function')
+    #     return this.waitForFunction(selectorOrFunctionOrTimeout, options, ...args);
+    #   return Promise.reject(new Error('Unsupported target type: ' + (typeof selectorOrFunctionOrTimeout)));
+    # }
 
-  # /**
-  #  * @param {string} selector
-  #  * @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
-  #  * @return {!Promise<?Puppeteer.ElementHandle>}
-  #  */
-  # async waitForSelector(selector, options) {
-  #   const handle = await this._secondaryWorld.waitForSelector(selector, options);
-  #   if (!handle)
-  #     return null;
-  #   const mainExecutionContext = await this._mainWorld.executionContext();
-  #   const result = await mainExecutionContext._adoptElementHandle(handle);
-  #   await handle.dispose();
-  #   return result;
-  # }
+    # /**
+    #  * @param {string} selector
+    #  * @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
+    #  * @return {!Promise<?Puppeteer.ElementHandle>}
+    #  */
+    # async waitForSelector(selector, options) {
+    #   const handle = await this._secondaryWorld.waitForSelector(selector, options);
+    #   if (!handle)
+    #     return null;
+    #   const mainExecutionContext = await this._mainWorld.executionContext();
+    #   const result = await mainExecutionContext._adoptElementHandle(handle);
+    #   await handle.dispose();
+    #   return result;
+    # }
 
-  # /**
-  #  * @param {string} xpath
-  #  * @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
-  #  * @return {!Promise<?Puppeteer.ElementHandle>}
-  #  */
-  # async waitForXPath(xpath, options) {
-  #   const handle = await this._secondaryWorld.waitForXPath(xpath, options);
-  #   if (!handle)
-  #     return null;
-  #   const mainExecutionContext = await this._mainWorld.executionContext();
-  #   const result = await mainExecutionContext._adoptElementHandle(handle);
-  #   await handle.dispose();
-  #   return result;
-  # }
+    # /**
+    #  * @param {string} xpath
+    #  * @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
+    #  * @return {!Promise<?Puppeteer.ElementHandle>}
+    #  */
+    # async waitForXPath(xpath, options) {
+    #   const handle = await this._secondaryWorld.waitForXPath(xpath, options);
+    #   if (!handle)
+    #     return null;
+    #   const mainExecutionContext = await this._mainWorld.executionContext();
+    #   const result = await mainExecutionContext._adoptElementHandle(handle);
+    #   await handle.dispose();
+    #   return result;
+    # }
 
-  # /**
-  #  * @param {Function|string} pageFunction
-  #  * @param {!{polling?: string|number, timeout?: number}=} options
-  #  * @return {!Promise<!Puppeteer.JSHandle>}
-  #  */
-  # waitForFunction(pageFunction, options = {}, ...args) {
-  #   return this._mainWorld.waitForFunction(pageFunction, options, ...args);
-  # }
+    # /**
+    #  * @param {Function|string} pageFunction
+    #  * @param {!{polling?: string|number, timeout?: number}=} options
+    #  * @return {!Promise<!Puppeteer.JSHandle>}
+    #  */
+    # waitForFunction(pageFunction, options = {}, ...args) {
+    #   return this._mainWorld.waitForFunction(pageFunction, options, ...args);
+    # }
 
-  #  * @return {!Promise<string>}
-  #  */
-  def title
-    secondary_world.title
-  end
-
-  private
-
-    # @param [Hash] frame_payload Protocol.Page.Frame
-    #
-    def navigated(frame_payload)
-      @name = frame_payload["name"]
-      # TODO(lushnikov): remove this once requestInterception has loaderId exposed.
-      # this._navigationURL = framePayload.url;
-      @_url = frame_payload["url"]
+    #  * @return {!Promise<string>}
+    #  */
+    def title
+      secondary_world.title
     end
 
-  # /**
-  #  * @param {string} url
-  #  */
-  # _navigatedWithinDocument(url) {
-  #   this._url = url;
-  # }
+    private
 
-    # @param [String] loader_id
-    # @param [String] name
-    #
-    def on_lifecycle_event(loader_id, name)
-      if name == "init"
-        @loader_id = loader_id
-        @_lifecycle_events.clear
+      # @param [Hash] frame_payload Protocol.Page.Frame
+      #
+      def navigated(frame_payload)
+        @name = frame_payload["name"]
+        # TODO(lushnikov): remove this once requestInterception has loaderId exposed.
+        # this._navigationURL = framePayload.url;
+        @_url = frame_payload["url"]
       end
 
-      @_lifecycle_events.add name
-    end
+      #  * @param {string} url
+      #  */
+      # _navigatedWithinDocument(url) {
+      #   this._url = url;
+      # }
 
-    def on_loading_stopped
-      @_lifecycle_events.add 'DOMContentLoaded'
-      @_lifecycle_events.add 'load'
-    end
+      # @param [String] loader_id
+      # @param [String] name
+      #
+      def on_lifecycle_event(loader_id, name)
+        if name == "init"
+          @loader_id = loader_id
+          @_lifecycle_events.clear
+        end
 
-  # _detach() {
-  #   this._detached = true;
-  #   this._mainWorld._detach();
-  #   this._secondaryWorld._detach();
-  #   if (this._parentFrame)
-  #     this._parentFrame._childFrames.delete(this);
-  #   this._parentFrame = null;
-  # }
+        @_lifecycle_events.add name
+      end
+
+      def on_loading_stopped
+        @_lifecycle_events.add 'DOMContentLoaded'
+        @_lifecycle_events.add 'load'
+      end
+
+      # _detach() {
+      #   this._detached = true;
+      #   this._mainWorld._detach();
+      #   this._secondaryWorld._detach();
+      #   if (this._parentFrame)
+      #     this._parentFrame._childFrames.delete(this);
+      #   this._parentFrame = null;
+      # }
   end
 end

@@ -128,7 +128,7 @@ module Chromiebara
         raise 'FAILURE'
       end
 
-      create_js_handle response["result"]
+      JSHandle.create_js_handle self, response["result"]
 
       # let callFunctionOnPromise;
       # try {
@@ -203,7 +203,7 @@ module Chromiebara
         raise 'FAILURE'
       end
 
-      create_js_handle response["result"]
+      JSHandle.create_js_handle self, response["result"]
     end
 
     # /**
@@ -237,17 +237,6 @@ module Chromiebara
     # }
 
     private
-
-      # @param [Hash] remote_object
-      #
-      def create_js_handle(remote_object)
-        if remote_object["subtype"] == "node" && frame
-          frame_manager = frame.frame_manager
-          return ElementHandle.new self, client, remote_object, frame_manager.page, frame_manager
-        end
-
-        JSHandle.new(self, self.client, remote_object)
-      end
 
       #  * @param {!Error} error
       #  * @return {!Protocol.Runtime.evaluateReturnValue}

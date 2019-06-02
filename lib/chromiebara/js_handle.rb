@@ -16,6 +16,17 @@ module Chromiebara
     include Promise::Await
     attr_reader :context, :client, :remote_object
 
+    def self.create_js_handle(context, remote_object)
+      frame = context.frame
+
+      if remote_object["subtype"] == 'node' && frame
+        frame_manager = frame.frame_manager
+        return  ElementHandle.new context, context.client, remote_object, frame_manager.page, frame_manager
+      end
+
+      JSHandle.new context, context.client, remote_object
+    end
+
     # @param [Chromiebara::ExecutionContext] context
     # @param [Chromiebara::CDPSession] client
     # @param [Protocol.Runtime.RemoteObject] remote_object
@@ -36,11 +47,10 @@ module Chromiebara
       @_disposed
     end
 
-    # /**
-    #  * @param {string} propertyName
-    #  * @return {!Promise<?JSHandle>}
-    #  */
-    # async getProperty(propertyName) {
+    # @param {string} propertyName
+    # @return {!Promise<?JSHandle>}
+    #
+    #def getProperty(property_name)
     #   const objectHandle = await this._context.evaluateHandle((object, propertyName) => {
     #     const result = {__proto__: null};
     #     result[propertyName] = object[propertyName];
@@ -50,24 +60,21 @@ module Chromiebara
     #   const result = properties.get(propertyName) || null;
     #   await objectHandle.dispose();
     #   return result;
-    # }
+    #end
 
-    # /**
-    #  * @return {!Promise<!Map<string, !JSHandle>>}
-    #  */
-    # async getProperties() {
-    #   const response = await this._client.send('Runtime.getProperties', {
-    #     objectId: this._remoteObject.objectId,
-    #     ownProperties: true
-    #   });
-    #   const result = new Map();
-    #   for (const property of response.result) {
-    #     if (!property.enumerable)
-    #       continue;
-    #     result.set(property.name, createJSHandle(this._context, property.value));
-    #   }
-    #   return result;
-    # }
+    # @return {!Promise<!Map<string, !JSHandle>>}
+    #
+    def get_properties
+      response = await client.command Protocol::Runtime.get_properties(
+        object_id: remote_object["objectId"],
+        own_properties: true
+      )
+      response["result"].each_with_object({}) do |property, memo|
+        next unless property["enumerable"]
+
+        memo[property["name"]] = JSHandle.create_js_handle context, property["value"]
+      end
+    end
 
     def json_value
       if remote_object["objectId"]

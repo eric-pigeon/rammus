@@ -95,15 +95,12 @@ module Chromiebara
       # return this._documentPromise;
     end
 
-    # /**
-    #  * @param {string} expression
-    #  * @return {!Promise<!Array<!Puppeteer.ElementHandle>>}
-    #  */
-    # async $x(expression) {
-    #   const document = await this._document();
-    #   const value = await document.$x(expression);
-    #   return value;
-    # }
+    # @param {string} expression
+    # @return {!Promise<!Array<!Puppeteer.ElementHandle>>}
+    #
+    def xpath(expression)
+      document.xpath expression
+    end
 
     # @param {string} selector
     # @param {Function|string} pageFunction
@@ -114,27 +111,21 @@ module Chromiebara
       document.query_selector_evaluate_function selector, page_function, *args
     end
 
-    # /**
-    #  * @param {string} selector
-    #  * @param {Function|string} pageFunction
-    #  * @param {!Array<*>} args
-    #  * @return {!Promise<(!Object|undefined)>}
-    #  */
-    # async $$eval(selector, pageFunction, ...args) {
-    #   const document = await this._document();
-    #   const value = await document.$$eval(selector, pageFunction, ...args);
-    #   return value;
-    # }
+    #  @param {string} selector
+    #  @param {Function|string} pageFunction
+    #  @param {!Array<*>} args
+    #  @return {!Promise<(!Object|undefined)>}
+    #
+    def query_selector_all_evaluate_function(selector, page_function, *args)
+      document.query_selector_all_evaluate_function selector, page_function, *args
+    end
 
-    # /**
-    #  * @param {string} selector
-    #  * @return {!Promise<!Array<!Puppeteer.ElementHandle>>}
-    #  */
-    # async $$(selector) {
-    #   const document = await this._document();
-    #   const value = await document.$$(selector);
-    #   return value;
-    # }
+    # @param {string} selector
+    # @return {!Promise<!Array<!Puppeteer.ElementHandle>>}
+    #
+    def query_selector_all(selector)
+      document.query_selector_all selector
+    end
 
     # * @return {!Promise<String>}
     #
@@ -250,7 +241,6 @@ module Chromiebara
       #}
     end
 
-    # /**
     #  * @param {!{url?: string, path?: string, content?: string}} options
     #  * @return {!Promise<!Puppeteer.ElementHandle>}
     #  */
@@ -346,7 +336,6 @@ module Chromiebara
       handle.dispose
     end
 
-    # /**
     # * @param {string} selector
     # * @param {!Array<string>} values
     # * @return {!Promise<!Array<string>>}
@@ -391,7 +380,6 @@ module Chromiebara
       handle.dispose
     end
 
-    # /**
     #  * @param {string} selector
     #  * @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
     #  * @return {!Promise<?Puppeteer.ElementHandle>}
@@ -400,7 +388,6 @@ module Chromiebara
     #   return this._waitForSelectorOrXPath(selector, false, options);
     # }
 
-    # /**
     #  * @param {string} xpath
     #  * @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
     #  * @return {!Promise<?Puppeteer.ElementHandle>}
@@ -409,7 +396,6 @@ module Chromiebara
     #   return this._waitForSelectorOrXPath(xpath, true, options);
     # }
 
-    # /**
     #  * @param {Function|string} pageFunction
     #  * @param {!{polling?: string|number, timeout?: number}=} options
     #  * @return {!Promise<!Puppeteer.JSHandle>}
@@ -428,7 +414,6 @@ module Chromiebara
       evaluate('document.title')
     end
 
-    # /**
     #  * @param {string} selectorOrXPath
     #  * @param {boolean} isXPath
     #  * @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
@@ -450,7 +435,6 @@ module Chromiebara
     #   }
     #   return handle.asElement();
 
-    #   /**
     #    * @param {string} selectorOrXPath
     #    * @param {boolean} isXPath
     #    * @param {boolean} waitForVisible
@@ -481,6 +465,7 @@ module Chromiebara
     #     }
     #   }
     # }
+
     private
 
       # @param [Chromiebara::ExecutionContext, nil] context
