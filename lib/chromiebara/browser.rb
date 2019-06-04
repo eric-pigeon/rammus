@@ -8,8 +8,10 @@ module Chromiebara
 
     delegate [:new_page] => :default_context
 
-    def initialize(client:, close_callback: nil)
+    def initialize(client:, close_callback: nil, ignore_https_errors: false, default_viewport: nil)
       @client = client
+      @_ignore_https_errors = ignore_https_errors
+      @_default_viewport = default_viewport
       @contexts = {}
       @default_context = BrowserContext.new(client: client, browser: self)
       @_close_callback = close_callback
@@ -119,7 +121,7 @@ module Chromiebara
                   end
 
         # const target = new Target(targetInfo, context, () => this._connection.createSession(targetInfo), this._ignoreHTTPSErrors, this._defaultViewport, this._screenshotTaskQueue);
-        target = Target.new(target_info, context, client)
+        target = Target.new(target_info, context, client, @_ignore_https_errors, @_default_viewport)
 
         # assert(!this._targets.has(event.targetInfo.targetId), 'Target should not exist before targetCreated');
         @_targets[target_info["targetId"]] = target

@@ -13,32 +13,21 @@ module Chromiebara
         expect(screenshot).to match_screenshot('screenshot-sanity.png')
       end
 
-      #it('should clip rect', async({page, server}) => {
-      #  await page.setViewport({width: 500, height: 500});
-      #  await page.goto(server.PREFIX + '/grid.html');
-      #  const screenshot = await page.screenshot({
-      #    clip: {
-      #      x: 50,
-      #      y: 100,
-      #      width: 150,
-      #      height: 100
-      #    }
-      #  });
-      #  expect(screenshot).toBeGolden('screenshot-clip-rect.png');
-      #});
-      #it('should work for offscreen clip', async({page, server}) => {
-      #  await page.setViewport({width: 500, height: 500});
-      #  await page.goto(server.PREFIX + '/grid.html');
-      #  const screenshot = await page.screenshot({
-      #    clip: {
-      #      x: 50,
-      #      y: 600,
-      #      width: 100,
-      #      height: 100
-      #    }
-      #  });
-      #  expect(screenshot).toBeGolden('screenshot-offscreen-clip.png');
-      #});
+      it 'should clip rect' do
+        page.set_viewport width: 500, height: 500
+        page.goto server.domain + 'grid.html'
+        screenshot = page.screenshot clip: { x: 50, y: 100, width: 150, height: 100 }
+        expect(screenshot).to match_screenshot('screenshot-clip-rect.png')
+      end
+
+      it 'should work for offscreen clip' do
+        page.set_viewport width: 500, height: 500
+        page.goto server.domain + 'grid.html'
+        screenshot = page.screenshot clip: { x: 50, y: 600, width: 100, height: 100 }
+        expect(screenshot).to match_screenshot 'screenshot-offscreen-clip.png'
+      end
+
+      # TODO
       #it('should run in parallel', async({page, server}) => {
       #  await page.setViewport({width: 500, height: 500});
       #  await page.goto(server.PREFIX + '/grid.html');
@@ -56,14 +45,15 @@ module Chromiebara
       #  const screenshots = await Promise.all(promises);
       #  expect(screenshots[1]).toBeGolden('grid-cell-1.png');
       #});
-      #it('should take fullPage screenshots', async({page, server}) => {
-      #  await page.setViewport({width: 500, height: 500});
-      #  await page.goto(server.PREFIX + '/grid.html');
-      #  const screenshot = await page.screenshot({
-      #    fullPage: true
-      #  });
-      #  expect(screenshot).toBeGolden('screenshot-grid-fullpage.png');
-      #});
+
+      it 'should take full_page screenshots' do
+        page.set_viewport width: 500, height: 500
+        page.goto server.domain + 'grid.html'
+        screenshot = page.screenshot full_page: true
+        expect(screenshot).to match_screenshot 'screenshot-grid-fullpage.png'
+      end
+
+      # TODO
       #it('should run in parallel in multiple pages', async({page, server, context}) => {
       #  const N = 2;
       #  const pages = await Promise.all(Array(N).fill(0).map(async() => {
@@ -79,29 +69,27 @@ module Chromiebara
       #    expect(screenshots[i]).toBeGolden(`grid-cell-${i}.png`);
       #  await Promise.all(pages.map(page => page.close()));
       #});
-      #it_fails_ffox('should allow transparency', async({page, server}) => {
-      #  await page.setViewport({ width: 100, height: 100 });
-      #  await page.goto(server.EMPTY_PAGE);
-      #  const screenshot = await page.screenshot({omitBackground: true});
-      #  expect(screenshot).toBeGolden('transparent.png');
-      #});
+
+      it 'should allow transparency' do
+        page.set_viewport width: 100, height: 100
+        page.goto server.empty_page
+        screenshot = page.screenshot omit_background: true
+        expect(screenshot).to match_screenshot 'transparent.png'
+      end
+
+      # TODO need jpeg library
       #it_fails_ffox('should render white background on jpeg file', async({page, server}) => {
       #  await page.setViewport({ width: 100, height: 100 });
       #  await page.goto(server.EMPTY_PAGE);
       #  const screenshot = await page.screenshot({omitBackground: true, type: 'jpeg'});
       #  expect(screenshot).toBeGolden('white.jpg');
       #});
-      #it('should work with odd clip size on Retina displays', async({page, server}) => {
-      #  const screenshot = await page.screenshot({
-      #    clip: {
-      #      x: 0,
-      #      y: 0,
-      #      width: 11,
-      #      height: 11,
-      #    }
-      #  });
-      #  expect(screenshot).toBeGolden('screenshot-clip-odd-size.png');
-      #});
+
+      it 'should work with odd clip size on Retina displays' do
+        screenshot = page.screenshot clip: { x: 0, y: 0, width: 11, height: 11 }, path: '/Users/epigeon/Documents/Projects/Ruby/chromiebara/what.png'
+        expect(screenshot).to match_screenshot 'screenshot-clip-odd-size.png'
+      end
+
       #it('should return base64', async({page, server}) => {
       #  await page.setViewport({width: 500, height: 500});
       #  await page.goto(server.PREFIX + '/grid.html');

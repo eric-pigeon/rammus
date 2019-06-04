@@ -691,12 +691,11 @@ module Chromiebara
       screenshot_type = nil
       # options.type takes precedence over inferring the type from options.path
       # because it may be a 0-length file with no extension created beforehand (i.e. as a temp file).
-
       if type
         raise "Unknown type value: #{type}" unless ['png', 'jpeg'].include? type
         screenshot_type = type
       elsif path
-        raise 'TODO'
+        #TODO
         #const mimeType = mime.getType(options.path);
         #if (mimeType === 'image/png')
         #  screenshotType = 'png';
@@ -732,43 +731,46 @@ module Chromiebara
     # @param {!ScreenshotOptions=} options
     # @return {!Promise<!Buffer|!String>}
     #
-    def screenshot_task(format, clip: nil, quality: nil, full_page: false, omit_backround: false, encoding: 'binary', path: nil)
+    def screenshot_task(format, clip: nil, quality: nil, full_page: false, omit_background: false, encoding: 'binary', path: nil)
       await client.command Protocol::Target.activate_target(target_id: target.target_id)
       clip = unless clip.nil?
                x = clip[:x].round
                y = clip[:y].round
                width = (clip[:width] + clip[:x] - x).round
-               height =  (clip[:height] + clip[:y] - y).round
+               height = (clip[:height] + clip[:y] - y).round
 
                { x: x, y: y, width: width, height: height, scale: 1 }
              end
 
       if full_page
-        # TODO
-        #const metrics = await this._client.send('Page.getLayoutMetrics');
-        #const width = Math.ceil(metrics.contentSize.width);
-        #const height = Math.ceil(metrics.contentSize.height);
+        metrics = await client.command Protocol::Page.get_layout_metrics
+        width = metrics.dig("contentSize", "width").ceil
+        height = metrics.dig("contentSize", "height").ceil
 
-        #// Overwrite clip for full page at all times.
-        #clip = { x: 0, y: 0, width, height, scale: 1 };
-        #const {
-        #  isMobile = false,
-        #  deviceScaleFactor = 1,
-        #  isLandscape = false
-        #} = this._viewport || {};
-        #/** @type {!Protocol.Emulation.ScreenOrientation} */
-        #const screenOrientation = isLandscape ? { angle: 90, type: 'landscapePrimary' } : { angle: 0, type: 'portraitPrimary' };
-        #await this._client.send('Emulation.setDeviceMetricsOverride', { mobile: isMobile, width, height, deviceScaleFactor, screenOrientation });
+        # Overwrite clip for full page at all times.
+        clip = { x: 0, y: 0, width: width, height: height, scale: 1 }
+        is_mobile = @_viewport.fetch :is_mobile, false
+        device_scale_factor = @_viewport.fetch :device_scale_factor, 1
+        is_landscape = @_viewport.fetch :is_landscape, false
+        # @type {!Protocol.Emulation.ScreenOrientation}
+        screen_orientation = is_landscape ? { angle: 90, type: 'landscapePrimary' } : { angle: 0, type: 'portraitPrimary' }
+        await client.command Protocol::Emulation.set_device_metrics_override(
+          mobile: is_mobile,
+          width: width,
+          height: height,
+          device_scale_factor: device_scale_factor,
+          screen_orientation: screen_orientation
+        )
       end
 
-      should_set_default_background = omit_backround && format == 'png'
+      should_set_default_background = omit_background && format == 'png'
       if should_set_default_background
-        await client.command Protocol::Emulation.set_default_background_colorOverride(rolor: { r: 0, g: 0, b: 0, a: 0 })
+        await client.command Protocol::Emulation.set_default_background_color_override(color: { r: 0, g: 0, b: 0, a: 0 })
       end
       result = await client.command Protocol::Page.capture_screenshot(format: format, quality: quality, clip: clip)
 
       if should_set_default_background
-        await client.command Protocol::Emulation.set_default_background_colorOverride(rolor: nil)
+        await client.command Protocol::Emulation.set_default_background_color_override(color: nil)
       end
 
       if full_page && viewport
@@ -777,7 +779,7 @@ module Chromiebara
 
       buffer = encoding == 'base64' ? result["data"] : Base64.decode64(result["data"])
 
-      File.open(path, 'wb') { |file| f.puts buffer } if path
+      File.open(path, 'wb') { |file| file.puts buffer } if path
 
       buffer
     end
