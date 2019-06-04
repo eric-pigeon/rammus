@@ -561,6 +561,7 @@ module Chromiebara
                return promise;
             }
           JAVASCRIPT
+          # TODO
           # await page.evaluate(src => {
           #   let fulfill;
           #   const promise = new Promise(x => fulfill = x);
@@ -706,6 +707,7 @@ module Chromiebara
 
       xit 'should click offscreen buttons' do
         page.goto server.domain + 'offscreenbuttons.html'
+        # TODO
         # const messages = [];
         # page.on('console', msg => messages.push(msg.text()));
         # for (let i = 0; i < 11; ++i) {
@@ -851,6 +853,7 @@ module Chromiebara
         expect(frame.evaluate 'window.result').to eq 'Clicked'
       end
 
+      # TODO
       # @see https://github.com/GoogleChrome/puppeteer/issues/4110
       #xit('should click the button with fixed position inside an iframe', async({page, server}) => {
       #  await page.goto(server.EMPTY_PAGE);
@@ -947,6 +950,7 @@ module Chromiebara
           expect(page.evaluate('globalVar')).to eq 123
         end
 
+        # TODO
         #it_fails_ffox('should return undefined for objects with symbols', async({page, server}) => {
         #  expect(await page.evaluate(() => [Symbol('foo4')])).toBe(undefined);
         #});
@@ -1176,6 +1180,7 @@ module Chromiebara
         expect(page.evaluate "document.querySelector('textarea').value").to eq 'a'
       end
 
+      # TODO
       #it_fails_ffox('ElementHandle.press should support |text| option', async({page, server}) => {
       #  await page.goto(server.PREFIX + '/input/textarea.html');
       #  const textarea = await page.$('textarea');
@@ -1524,6 +1529,7 @@ module Chromiebara
         ]
       end
 
+      # TODO
       #// @see https://crbug.com/929806
       xit 'should work with mobile viewports and cross process navigations' do
         # TODO

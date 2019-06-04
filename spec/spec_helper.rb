@@ -1,5 +1,6 @@
 require 'chromiebara'
 require 'support/test_app'
+require 'support/match_screenshot'
 if RUBY_ENGINE != "jruby"
   require 'byebug'
 end
@@ -41,6 +42,7 @@ end
 
 RSpec.configure do |config|
   config.include SeverHelper
+  config.include MatchScreenshot
 
   config.before(:suite) do
     Thread.new { TestApp.run! }
