@@ -6,9 +6,11 @@ module Chromiebara
     # @param [Chromiebara::BrowserContext] browser_context
     # @param [Chromiebara::ChromeClient] client
     #
-    def initialize(target_info, browser_context, client)
+    def initialize(target_info, browser_context, client, ignore_https_errors, default_viewport)
       @target_info = target_info
       @browser_context = browser_context
+      @_ignore_https_errors = ignore_https_errors
+      @_default_viewport = default_viewport
       @target_id = target_info["targetId"]
       @_client = client
       @initialized = target_info["type"] != 'page' || target_info["url"] != ""
@@ -21,7 +23,7 @@ module Chromiebara
     def page
       return unless type == "page" || type == "background_page"
 
-      @_page ||= Page.create(self)
+      @_page ||= Page.create(self, default_viewport: @_default_viewport)
     end
 
     def session

@@ -28,7 +28,7 @@ module Chromiebara
 
       close_callback = -> { await client.command Protocol::Browser.close }
 
-      Browser.new(client: client, close_callback: close_callback).tap do |browser|
+      Browser.new(client: client, close_callback: close_callback, default_viewport: { width: 800, height: 600 }).tap do |browser|
         ObjectSpace.define_finalizer(browser, Launcher.process_killer(pid, tmpdir))
       end
     end

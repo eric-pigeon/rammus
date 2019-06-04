@@ -48,7 +48,7 @@ module MatchScreenshot
         return "Expected screenshot width to equal #{expected_with} but was #{actual_width}"
       end
       if actual.height != expected.height
-        return "Expected screenshot height to equal #{expected_with} but was #{actual_width}"
+        return "Expected screenshot height to equal #{expected_height} but was #{actual_height}"
       end
 
       <<~MESSAGE
@@ -71,12 +71,20 @@ module MatchScreenshot
         @_expected_path ||= File.expand_path("../../fixtures", __FILE__) + "/" + @expected_filename
       end
 
+      def actual_width
+        actual.width
+      end
+
+      def actual_height
+        actual.height
+      end
+
       def expected_with
-        expected_image.width
+        expected.width
       end
 
       def expected_height
-        expected_image.height
+        expected.height
       end
   end
 end
