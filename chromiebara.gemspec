@@ -44,5 +44,6 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'sinatra', '~> 2.0'
   spec.add_development_dependency 'puma'
   spec.add_development_dependency "yard"
+  spec.add_development_dependency "chunky_png"
 
 end
