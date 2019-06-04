@@ -21,15 +21,10 @@ module Chromiebara
     #
     def command(command)
       @_command_mutex.synchronize do
-        command_id = client._raw_send command.merge sessionId: session_id
-
-        # TODO this is a race condition, since the command is sent before
-        # it's added to the hash this thread could pause, the result could be
-        # processed before it's added to the hash
-        # command ids are unique per session, so just make this class
-        # responsible for the id
-        Promise.new do |resolve, reject|
-          @_command_callbacks[command_id] = CommandCallback.new(resolve, reject, command[:method])
+        client._raw_send(command.merge sessionId: session_id) do |command_id|
+          Promise.new do |resolve, reject|
+            @_command_callbacks[command_id] = CommandCallback.new(resolve, reject, command[:method])
+          end
         end
       end
     end

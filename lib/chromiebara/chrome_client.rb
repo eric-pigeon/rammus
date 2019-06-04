@@ -41,14 +41,15 @@ module Chromiebara
 
     # @return [Integer] command_id
     #
-    def _raw_send(command)
+    def _raw_send(command, &block)
       @command_mutex.synchronize do
         comamnd_id = next_command_id
+        promise = block.call comamnd_id
         command = command.merge(id: comamnd_id).to_json
 
         ProtocolLogger.puts_command command
         web_socket.send_message command: command
-        comamnd_id
+        promise
       end
     end
 
