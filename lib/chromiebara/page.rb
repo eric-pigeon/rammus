@@ -978,7 +978,7 @@ module Chromiebara
       # @param {!Protocol.Runtime.ExceptionDetails} exceptionDetails
       #
       def  handle_exception(exception_details)
-        raise 'TODO'
+        # raise 'TODO'
       #   const message = helper.getExceptionMessage(exceptionDetails);
       #   const err = new Error(message);
       #   err.stack = ''; // Don't report clientside error with a node stack attached

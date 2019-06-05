@@ -1,6 +1,12 @@
 module Chromiebara
   module EventEmitter
-    EXECUTOR = Concurrent.global_io_executor
+    EVENT_QUEUE = Queue.new
+    EXECUTOR = Thread.new do
+      loop do
+        callback = EVENT_QUEUE.pop
+        callback.call
+      end
+    end.abort_on_exception = true
 
     def initialize
       @_event_callbacks = Hash.new { |h, k| h[k] = [] }
@@ -34,7 +40,7 @@ module Chromiebara
       def emit(event, data)
         @_event_callbacks_mutex.synchronize do
           @_event_callbacks[event].each do |callable|
-            EXECUTOR.post { callable.call data }
+            EVENT_QUEUE << -> { callable.call data }
           end
         end
       end
