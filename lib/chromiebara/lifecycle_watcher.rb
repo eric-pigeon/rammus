@@ -20,7 +20,9 @@ module Chromiebara
       end.to_set
       @_has_same_document_navigation = false
       # @_complete_promise = Promise.new
-      frame_manager.on(FrameManager.LifecycleEvent, method(:check_lifecycle_complete))
+      @_event_listeners = [
+        Util.add_event_listener(frame_manager, FrameManager.LifecycleEvent, method(:check_lifecycle_complete))
+      ]
 
       lifecycle_callback = nil
       @_lifecycle_promise = Promise.new do |fulfill|
@@ -162,6 +164,7 @@ module Chromiebara
       # TODO
       # helper.removeEventListeners(this._eventListeners);
       # clearTimeout(this._maximumTimer);
+      Util.remove_event_listeners @_event_listeners
     end
 
     private

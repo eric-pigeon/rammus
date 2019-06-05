@@ -62,13 +62,6 @@ module Chromiebara
       @_main_frame
     end
 
-    # /**
-    #  * @return {!NetworkManager}
-    #  */
-    # networkManager() {
-    #   return this._networkManager;
-    # }
-
     # @param [String] url
     # TODO
     #
@@ -137,34 +130,6 @@ module Chromiebara
       #   throw error;
       # return watcher.navigationResponse();
     end
-
-    # /**
-    #  * @param {!Protocol.Page.FrameTree} frameTree
-    #  */
-    # _handleFrameTree(frameTree) {
-    #   if (frameTree.frame.parentId)
-    #     this._onFrameAttached(frameTree.frame.id, frameTree.frame.parentId);
-    #   this._onFrameNavigated(frameTree.frame);
-    #   if (!frameTree.childFrames)
-    #     return;
-
-    #   for (const child of frameTree.childFrames)
-    #     this._handleFrameTree(child);
-    # }
-
-    # /**
-    #  * @return {!Puppeteer.Page}
-    #  */
-    # page() {
-    #   return this._page;
-    # }
-
-    # /**
-    #  * @return {!Frame}
-    #  */
-    # mainFrame() {
-    #   return this._mainFrame;
-    # }
 
     # @return [Array<Frame>]
     #
@@ -266,12 +231,9 @@ module Chromiebara
           on_frame_attached(frame_tree.dig("frame", "id"), frameTree.dig("frame", "parentId"))
         end
         on_frame_navigated frame_tree["frame"]
-        # this._onFrameNavigated(frameTree.frame);
-        # if (!frameTree.childFrames)
-        #   return;
 
-        # for (const child of frameTree.childFrames)
-        #   this._handleFrameTree(child);
+        return unless frame_tree["childFrames"]
+        frame_tree["childFrames"].each { |child| handle_frame_tree child }
       end
 
       # @param [String] name
@@ -298,13 +260,17 @@ module Chromiebara
       def on_frame_navigated(frame_payload)
         is_main_frame = !frame_payload.has_key?("parentId")
         frame = is_main_frame ? @_main_frame : @_frames.fetch(frame_payload["id"])
-        # assert(isMainFrame || frame, 'We either navigate top level or have old version of the navigated frame');
+        unless is_main_frame || frame
+          raise 'We either navigate top level or have old version of the navigated frame'
+        end
 
         # Detach all child frames first.
-        #   if (frame) {
-        #     for (const child of frame.childFrames())
-        #       this._removeFramesRecursively(child);
-        #   }
+        if (frame)
+
+          frame.child_frames.each do |child|
+            remove_frames_recursively child
+          end
+        end
 
         # Update or create main frame.
         if is_main_frame
@@ -365,11 +331,11 @@ module Chromiebara
         if frame
           if context_payload.dig "auxData", "isDefault"
             world = frame.main_world
-          elsif context_payload["name"] == UTILITY_WORLD_NAME && !frame.instance_variable_get(:@_secondary_world).has_context?
+          elsif context_payload["name"] == UTILITY_WORLD_NAME && !frame.secondary_world.has_context?
             # In case of multiple sessions to the same target, there's a race between
             # connections so we might end up creating multiple isolated worlds.
             # We can use either.
-            world = frame.instance_variable_get(:@_secondary_world)
+            world = frame.secondary_world
           end
         end
         if context_payload["auxData"] && context_payload.dig("auxData", "type") == 'isolated'
@@ -393,6 +359,8 @@ module Chromiebara
         @_execution_contexts.values.each do |context|
           context.world.send(:set_context, nil) if context.world
         end
+
+        raise 'FAILED' unless @_execution_contexts.empty?
 
         @_execution_contexts.clear
       end
