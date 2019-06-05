@@ -23,5 +23,18 @@ module Chromiebara
       end
       return remote_object["value"]
     end
+
+    EventListener = Struct.new(:emitter, :event_name, :handler)
+
+    def self.add_event_listener(emitter, event_name, handler)
+      emitter.on event_name, handler
+      EventListener.new emitter, event_name, handler
+    end
+
+    def self.remove_event_listeners(listeners)
+      listeners.each do |listener|
+        listener.emitter.remove_listener listener.event_name, listener.handler
+      end
+    end
   end
 end
