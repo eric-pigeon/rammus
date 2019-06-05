@@ -118,7 +118,7 @@ module Chromiebara
       #   waitUntil = ['load'],
       #   timeout = this._timeoutSettings.navigationTimeout(),
       # } = options;
-      watcher = LifecycleWatcher.new self, frame, wait_until, timeout
+      _watcher = LifecycleWatcher.new self, frame, wait_until, timeout
       # const watcher = new LifecycleWatcher(this, frame, waitUntil, timeout);
       # const error = await Promise.race([
       #   watcher.timeoutOrTerminationPromise(),
@@ -266,7 +266,6 @@ module Chromiebara
 
         # Detach all child frames first.
         if (frame)
-
           frame.child_frames.each do |child|
             remove_frames_recursively child
           end
@@ -331,7 +330,7 @@ module Chromiebara
         if frame
           if context_payload.dig "auxData", "isDefault"
             world = frame.main_world
-          elsif context_payload["name"] == UTILITY_WORLD_NAME && !frame.secondary_world.has_context?
+          elsif context_payload["name"] == UTILITY_WORLD_NAME ## && !frame.secondary_world.has_context? - the execution context deleted might not have run yet TODO
             # In case of multiple sessions to the same target, there's a race between
             # connections so we might end up creating multiple isolated worlds.
             # We can use either.
@@ -342,7 +341,13 @@ module Chromiebara
           @_isolated_worlds.add context_payload["name"]
         end
         context = ExecutionContext.new client, context_payload, world
-        world.send(:set_context, context) if world
+        if world
+          # the callback for deleting the context and creating the new one
+          # can happen in reverse order, delete the context (to clear resolved promise)
+          # then set it.
+          world.send(:set_context, nil)
+          world.send(:set_context, context)
+        end
         @_execution_contexts[context_payload["id"]] = context
       end
 
@@ -350,19 +355,26 @@ module Chromiebara
       #
       def on_execution_context_destroyed(execution_context_id)
         context = @_execution_contexts.delete(execution_context_id)
-        if context.world
+        # the callback for deleting the context and creating the new one
+        # can happen in reverse order, only delete the context if the ids match
+        if context.world && context.context_id == execution_context_id
           context.world.send(:set_context, nil)
         end
       end
 
       def on_execution_contexts_cleared(*)
-        @_execution_contexts.values.each do |context|
-          context.world.send(:set_context, nil) if context.world
-        end
+        # todo not sure if this is even needed
+        # but the event can come in any order so this could clear the newly
+        # updated contexts
 
-        raise 'FAILED' unless @_execution_contexts.empty?
+        # @_execution_contexts.values.each do |context|
+        #   context.world.send(:set_context, nil) if context.world
+        # end
 
-        @_execution_contexts.clear
+        # byebug unless @_execution_contexts.empty?
+        # raise 'FAILED' unless @_execution_contexts.empty?
+
+        # @_execution_contexts.clear
       end
   end
 end

@@ -16,22 +16,20 @@ module Chromiebara
       # /** @type {?Promise<!Puppeteer.ElementHandle>} */
       # this._documentPromise = null;
       # /** @type {!Promise<!Puppeteer.ExecutionContext>} */
+      @_context_mutex = Mutex.new
       @_context_promise = nil
-      # this._contextPromise;
-      # this._contextResolveCallback = null;
       @_context_resolve_callback = nil
       set_context nil
-      #
+
       # /** @type {!Set<!WaitTask>} */
       # this._waitTasks = new Set();
       @_detached = false
-      # @context = nil
     end
 
     #  * @return {boolean}
     #  */
     def has_context?
-      @_context_resolve_callback.nil?
+      @_context_mutex.synchronize { @_context_resolve_callback.nil? }
     end
 
     # _detach() {
@@ -84,6 +82,7 @@ module Chromiebara
 
     # @return {!Promise<!Puppeteer.ElementHandle>}
     #
+    # TODO memoize this and clear memoization when setting context as nil
     def document
       execution_context.evaluate_handle('document').as_element
       # if (this._documentPromise)
@@ -471,19 +470,21 @@ module Chromiebara
       # @param [Chromiebara::ExecutionContext, nil] context
       #
       def set_context(context)
-        if context
-          @_context_resolve_callback.(context)
-          @_context_resolve_callback = nil
-          #     this._contextResolveCallback.call(null, context);
-          #     this._contextResolveCallback = null;
-          #     for (const waitTask of this._waitTasks)
-          #       waitTask.rerun();
-        else
-          @_context_promise, @_context_resolve_callback, _reject = Promise.create
-          #     this._documentPromise = null;
-          #     this._contextPromise = new Promise(fulfill => {
-          #       this._contextResolveCallback = fulfill;
-          #     });
+        @_context_mutex.synchronize do
+          if context
+            @_context_resolve_callback.(context)
+            @_context_resolve_callback = nil
+            #     this._contextResolveCallback.call(null, context);
+            #     this._contextResolveCallback = null;
+            #     for (const waitTask of this._waitTasks)
+            #       waitTask.rerun();
+          else
+            @_context_promise, @_context_resolve_callback, _reject = Promise.create
+            #     this._documentPromise = null;
+            #     this._contextPromise = new Promise(fulfill => {
+            #       this._contextResolveCallback = fulfill;
+            #     });
+          end
         end
       end
   end
