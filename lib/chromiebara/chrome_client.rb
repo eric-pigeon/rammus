@@ -94,7 +94,7 @@ module Chromiebara
           ProtocolLogger.puts_command_response message
           if callback = @_command_callbacks.delete(message["id"])
             if message.has_key? "error"
-              # TODO
+              # TODO create_protocol_error
               callback.reject.(message["error"])
             else
               callback.resolve.(message["result"])
