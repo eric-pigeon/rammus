@@ -20,6 +20,9 @@ module Chromiebara
     # @return [Hash]
     #
     def command(command)
+      if client.nil?
+        return Promise.reject(StandardError.new "Protocol error (#{command[:method]}): Session closed. Most likely the #{target_type} has been closed.")
+      end
       @_command_mutex.synchronize do
         client._raw_send(command.merge sessionId: session_id) do |command_id|
           Promise.new do |resolve, reject|
@@ -49,10 +52,14 @@ module Chromiebara
       end
 
       def on_close
-        # for (const callback of this._callbacks.values())
-        #   callback.reject(rewriteError(callback.error, `Protocol error (${callback.method}): Target closed.`));
-        # this._callbacks.clear();
-        # this._connection = null;
+        @_command_mutex.synchronize do
+          @_command_callbacks.values.each do |callback|
+            # callback.reject(rewriteError(callback.error, `Protocol error (${callback.method}): Target closed.`));
+            callback.reject.('TODO')
+          end
+          @_command_callbacks.clear
+        end
+        @client = nil
         # this.emit(Events.CDPSession.Disconnected);
       end
 

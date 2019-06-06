@@ -128,51 +128,50 @@ module Chromiebara
       }
     end
 
-    #/**
-    # *
-    # * @param {!Object=} options
-    # * @returns {!Promise<string|!Buffer>}
-    # */
-    #async screenshot(options = {}) {
-    #  let needsViewportReset = false;
+    # @param {!Object=} options
+    # @returns {!Promise<string|!Buffer>}
+    #
+    def screenshot(options = {})
+      needs_viewport_reset = false
 
-    #  let boundingBox = await this.boundingBox();
-    #  assert(boundingBox, 'Node is either not visible or not an HTMLElement');
+      bounding_box = self.bounding_box
+      raise 'Node is either not visible or not an HTMLElement' unless bounding_box
 
-    #  const viewport = this._page.viewport();
+      viewport = page.viewport
 
-    #  if (viewport && (boundingBox.width > viewport.width || boundingBox.height > viewport.height)) {
-    #    const newViewport = {
-    #      width: Math.max(viewport.width, Math.ceil(boundingBox.width)),
-    #      height: Math.max(viewport.height, Math.ceil(boundingBox.height)),
-    #    };
-    #    await this._page.setViewport(Object.assign({}, viewport, newViewport));
+      if viewport && bounding_box[:width] > viewport[:width] || bounding_box[:height] > viewport[:height]
+        new_viewport = {
+          width: [viewport[:width], bounding_box[:width].ceil].max,
+          height: [viewport[:height], bounding_box[:height].ceil].max,
+        }
+        page.set_viewport viewport.merge(new_viewport)
 
-    #    needsViewportReset = true;
-    #  }
+        needs_viewport_reset = true
+      end
 
-    #  await this._scrollIntoViewIfNeeded();
+      scroll_into_view_if_needed
 
-    #  boundingBox = await this.boundingBox();
-    #  assert(boundingBox, 'Node is either not visible or not an HTMLElement');
-    #  assert(boundingBox.width !== 0, 'Node has 0 width.');
-    #  assert(boundingBox.height !== 0, 'Node has 0 height.');
+      bounding_box = self.bounding_box
 
-    #  const { layoutViewport: { pageX, pageY } } = await this._client.send('Page.getLayoutMetrics');
+      raise 'Node is either not visible or not an HTMLElement' if bounding_box.nil?
+      raise 'Node has 0 width.' if bounding_box[:width].zero?
+      raise 'Node has 0 height.' if bounding_box[:height].zero?
 
-    #  const clip = Object.assign({}, boundingBox);
-    #  clip.x += pageX;
-    #  clip.y += pageY;
+      result = await client.command Protocol::Page.get_layout_metrics
+      page_x = result.dig "layoutViewport", "pageX"
+      page_y = result.dig "layoutViewport", "pageY"
 
-    #  const imageData = await this._page.screenshot(Object.assign({}, {
-    #    clip
-    #  }, options));
+      clip = bounding_box
 
-    #  if (needsViewportReset)
-    #    await this._page.setViewport(viewport);
+      clip[:x] += page_x
+      clip[:y] += page_y
 
-    #  return imageData;
-    #}
+      image_data = page.screenshot({ clip: clip }.merge(options))
+
+      page.set_viewport viewport if needs_viewport_reset
+
+      image_data
+    end
 
     # @param {string} selector
     # @return {!Promise<?ElementHandle>}

@@ -50,17 +50,20 @@ module Chromiebara
     # @param {string} propertyName
     # @return {!Promise<?JSHandle>}
     #
-    #def getProperty(property_name)
-    #   const objectHandle = await this._context.evaluateHandle((object, propertyName) => {
-    #     const result = {__proto__: null};
-    #     result[propertyName] = object[propertyName];
-    #     return result;
-    #   }, this, propertyName);
-    #   const properties = await objectHandle.getProperties();
-    #   const result = properties.get(propertyName) || null;
-    #   await objectHandle.dispose();
-    #   return result;
-    #end
+    def get_property(property_name)
+      function = <<~JAVASCRIPT
+      (object, propertyName) => {
+        const result = {__proto__: null};
+        result[propertyName] = object[propertyName];
+        return result;
+      }
+      JAVASCRIPT
+      object_handle = execution_context.evaluate_handle_function function, self, property_name
+      properties = object_handle.get_properties
+      result = properties[property_name]
+      object_handle.dispose
+      result
+    end
 
     # @return {!Promise<!Map<string, !JSHandle>>}
     #

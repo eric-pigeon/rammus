@@ -5,7 +5,8 @@ require 'chromiebara/touchscreen'
 require 'chromiebara/dialog'
 require 'chromiebara/frame_manager'
 require 'chromiebara/emulation_manager'
-require 'Chromiebara/timeout_settings'
+require 'chromiebara/timeout_settings'
+require 'chromiebara/worker'
 
 module Chromiebara
   class Page
@@ -56,28 +57,25 @@ module Chromiebara
       # this._screenshotTaskQueue = screenshotTaskQueue;
 
       # /** @type {!Map<string, Worker>} */
-      # this._workers = new Map();
-      client.on Protocol::Target.attached_to_target, -> (event) { raise 'todo' }
-      # client.on('Target.attachedToTarget', event => {
-      #   if (event.targetInfo.type !== 'worker') {
-      #     // If we don't detach from service workers, they will never die.
-      #     client.send('Target.detachFromTarget', {
-      #       sessionId: event.sessionId
-      #     }).catch(debugError);
-      #     return;
-      #   }
-      #   const session = Connection.fromSession(client).session(event.sessionId);
-      #   const worker = new Worker(session, event.targetInfo.url, this._addConsoleMessage.bind(this), this._handleException.bind(this));
-      #   this._workers.set(event.sessionId, worker);
-      #   this.emit(Events.Page.WorkerCreated, worker);
-      # });
-      # client.on('Target.detachedFromTarget', event => {
-      #   const worker = this._workers.get(event.sessionId);
-      #   if (!worker)
-      #     return;
-      #   this.emit(Events.Page.WorkerDestroyed, worker);
-      #   this._workers.delete(event.sessionId);
-      # });
+      @_workers = Hash.new
+      client.on Protocol::Target.attached_to_target, -> (event) do
+        if event.dig("targetInfo", "type") != 'worker'
+          # If we don't detach from service workers, they will never die.
+          client.command Protocol::Target.detach_from_target session_id: event["sessionId"]
+          next
+        end
+        session = ChromeClient.from_session(client).session(event["sessionId"])
+        worker = Worker.new session, event["targetInfo"]["url"]#, this._addConsoleMessage.bind(this), this._handleException.bind(this));
+
+        @_workers[event["sessionId"]] = worker
+        emit :worker_created, worker
+      end
+
+      client.on Protocol::Target.detached_from_target, -> (event) do
+        next unless worker = @_workers[event["sessionId"]]
+        emit :worker_destroyed, worker
+        @_workers.delete event["sessionId"]
+      end
 
       # this._frameManager.on(Events.FrameManager.FrameAttached, event => this.emit(Events.Page.FrameAttached, event));
       # this._frameManager.on(Events.FrameManager.FrameDetached, event => this.emit(Events.Page.FrameDetached, event));
@@ -159,11 +157,11 @@ module Chromiebara
       @frame_manager.frames
     end
 
-    #  * @return {!Array<!Worker>}
-    #  */
-    # workers() {
-    #   return Array.from(this._workers.values());
-    # }
+    # @return {!Array<!Worker>}
+    #
+    def workers
+      @_workers.values
+    end
 
     #  * @param {boolean} value
     #  */
