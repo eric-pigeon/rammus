@@ -121,7 +121,13 @@ module Chromiebara
         return_by_value: false,
         await_promise: true,
         user_gesture: true
-      )).catch { |error| raise 'TODO' }
+      )).catch do |error|
+        # TODO
+        # if (err instanceof TypeError && err.message === 'Converting circular structure to JSON')
+          # err.message += ' Are you passing a nested JSHandle?';
+        # end
+        raise error
+      end
 
       if response["exceptionDetails"]
         # TODO

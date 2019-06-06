@@ -23,6 +23,18 @@ module Chromiebara
       end
     end
 
+    def once(event, callable = nil, &block)
+      callable ||= block
+      fired = false
+      emitter = self
+      wrapper = ->(data) {
+        emitter.remove_listener event, wrapper
+        next if fired
+        callable.call data
+      }
+      on event, wrapper
+    end
+
     # @param [String] event
     # @param [Callable] callable
     #

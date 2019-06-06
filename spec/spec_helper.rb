@@ -1,6 +1,7 @@
 require 'chromiebara'
 require 'support/test_app'
 require 'support/match_screenshot'
+require 'support/test_emitter'
 if RUBY_ENGINE != "jruby"
   require 'byebug'
 end

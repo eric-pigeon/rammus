@@ -86,131 +86,135 @@ module Chromiebara
       #});
 
       it 'should work with odd clip size on Retina displays' do
-        screenshot = page.screenshot clip: { x: 0, y: 0, width: 11, height: 11 }, path: '/Users/epigeon/Documents/Projects/Ruby/chromiebara/what.png'
+        screenshot = page.screenshot clip: { x: 0, y: 0, width: 11, height: 11 }
         expect(screenshot).to match_screenshot 'screenshot-clip-odd-size.png'
       end
 
-      #it('should return base64', async({page, server}) => {
-      #  await page.setViewport({width: 500, height: 500});
-      #  await page.goto(server.PREFIX + '/grid.html');
-      #  const screenshot = await page.screenshot({
-      #    encoding: 'base64'
-      #  });
-      #  expect(Buffer.from(screenshot, 'base64')).toBeGolden('screenshot-sanity.png');
-      #});
+      it 'should return base64' do
+        page.set_viewport width: 500, height: 500
+        page.goto server.domain + 'grid.html'
+        screenshot = page.screenshot encoding: 'base64'
+        expect(Base64.decode64 screenshot).to match_screenshot 'screenshot-sanity.png'
+      end
     end
 
-    #describe('ElementHandle.screenshot', function() {
-    #  it('should work', async({page, server}) => {
-    #    await page.setViewport({width: 500, height: 500});
-    #    await page.goto(server.PREFIX + '/grid.html');
-    #    await page.evaluate(() => window.scrollBy(50, 100));
-    #    const elementHandle = await page.$('.box:nth-of-type(3)');
-    #    const screenshot = await elementHandle.screenshot();
-    #    expect(screenshot).toBeGolden('screenshot-element-bounding-box.png');
-    #  });
-    #  it('should take into account padding and border', async({page, server}) => {
-    #    await page.setViewport({width: 500, height: 500});
-    #    await page.setContent(`
-    #      something above
-    #      <style>div {
-    #        border: 2px solid blue;
-    #        background: green;
-    #        width: 50px;
-    #        height: 50px;
-    #      }
-    #      </style>
-    #      <div></div>
-    #    `);
-    #    const elementHandle = await page.$('div');
-    #    const screenshot = await elementHandle.screenshot();
-    #    expect(screenshot).toBeGolden('screenshot-element-padding-border.png');
-    #  });
-    #  it('should capture full element when larger than viewport', async({page, server}) => {
-    #    await page.setViewport({width: 500, height: 500});
+    describe 'ElementHandle#screenshot' do
+      it 'should work' do
+        page.set_viewport width: 500, height: 500
+        page.goto server.domain + 'grid.html'
+        page.evaluate_function '() => window.scrollBy(50, 100)'
+        element_handle = page.query_selector '.box:nth-of-type(3)'
+        screenshot = element_handle.screenshot
+        expect(screenshot).to match_screenshot 'screenshot-element-bounding-box.png'
+      end
 
-    #    await page.setContent(`
-    #      something above
-    #      <style>
-    #      div.to-screenshot {
-    #        border: 1px solid blue;
-    #        width: 600px;
-    #        height: 600px;
-    #        margin-left: 50px;
-    #      }
-    #      ::-webkit-scrollbar{
-    #        display: none;
-    #      }
-    #      </style>
-    #      <div class="to-screenshot"></div>
-    #    `);
-    #    const elementHandle = await page.$('div.to-screenshot');
-    #    const screenshot = await elementHandle.screenshot();
-    #    expect(screenshot).toBeGolden('screenshot-element-larger-than-viewport.png');
+      it 'should take into account padding and border' do
+        page.set_viewport width: 500, height: 500
+        content = <<~HTML
+          something above
+          <style>div {
+            border: 2px solid blue;
+            background: green;
+            width: 50px;
+            height: 50px;
+          }
+          </style>
+          <div></div>
+        HTML
+        page.set_content content
+        element_handle = page.query_selector 'div'
+        screenshot = element_handle.screenshot
+        expect(screenshot).to match_screenshot 'screenshot-element-padding-border.png'
+      end
 
-    #    expect(await page.evaluate(() => ({ w: window.innerWidth, h: window.innerHeight }))).toEqual({ w: 500, h: 500 });
-    #  });
-    #  it('should scroll element into view', async({page, server}) => {
-    #    await page.setViewport({width: 500, height: 500});
-    #    await page.setContent(`
-    #      something above
-    #      <style>div.above {
-    #        border: 2px solid blue;
-    #        background: red;
-    #        height: 1500px;
-    #      }
-    #      div.to-screenshot {
-    #        border: 2px solid blue;
-    #        background: green;
-    #        width: 50px;
-    #        height: 50px;
-    #      }
-    #      </style>
-    #      <div class="above"></div>
-    #      <div class="to-screenshot"></div>
-    #    `);
-    #    const elementHandle = await page.$('div.to-screenshot');
-    #    const screenshot = await elementHandle.screenshot();
-    #    expect(screenshot).toBeGolden('screenshot-element-scrolled-into-view.png');
-    #  });
-    #  it('should work with a rotated element', async({page, server}) => {
-    #    await page.setViewport({width: 500, height: 500});
-    #    await page.setContent(`<div style="position:absolute;
-    #                                      top: 100px;
-    #                                      left: 100px;
-    #                                      width: 100px;
-    #                                      height: 100px;
-    #                                      background: green;
-    #                                      transform: rotateZ(200deg);">&nbsp;</div>`);
-    #    const elementHandle = await page.$('div');
-    #    const screenshot = await elementHandle.screenshot();
-    #    expect(screenshot).toBeGolden('screenshot-element-rotate.png');
-    #  });
-    #  it('should fail to screenshot a detached element', async({page, server}) => {
-    #    await page.setContent('<h1>remove this</h1>');
-    #    const elementHandle = await page.$('h1');
-    #    await page.evaluate(element => element.remove(), elementHandle);
-    #    const screenshotError = await elementHandle.screenshot().catch(error => error);
-    #    expect(screenshotError.message).toBe('Node is either not visible or not an HTMLElement');
-    #  });
-    #  it('should not hang with zero width/height element', async({page, server}) => {
-    #    await page.setContent('<div style="width: 50px; height: 0"></div>');
-    #    const div = await page.$('div');
-    #    const error = await div.screenshot().catch(e => e);
-    #    expect(error.message).toBe('Node has 0 height.');
-    #  });
-    #  it('should work for an element with fractional dimensions', async({page}) => {
-    #    await page.setContent('<div style="width:48.51px;height:19.8px;border:1px solid black;"></div>');
-    #    const elementHandle = await page.$('div');
-    #    const screenshot = await elementHandle.screenshot();
-    #    expect(screenshot).toBeGolden('screenshot-element-fractional.png');
-    #  });
-    #  it('should work for an element with an offset', async({page}) => {
-    #    await page.setContent('<div style="position:absolute; top: 10.3px; left: 20.4px;width:50.3px;height:20.2px;border:1px solid black;"></div>');
-    #    const elementHandle = await page.$('div');
-    #    const screenshot = await elementHandle.screenshot();
-    #    expect(screenshot).toBeGolden('screenshot-element-fractional-offset.png');
-    #  });
-    #});
+      it 'should capture full element when larger than viewport' do
+        page.set_viewport width: 500, height: 500
+
+        content = <<~HTML
+          something above
+          <style>
+          div.to-screenshot {
+            border: 1px solid blue;
+            width: 600px;
+            height: 600px;
+            margin-left: 50px;
+          }
+          ::-webkit-scrollbar{
+            display: none;
+          }
+          </style>
+          <div class="to-screenshot"></div>
+        HTML
+        page.set_content content
+        element_handle = page.query_selector 'div.to-screenshot'
+        screenshot = element_handle.screenshot
+        expect(screenshot).to match_screenshot 'screenshot-element-larger-than-viewport.png'
+
+        expect(page.evaluate_function '() => ({ w: window.innerWidth, h: window.innerHeight })').to eq "w" => 500, "h" => 500
+      end
+
+      it 'should scroll element into view' do
+        page.set_viewport width: 500, height: 500
+        content = <<~HTML
+          something above
+          <style>div.above {
+            border: 2px solid blue;
+            background: red;
+            height: 1500px;
+          }
+          div.to-screenshot {
+            border: 2px solid blue;
+            background: green;
+            width: 50px;
+            height: 50px;
+          }
+          </style>
+          <div class="above"></div>
+          <div class="to-screenshot"></div>
+        HTML
+        page.set_content content
+        element_handle = page.query_selector 'div.to-screenshot'
+        screenshot = element_handle.screenshot
+        expect(screenshot).to match_screenshot 'screenshot-element-scrolled-into-view.png'
+      end
+
+      it 'should work with a rotated element' do
+        page.set_viewport width: 500, height: 500
+        content = <<~HTML
+          <div style="position:absolute; top: 100px; left: 100px; width: 100px; height: 100px; background: green; transform: rotateZ(200deg);">&nbsp;</div>
+        HTML
+        page.set_content content
+        element_handle = page.query_selector 'div'
+        screenshot = element_handle.screenshot
+        expect(screenshot).to match_screenshot 'screenshot-element-rotate.png'
+      end
+
+      it 'should fail to screenshot a detached element' do
+        page.set_content '<h1>remove this</h1>'
+        element_handle = page.query_selector 'h1'
+        page.evaluate_function 'element => element.remove()', element_handle
+        expect { element_handle.screenshot }.to raise_error 'Node is either not visible or not an HTMLElement'
+      end
+
+      it 'should not hang with zero width/height element' do
+        page.set_content '<div style="width: 50px; height: 0"></div>'
+        div = page.query_selector 'div'
+        expect { div.screenshot }.to raise_error 'Node has 0 height.'
+      end
+
+      it 'should work for an element with fractional dimensions' do
+        page.set_content '<div style="width:48.51px;height:19.8px;border:1px solid black;"></div>'
+        element_handle = page.query_selector 'div'
+        screenshot = element_handle.screenshot
+        expect(screenshot).to match_screenshot 'screenshot-element-fractional.png'
+      end
+
+      it 'should work for an element with an offset' do
+        page.set_content '<div style="position:absolute; top: 10.3px; left: 20.4px;width:50.3px;height:20.2px;border:1px solid black;"></div>'
+        element_handle = page.query_selector 'div'
+        screenshot = element_handle.screenshot
+        expect(screenshot).to match_screenshot 'screenshot-element-fractional-offset.png'
+      end
+    end
   end
 end

@@ -1,10 +1,13 @@
 module Chromiebara
   class ChromeClient
     include Promise::Await
+    include EventEmitter
 
     CommandCallback = Struct.new(:resolve, :reject, :method)
 
-    include EventEmitter
+    def self.from_session(session)
+      session.client
+    end
 
     attr_reader :web_socket
 
@@ -65,6 +68,10 @@ module Chromiebara
       @_sessions.fetch session_id
     end
 
+    def session(session_id)
+      @_sessions.fetch session_id
+    end
+
     private
 
       def next_command_id
@@ -79,7 +86,7 @@ module Chromiebara
         if message["method"] == Protocol::Target.attached_to_target
           ProtocolLogger.puts_event message
           session_id = message.dig "params", "sessionId"
-          session = CDPSession.new(self, message.dig("targetInfo", "type"), session_id)
+          session = CDPSession.new(self, message.dig("params", "targetInfo", "type"), session_id)
           @_sessions[session_id] = session
         elsif message["method"] == Protocol::Target.detached_from_target
           session_id = message.dig "params", "sessionId"
