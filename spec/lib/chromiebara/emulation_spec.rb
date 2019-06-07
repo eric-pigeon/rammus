@@ -66,7 +66,6 @@ module Chromiebara
       end
 
       it 'should support landscape emulation' do
-        pending 'need to implement page#reload'
         page.goto server.domain + 'mobile.html'
         expect(page.evaluate_function "() => screen.orientation.type").to eq 'portrait-primary'
         page.set_viewport iPhoneLandscape[:viewport]
