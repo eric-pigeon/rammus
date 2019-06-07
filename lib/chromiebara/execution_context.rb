@@ -73,7 +73,7 @@ module Chromiebara
       suffix = "//# sourceURL=#{EVALUATION_SCRIPT_URL}"
       function_text = page_function
 
-      arguments = args.map do |arg|
+      _arguments = args.map do |arg|
         if arg == Float::INFINITY then next { unserializableValue: 'Infinity' } end
         if arg == -Float::INFINITY then next { unserializableValue: '-Infinity' } end
 
@@ -96,26 +96,17 @@ module Chromiebara
         end
 
         { value: arg }
-        #   if (typeof arg === 'bigint') // eslint-disable-line valid-typeof
-        #     return { unserializableValue: `${arg.toString()}n` };
-        #   if (Object.is(arg, -0))
-        #     return { unserializableValue: '-0' };
-        #   if (Object.is(arg, Infinity))
-        #     return { unserializableValue: 'Infinity' };
-        #   if (Object.is(arg, -Infinity))
-        #     return { unserializableValue: '-Infinity' };
-        #   if (Object.is(arg, NaN))
-        #     return { unserializableValue: 'NaN' };
       end
 
       response = await client.command(Protocol::Runtime.call_function_on(
         function_declaration: function_text + "\n" + suffix + "\n",
         execution_context_id: context_id,
-        arguments: arguments,
+        arguments: args.map { |arg| convert_argument arg },
         return_by_value: false,
         await_promise: true,
         user_gesture: true
       )).catch do |error|
+        byebug
         # TODO
         # if (err instanceof TypeError && err.message === 'Converting circular structure to JSON')
           # err.message += ' Are you passing a nested JSHandle?';
@@ -239,6 +230,36 @@ module Chromiebara
     # }
 
     private
+
+      def convert_argument(arg)
+        #if (typeof arg === 'bigint') // eslint-disable-line valid-typeof
+        #  return { unserializableValue: `${arg.toString()}n` };
+        #if (Object.is(arg, -0))
+        #  return { unserializableValue: '-0' };
+        #if (Object.is(arg, Infinity))
+        #  return { unserializableValue: 'Infinity' };
+        #if (Object.is(arg, -Infinity))
+        #  return { unserializableValue: '-Infinity' };
+        #if (Object.is(arg, NaN))
+        #  return { unserializableValue: 'NaN' };
+        object_handle = arg && arg.is_a?(JSHandle) ? arg : nil
+        if object_handle
+          if object_handle.context != self
+           raise 'JSHandles can be evaluated only in the context they were created!'
+          end
+          if object_handle.disposed?
+            raise 'JSHandle is disposed!'
+          end
+          if object_handle.remote_object["unserializableValue"]
+            return { unserializableValue: object_handle.remote_object["unserializableValue"] }
+          end
+          if !object_handle.remote_object["objectId"]
+            return { value: object_handle.remote_object["value"] }
+          end
+          return { objectId: object_handle.remote_object["objectId"] }
+        end
+        { value: arg }
+      end
 
       # TODO
       # @param {!Error} error

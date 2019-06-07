@@ -20,6 +20,7 @@ module Chromiebara
           raise "Unsupported unserializable value #{remote_object["unserializableValue"]}"
         end
       end
+      # return "undefined" if remote_object["type"] == "undefined"
       return remote_object["value"]
     end
 
