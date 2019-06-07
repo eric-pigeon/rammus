@@ -914,22 +914,22 @@ module Chromiebara
     describe '#evaluate' do
       context 'passing javascript function' do
         it 'transfers NaN' do
-          result = page.evaluate('a => a', 'NaN', function: true)
+          result = page.evaluate_function 'a => a', 'NaN'
           expect(result).to eq 'NaN'
         end
 
         it 'transfers -0' do
-          result = page.evaluate('a => a', -0, function: true);
+          result = page.evaluate_function 'a => a', -0
           expect(result).to eq 0
         end
 
         it 'should transfer Float::INFINITY' do
-          result = page.evaluate('a => a', Float::INFINITY, function: true);
+          result = page.evaluate_function 'a => a', Float::INFINITY
           expect(result).to eq Float::INFINITY
         end
 
         it 'should transfer -Float::INFINITY' do
-          result = page.evaluate('a => a', -Float::INFINITY, function: true);
+          result = page.evaluate_function 'a => a', -Float::INFINITY
           expect(result).to eq(-Float::INFINITY)
         end
 
@@ -938,12 +938,12 @@ module Chromiebara
         #  expect(result).toEqual([1,2,3]);
         #});
         it 'should transfer arrays as arrays, not objects' do
-          result = page.evaluate('a => Array.isArray(a)', [1, 2, 3], function: true)
+          result = page.evaluate_function 'a => Array.isArray(a)', [1, 2, 3]
           expect(result).to eq true
-        end;
+        end
 
         it 'should modify global environment' do
-          page.evaluate('() => window.globalVar = 123', function: true)
+          page.evaluate_function '() => window.globalVar = 123'
           expect(page.evaluate('globalVar')).to eq 123
         end
 
@@ -1422,9 +1422,9 @@ module Chromiebara
           });
         }
         JAVASCRIPT
-        page.evaluate javascript, function: true
+        page.evaluate_function javascript
         page.mouse.click 50, 60
-        event = page.evaluate('() => window.clickPromise', function: true)
+        event = page.evaluate_function '() => window.clickPromise'
         expect(event["type"]).to eq 'click'
         expect(event["detail"]).to eq 1
         expect(event["clientX"]).to eq 50
@@ -1435,7 +1435,7 @@ module Chromiebara
 
       it 'should resize the textarea' do
         page.goto server.domain + 'input/textarea.html'
-        textarea_dimensions = page.evaluate dimensions, function: true
+        textarea_dimensions = page.evaluate_function dimensions
         x = textarea_dimensions["x"]
         y = textarea_dimensions["y"]
         width = textarea_dimensions["width"]
@@ -1445,7 +1445,7 @@ module Chromiebara
         mouse.down
         mouse.move (x + width + 100), (y + height + 100)
         mouse.up
-        new_textarea_dimensions = page.evaluate dimensions, function: true
+        new_textarea_dimensions = page.evaluate_function dimensions
         expect(new_textarea_dimensions["width"]).to eq width + 104
         expect(new_textarea_dimensions["height"]).to eq height + 104
       end
@@ -1456,9 +1456,9 @@ module Chromiebara
         text = "This is the text that we are going to try to select. Let's see how it goes."
         page.keyboard.type text
         # Firefox needs an extra frame here after typing or it will fail to set the scrollTop
-        page.evaluate('() => new Promise(requestAnimationFrame)', function: true)
-        page.evaluate("() => document.querySelector('textarea').scrollTop = 0", function: true)
-        textarea_dimensions = page.evaluate dimensions, function: true
+        page.evaluate_function '() => new Promise(requestAnimationFrame)'
+        page.evaluate_function "() => document.querySelector('textarea').scrollTop = 0"
+        textarea_dimensions = page.evaluate_function dimensions
         page.mouse.move textarea_dimensions["x"] + 2, textarea_dimensions["y"] + 2
         page.mouse.down
         page.mouse.move 100, 100
@@ -1469,7 +1469,7 @@ module Chromiebara
           return textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
         }
         JAVASCRIPT
-        expect(page.evaluate function, function: true).to eq text
+        expect(page.evaluate_function function).to eq text
       end
 
       it 'should trigger hover state' do

@@ -75,7 +75,7 @@ module Chromiebara
     end
 
     def focus
-      execution_context.evaluate 'element => element.focus()', self, function: true
+      execution_context.evaluate_function 'element => element.focus()', self
     end
 
     # @param {string} text
@@ -318,7 +318,7 @@ module Chromiebara
             return false;
           }
         JAVASCRIPT
-        error = execution_context.evaluate function, self, page.javascript_enabled, function: true
+        error = execution_context.evaluate_function function, self, page.javascript_enabled
         raise error if error
       end
 
