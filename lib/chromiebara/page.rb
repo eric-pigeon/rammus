@@ -4,6 +4,7 @@ require 'chromiebara/mouse'
 require 'chromiebara/touchscreen'
 require 'chromiebara/dialog'
 require 'chromiebara/frame_manager'
+require 'chromiebara/console_message'
 require 'chromiebara/emulation_manager'
 require 'chromiebara/timeout_settings'
 require 'chromiebara/worker'
@@ -65,7 +66,7 @@ module Chromiebara
           next
         end
         session = ChromeClient.from_session(client).session(event["sessionId"])
-        worker = Worker.new session, event["targetInfo"]["url"]#, this._addConsoleMessage.bind(this), this._handleException.bind(this));
+        worker = Worker.new session, event["targetInfo"]["url"], method(:add_console_message), method(:handle_exception)
 
         @_workers[event["sessionId"]] = worker
         emit :worker_created, worker
@@ -95,7 +96,7 @@ module Chromiebara
       client.on Protocol::Runtime.exception_thrown, ->(exception) { handle_exception exception["exceptionDetails"] }
       # client.on('Inspector.targetCrashed', event => this._onTargetCrashed());
       # client.on('Performance.metrics', event => this._emitMetrics(event));
-      # client.on('Log.entryAdded', event => this._onLogEntryAdded(event));
+      client.on Protocol::Log.entry_added, method(:on_log_entry_added)
       # this._target._isClosedPromise.then(() => {
       #   this.emit(Events.Page.Close);
       #   this._closed = true;
@@ -399,30 +400,6 @@ module Chromiebara
     #   return result;
     # }
 
-    #  * @param {!Protocol.Runtime.consoleAPICalledPayload} event
-    #  */
-    # async _onConsoleAPI(event) {
-    #   if (event.executionContextId === 0) {
-    #     // DevTools protocol stores the last 1000 console messages. These
-    #     // messages are always reported even for removed execution contexts. In
-    #     // this case, they are marked with executionContextId = 0 and are
-    #     // reported upon enabling Runtime agent.
-    #     //
-    #     // Ignore these messages since:
-    #     // - there's no execution context we can use to operate with message
-    #     //   arguments
-    #     // - these messages are reported before Puppeteer clients can subscribe
-    #     //   to the 'console'
-    #     //   page event.
-    #     //
-    #     // @see https://github.com/GoogleChrome/puppeteer/issues/3865
-    #     return;
-    #   }
-    #   const context = this._frameManager.executionContextById(event.executionContextId);
-    #   const values = event.args.map(arg => createJSHandle(context, arg));
-    #   this._addConsoleMessage(event.type, values, event.stackTrace);
-    # }
-
     # /**
     #  * @param {!Protocol.Runtime.bindingCalledPayload} event
     #  */
@@ -472,33 +449,6 @@ module Chromiebara
     #     window[name]['callbacks'].get(seq).reject(value);
     #     window[name]['callbacks'].delete(seq);
     #   }
-    # }
-
-    # /**
-    #  * @param {string} type
-    #  * @param {!Array<!Puppeteer.JSHandle>} args
-    #  * @param {Protocol.Runtime.StackTrace=} stackTrace
-    #  */
-    # _addConsoleMessage(type, args, stackTrace) {
-    #   if (!this.listenerCount(Events.Page.Console)) {
-    #     args.forEach(arg => arg.dispose());
-    #     return;
-    #   }
-    #   const textTokens = [];
-    #   for (const arg of args) {
-    #     const remoteObject = arg._remoteObject;
-    #     if (remoteObject.objectId)
-    #       textTokens.push(arg.toString());
-    #     else
-    #       textTokens.push(helper.valueFromRemoteObject(remoteObject));
-    #   }
-    #   const location = stackTrace && stackTrace.callFrames.length ? {
-    #     url: stackTrace.callFrames[0].url,
-    #     lineNumber: stackTrace.callFrames[0].lineNumber,
-    #     columnNumber: stackTrace.callFrames[0].columnNumber,
-    #   } : {};
-    #   const message = new ConsoleMessage(type, textTokens.join(' '), args, location);
-    #   this.emit(Events.Page.Console, message);
     # }
 
     # * @return {!Promise<string>}
@@ -659,13 +609,11 @@ module Chromiebara
     #  * @return {!Promise<*>}
     #
     def evaluate(function, *args)
-      # TODO make remove calls to this where function: true is passed and
-      # replace with calls to evaluate_function
       main_frame.evaluate function, *args
     end
 
     def evaluate_function(function, *args)
-      main_frame.evaluate function, *args, function: true
+      main_frame.evaluate_function function, *args
     end
 
     #  * @param {Function|string} pageFunction
@@ -948,15 +896,18 @@ module Chromiebara
       #   this.emit('error', new Error('Page crashed!'));
       # }
 
-      #  * @param {!Protocol.Log.entryAddedPayload} event
-      #  */
-      # _onLogEntryAdded(event) {
-      #   const {level, text, args, source, url, lineNumber} = event.entry;
-      #   if (args)
-      #     args.map(arg => helper.releaseObject(this._client, arg));
-      #   if (source !== 'worker')
-      #     this.emit(Events.Page.Console, new ConsoleMessage(level, text, [], {url, lineNumber}));
-      # }
+      #  @param {!Protocol.Log.entryAddedPayload} event
+      #
+      def on_log_entry_added(event)
+        #   const {level, text, args, source, url, lineNumber} = event.entry;
+        if event.dig "entry", "args"
+          # TODO
+          # args.map(arg => helper.releaseObject(this._client, arg));
+        elsif event.dig "entry", "source" != 'worker'
+          # TODO
+          # this.emit(Events.Page.Console, new ConsoleMessage(level, text, [], {url, lineNumber}));
+        end
+      end
 
       def on_dialog(event)
         dialog_type =
@@ -975,12 +926,65 @@ module Chromiebara
 
       # @param {!Protocol.Runtime.ExceptionDetails} exceptionDetails
       #
-      def  handle_exception(exception_details)
-        # raise 'TODO'
-      #   const message = helper.getExceptionMessage(exceptionDetails);
-      #   const err = new Error(message);
-      #   err.stack = ''; // Don't report clientside error with a node stack attached
-      #   this.emit(Events.Page.PageError, err);
+      def handle_exception(exception_details)
+        message = Util.get_exception_message exception_details
+        error = StandardError.new message
+        emit :page_error, error
+      end
+
+      # @param {!Protocol.Runtime.consoleAPICalledPayload} event
+      #
+      def on_console_api(event)
+      #   if (event.executionContextId === 0) {
+      #     // DevTools protocol stores the last 1000 console messages. These
+      #     // messages are always reported even for removed execution contexts. In
+      #     // this case, they are marked with executionContextId = 0 and are
+      #     // reported upon enabling Runtime agent.
+      #     //
+      #     // Ignore these messages since:
+      #     // - there's no execution context we can use to operate with message
+      #     //   arguments
+      #     // - these messages are reported before Puppeteer clients can subscribe
+      #     //   to the 'console'
+      #     //   page event.
+      #     //
+      #     // @see https://github.com/GoogleChrome/puppeteer/issues/3865
+      #     return;
+      #   }
+      #   const context = this._frameManager.executionContextById(event.executionContextId);
+      #   const values = event.args.map(arg => createJSHandle(context, arg));
+      #   this._addConsoleMessage(event.type, values, event.stackTrace);
+      end
+
+      # @param {string} type
+      # @param {!Array<!Puppeteer.JSHandle>} args
+      # @param {Protocol.Runtime.StackTrace=} stackTrace
+      #
+      def add_console_message(type, args, stack_trace)
+        # TODO
+        #if (!this.listenerCount(Events.Page.Console)) {
+        #  args.forEach(arg => arg.dispose());
+        #  return;
+        #}
+        text_tokens = args.map do |arg|
+          remote_object = arg.remote_object
+          if remote_object["objectId"]
+            arg.to_s
+          else
+            Util.value_from_remote_object remote_object
+          end
+        end
+        location = if stack_trace && stack_trace["callFrames"].length
+                    {
+                      url: stack_trace.dig("callFrames", 0, "url"),
+                      line_number: stack_trace.dig("callFrames", 0, "lineNumber"),
+                      column_number: stack_trace.dig("callFrames", 0, "columnNumber")
+                    }
+                   else
+                     {}
+                   end
+        message = ConsoleMessage.new type, text_tokens.join(' '), args, location
+        emit(:console, message)
       end
   end
 end

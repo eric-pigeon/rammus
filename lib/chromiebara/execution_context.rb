@@ -41,13 +41,8 @@ module Chromiebara
     #  * @param {...*} args
     #  * @return {!Promise<(!Object|undefined)>}
     #  */
-    def evaluate(page_function, *args, function: false)
-      handle =
-        if function
-          evaluate_handle_function page_function, *args
-        else
-          evaluate_handle page_function, *args
-        end
+    def evaluate(page_function, *args)
+      handle = evaluate_handle page_function, *args
       result = handle.json_value
       # const result = await handle.jsonValue().catch(error => {
       #   if (error.message.includes('Object reference chain is too long'))
@@ -95,8 +90,7 @@ module Chromiebara
             # return { unserializableValue: objectHandle._remoteObject.unserializableValue };
           end
           if !object_handle.remote_object["objectId"]
-            raise 'TODO'
-          #  return { value: objectHandle._remoteObject.value };
+            next { value: object_handle.remote_object["value"] }
           end
           next { objectId: object_handle.remote_object["objectId"] }
         end

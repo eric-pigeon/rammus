@@ -31,37 +31,41 @@ module Chromiebara
       expect { worker_this.get_property 'self' }.to raise_error(/Most likely the worker has been closed./)
     end
 
-    #it('should report console logs', async function({page}) {
-    #  const [message] = await Promise.all([
-    #    waitEvent(page, 'console'),
-    #    page.evaluate(() => new Worker(`data:text/javascript,console.log(1)`)),
-    #  ]);
-    #  expect(message.text()).toBe('1');
-    #  expect(message.location()).toEqual({
-    #    url: 'data:text/javascript,console.log(1)',
-    #    lineNumber: 0,
-    #    columnNumber: 8,
-    #  });
-    #});
-    #it('should have JSHandles for console logs', async function({page}) {
-    #  const logPromise = new Promise(x => page.on('console', x));
-    #  await page.evaluate(() => new Worker(`data:text/javascript,console.log(1,2,3,this)`));
-    #  const log = await logPromise;
-    #  expect(log.text()).toBe('1 2 3 JSHandle@object');
-    #  expect(log.args().length).toBe(4);
-    #  expect(await (await log.args()[3].getProperty('origin')).jsonValue()).toBe('null');
-    #});
-    #it('should have an execution context', async function({page}) {
-    #  const workerCreatedPromise = new Promise(x => page.once('workercreated', x));
-    #  await page.evaluate(() => new Worker(`data:text/javascript,console.log(1)`));
-    #  const worker = await workerCreatedPromise;
-    #  expect(await (await worker.executionContext()).evaluate('1+1')).toBe(2);
-    #});
-    #it('should report errors', async function({page}) {
-    #  const errorPromise = new Promise(x => page.on('pageerror', x));
-    #  await page.evaluate(() => new Worker(`data:text/javascript, throw new Error('this is my error');`));
-    #  const errorLog = await errorPromise;
-    #  expect(errorLog.message).toContain('this is my error');
-    #});
+    it 'should report console logs' do
+      message, _ = await Promise.all(
+        Promise.new { |resolve, _| page.once :console, resolve },
+        page.evaluate_function("() => new Worker(`data:text/javascript,console.log(1)`)")
+      )
+      expect(message.text).to eq '1'
+      expect(message.location).to eq({
+        url: 'data:text/javascript,console.log(1)',
+        line_number: 0,
+        column_number: 8,
+      })
+    end
+
+    it 'should have JSHandles for console logs' do
+      log_promise = Promise.new { |resolve, _| page.on :console, resolve }
+      page.evaluate_function "() => new Worker(`data:text/javascript,console.log(1,2,3,this)`)"
+      log = await log_promise
+      expect(log.text).to eq '1 2 3 JSHandle@object'
+      expect(log.args.length).to eq 4
+      log.args.map { |arg| arg.get_property('origin').json_value }
+      expect(log.args[3].get_property('origin').json_value).to eq 'null'
+    end
+
+    it 'should have an execution context' do
+      worker_created_promise = Promise.new { |resolve, _|  page.once :worker_created, resolve }
+      page.evaluate_function "() => new Worker(`data:text/javascript,console.log(1)`)"
+      worker = await worker_created_promise
+      expect(worker.execution_context.evaluate '1+1').to eq 2
+    end
+
+    it 'should report errors' do
+      error_promise = Promise.new { |resolve, _| page.on :page_error, resolve }
+      page.evaluate_function "() => new Worker(`data:text/javascript, throw new Error('this is my error');`)"
+      error_log = await error_promise
+      expect(error_log.message).to include 'this is my error'
+    end
   end
 end

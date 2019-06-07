@@ -9,19 +9,19 @@ module Chromiebara
     # @param {function(string, !Array<!JSHandle>, Protocol.Runtime.StackTrace=):void} consoleAPICalled
     # @param {function(!Protocol.Runtime.ExceptionDetails):void} exceptionThrown
     #
-    def initialize(client, url, console_api_called = nil, exception_thrown = nil)
+    def initialize(client, url, console_api_called, exception_thrown)
       # super();
       @_client = client
       @url = url
       @_execution_context_promise, @_execution_context_callback = Promise.create
       # @type {function(!Protocol.Runtime.RemoteObject):!JSHandle}
-      @_js_Handle_factory = nil
+      @_js_handle_factory = nil
       client.once Protocol::Runtime.execution_context_created, method(:on_execution_context_created)
       # // This might fail if the target is closed before we recieve all execution contexts.
       @_client.command Protocol::Runtime.enable
 
-      # this._client.on('Runtime.consoleAPICalled', event => consoleAPICalled(event.type, event.args.map(jsHandleFactory), event.stackTrace));
-      # this._client.on('Runtime.exceptionThrown', exception => exceptionThrown(exception.exceptionDetails));
+      @_client.on Protocol::Runtime.console_api_called, -> (event) { console_api_called.(event["type"], event["args"].map(&@_js_handle_factory), event["stackTrace"]) }
+      @_client.on Protocol::Runtime.exception_thrown, -> (exception) { exception_thrown.(exception["exceptionDetails"]) }
     end
 
     def execution_context
@@ -56,8 +56,8 @@ module Chromiebara
     private
 
       def on_execution_context_created(event)
-        # jsHandleFactory = remoteObject => new JSHandle(executionContext, client, remoteObject);
         execution_context = ExecutionContext.new @_client, event["context"], nil
+        @_js_handle_factory = ->(remote_object) { JSHandle.new execution_context, @_client, remote_object }
         @_execution_context_callback.(execution_context)
       end
   end

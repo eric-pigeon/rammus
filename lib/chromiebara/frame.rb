@@ -81,8 +81,7 @@ module Chromiebara
     end
 
     def evaluate_function(function, *args)
-      # TODO add evaluate_function to DOM world
-      main_world.evaluate function, *args, function: true
+      main_world.evaluate_function function, *args
     end
 
     # @param {string} selector
