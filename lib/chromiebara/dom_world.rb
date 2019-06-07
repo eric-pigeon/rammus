@@ -40,9 +40,8 @@ module Chromiebara
     #     waitTask.terminate(new Error('waitForFunction failed: frame got detached.'));
     # }
 
-    # /**
-    #  * @return {!Promise<!Puppeteer.ExecutionContext>}
-    #  */
+    # @return {!Promise<!Puppeteer.ExecutionContext>}
+    #
     def execution_context
       # if (this._detached)
       #   throw new Error(`Execution Context is not available in detached frame "${this._frame.url()}" (are you trying to evaluate?)`);
@@ -380,6 +379,7 @@ module Chromiebara
       handle.dispose
     end
 
+    # TODO
     #  * @param {string} selector
     #  * @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
     #  * @return {!Promise<?Puppeteer.ElementHandle>}
@@ -414,6 +414,7 @@ module Chromiebara
       evaluate('document.title')
     end
 
+    # TODO
     #  * @param {string} selectorOrXPath
     #  * @param {boolean} isXPath
     #  * @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options

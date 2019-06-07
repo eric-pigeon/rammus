@@ -1,6 +1,6 @@
 module Chromiebara
   class Frame
-    attr_reader :id, :frame_manager, :loader_id, :main_world
+    attr_reader :id, :frame_manager, :parent_frame, :loader_id, :main_world
 
     # @param [Chromiebara::FrameManager] frame_manager
     # @param [Chromiebara::CPDSession] client
@@ -149,12 +149,6 @@ module Chromiebara
     def url
       @_url
     end
-
-    #  * @return {?Frame}
-    #  */
-    # parentFrame() {
-    #   return this._parentFrame;
-    # }
 
     # @return {!Array.<!Frame>}
     #
