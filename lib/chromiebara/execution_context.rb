@@ -206,6 +206,7 @@ module Chromiebara
       JSHandle.create_js_handle self, response["result"]
     end
 
+    # TODO
     # /**
     #  * @param {!JSHandle} prototypeHandle
     #  * @return {!Promise<!JSHandle>}
@@ -219,6 +220,7 @@ module Chromiebara
     #   return createJSHandle(this, response.objects);
     # }
 
+    # TODO
     # /**
     #  * @param {Puppeteer.ElementHandle} elementHandle
     #  * @return {Promise<Puppeteer.ElementHandle>}
@@ -238,9 +240,10 @@ module Chromiebara
 
     private
 
-      #  * @param {!Error} error
-      #  * @return {!Protocol.Runtime.evaluateReturnValue}
-      #  */
+      # TODO
+      # @param {!Error} error
+      # @return {!Protocol.Runtime.evaluateReturnValue}
+      #
       # function rewriteError(error) {
       #   if (error.message.endsWith('Cannot find context with specified id'))
       #     throw new Error('Execution context was destroyed, most likely because of a navigation.');
