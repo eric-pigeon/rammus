@@ -120,7 +120,7 @@ module Chromiebara
         type = remote_object["subtype"] || remote_object["type"]
         return "JSHandle@#{type}"
       end
-      "JSHandle: #{Util.value_from_remote_object remote_object}"
+      "JSHandle:#{Util.value_from_remote_object remote_object}"
     end
   end
 end

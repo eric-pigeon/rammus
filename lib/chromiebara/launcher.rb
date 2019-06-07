@@ -67,7 +67,7 @@ module Chromiebara
 
       def self.executable_path
         # "/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome"
-        "/Users/epigeon/Documents/Projects/Node/puppeteer_test/node_modules/puppeteer/.local-chromium/mac-650583/chrome-mac/Chromium.app/Contents/MacOS/Chromium"
+        "/Users/epigeon/Documents/Projects/Node/puppeteer_test/node_modules/puppeteer/.local-chromium/mac-662092/chrome-mac/Chromium.app/Contents/MacOS/Chromium"
       end
 
       # Returns a proc, that when called will attempt to kill the given process.
