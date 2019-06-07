@@ -112,16 +112,15 @@ module Chromiebara
       end
     end
 
-    # /**
-    #  * @override
-    #  * @return {string}
-    #  */
-    # toString() {
-    #   if (this._remoteObject.objectId) {
-    #     const type =  this._remoteObject.subtype || this._remoteObject.type;
-    #     return 'JSHandle@' + type;
-    #   }
-    #   return 'JSHandle:' + helper.valueFromRemoteObject(this._remoteObject);
-    # }
+    # @override
+    # @return {string}
+    #
+    def to_s
+      if remote_object["objectId"]
+        type = remote_object["subtype"] || remote_object["type"]
+        return "JSHandle@#{type}"
+      end
+      "JSHandle: #{Util.value_from_remote_object remote_object}"
+    end
   end
 end
