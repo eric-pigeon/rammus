@@ -360,8 +360,6 @@ module Chromiebara
           context.world.send(:set_context, nil) if context.world
         end
 
-        raise 'FAILED' unless @_execution_contexts.empty?
-
         @_execution_contexts.clear
       end
   end
