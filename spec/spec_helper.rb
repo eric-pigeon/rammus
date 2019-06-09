@@ -13,6 +13,7 @@ module SeverHelper
     domain = 'http://localhost:4567/'
     OpenStruct.new(
       domain: domain,
+      cross_process_domain: 'http://127.0.0.1:4567/',
       empty_page: "#{domain}empty"
     )
   end

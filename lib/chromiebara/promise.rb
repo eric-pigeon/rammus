@@ -6,8 +6,8 @@ module Chromiebara
     class UnhandledRejection < StandardError; end
 
     module Await
-      def await(promise, timeout = 2)
-        promise.await timeout
+      def await(promise, timeout = 2, error: nil)
+        promise.await timeout, error: error
       end
     end
 
@@ -34,7 +34,7 @@ module Chromiebara
       [promise, promise.method(:resolve), promise.method(:reject)]
     end
 
-    def initialize(&block)
+    def initialize
       @_state = PENDING
       @_mutex = Mutex.new
       @_condition_variable = ConditionVariable.new
@@ -50,7 +50,7 @@ module Chromiebara
       end
     end
 
-    def await(timeout = 2)
+    def await(timeout = 2, error: nil)
       deadline = current_time + timeout
 
       @_mutex.synchronize do
@@ -69,7 +69,13 @@ module Chromiebara
 
           to_wait = deadline - current_time
 
-          raise Timeout::Error, "Timed out waiting for response after #{timeout}" if to_wait <= 0
+          if to_wait <= 0
+            if error
+              raise Timeout::Error, error
+            else
+              raise Timeout::Error, "Timed out waiting for response after #{timeout}"
+            end
+          end
           @_condition_variable.wait @_mutex, to_wait
         end
       end
@@ -117,7 +123,7 @@ module Chromiebara
         end
 
         def notify(state, value)
-          EXECUTOR.post(state, value) do |state, value|
+          EXECUTOR.post do
             value =
               begin
                 case state

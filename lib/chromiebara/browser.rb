@@ -3,12 +3,14 @@ require 'forwardable'
 module Chromiebara
   class Browser
     include Promise::Await
+    include EventEmitter
     extend Forwardable
     attr_reader :client, :default_context
 
     delegate [:new_page] => :default_context
 
     def initialize(client:, close_callback: nil, ignore_https_errors: false, default_viewport: nil)
+      super()
       @client = client
       @_ignore_https_errors = ignore_https_errors
       @_default_viewport = default_viewport
@@ -92,6 +94,33 @@ module Chromiebara
       target.page
     end
 
+    # @param {function(!Target):boolean} predicate
+    # @param {{timeout?: number}=} options
+    # @return {!Promise<!Target>}
+    #
+    def wait_for_target(timeout: 2, predicate: nil, &block)
+      predicate ||= block
+
+      existing_target = targets.detect(&predicate)
+      return existing_target unless existing_target.nil?
+
+      target_promise, target_resolve, _reject = Promise.create
+
+      check = -> (target) { target_resolve.(target) if predicate.(target) }
+
+      on :target_created, check
+      on :target_changed, check
+
+      Promise.resolve(nil).then do
+        begin
+          await target_promise, timeout, error: "waiting for target failed: #{timeout}s exceeded"
+        ensure
+          remove_listener :target_created, check
+          remove_listener :target_changed, check
+        end
+      end
+    end
+
     # The browsers version information
     #
     # @return [Hash]
@@ -120,27 +149,29 @@ module Chromiebara
                     default_context
                   end
 
-        # const target = new Target(targetInfo, context, () => this._connection.createSession(targetInfo), this._ignoreHTTPSErrors, this._defaultViewport, this._screenshotTaskQueue);
         target = Target.new(target_info, context, client, @_ignore_https_errors, @_default_viewport)
 
         # assert(!this._targets.has(event.targetInfo.targetId), 'Target should not exist before targetCreated');
         @_targets[target_info["targetId"]] = target
 
-        # if (await target._initializedPromise) {
-        #   this.emit(Events.Browser.TargetCreated, target);
-        #   context.emit(Events.BrowserContext.TargetCreated, target);
-        # }
+        target.initialized_promise.then do |success|
+          next unless success
+
+          emit :target_created, target
+          context.emit :target_created, target
+        end
       end
 
       def target_destroyed(event)
-        # target = @_targets[event["targetId"]]
-        # target._initializedCallback(false);
-        @_targets.delete(event["targetId"])
-        # target._closedCallback();
-        # if (await target._initializedPromise) {
-        #   this.emit(Events.Browser.TargetDestroyed, target);
-        #   target.browserContext().emit(Events.BrowserContext.TargetDestroyed, target);
-        # }
+        target = @_targets.delete(event["targetId"])
+        target.initialized_callback.(false)
+        target._closed_callback.(nil)
+        target.initialized_promise.then do |success|
+          next unless success
+
+          emit :target_destroyed, target
+          target.browser_context.emit :target_destroyed, target
+        end
       end
 
       def target_info_changed(event)
@@ -148,11 +179,10 @@ module Chromiebara
         previous_url = target.url
         was_initialized = target.initialized
         target.send(:target_info_changed, event["targetInfo"])
-        # target._targetInfoChanged(event.targetInfo);
 
         if was_initialized && previous_url != target.url
-          # this.emit(Events.Browser.TargetChanged, target);
-          # target.browserContext().emit(Events.BrowserContext.TargetChanged, target);
+          emit :target_changed, target
+          target.browser_context.emit :target_changed, target
         end
       end
   end

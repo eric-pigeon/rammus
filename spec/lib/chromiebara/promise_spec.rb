@@ -108,7 +108,19 @@ module Chromiebara
       it 'raises UnhandledRejection if there is not a rejection handler' do
         expect do
           await Promise.new { |_fulfill, reject| reject.("Failed!") }
-        end.to raise_error Promise::UnhandledRejection
+        end.to raise_error Promise::UnhandledRejection, 'Failed!'
+      end
+
+      it 'raises the value if the value is an Exception' do
+        expect do
+          await Promise.new { |_resolve, reject| reject.(StandardError.new 'Failed!') }
+        end.to raise_error 'Failed!'
+      end
+
+      it 'rejects with an error' do
+        promise = Promise.new
+        expect { promise.await 0.00001, error: 'Timed out!' }
+          .to raise_error Timeout::Error, 'Timed out!'
       end
     end
 

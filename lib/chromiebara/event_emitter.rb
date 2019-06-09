@@ -44,7 +44,8 @@ module Chromiebara
       end
     end
 
-    private
+    # TODO
+    # private
 
       # @param [String] event
       # @[aram [Hash] data
