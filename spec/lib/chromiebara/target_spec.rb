@@ -62,64 +62,82 @@ module Chromiebara
         expect(all_pages).not_to include other_page
       end
 
-      #it_fails_ffox('should report when a service worker is created and destroyed', async({page, server, context}) => {
-      #  await page.goto(server.EMPTY_PAGE);
-      #  const createdTarget = new Promise(fulfill => context.once('targetcreated', target => fulfill(target)));
+      it 'should report when a service worker is created and destroyed' do
+        page.goto server.empty_page
+        created_target = Promise.new do |resolve, _reject|
+          context.once :target_created, -> target { resolve.(target) }
+        end
 
-      #  await page.goto(server.PREFIX + '/serviceworkers/empty/sw.html');
+        page.goto server.domain + 'serviceworkers/empty/sw.html'
 
-      #  expect((await createdTarget).type()).toBe('service_worker');
-      #  expect((await createdTarget).url()).toBe(server.PREFIX + '/serviceworkers/empty/sw.js');
+        expect((await created_target).type).to eq 'service_worker'
+        expect((await created_target).url).to eq server.domain + 'serviceworkers/empty/sw.js'
 
-      #  const destroyedTarget = new Promise(fulfill => context.once('targetdestroyed', target => fulfill(target)));
-      #  await page.evaluate(() => window.registrationPromise.then(registration => registration.unregister()));
-      #  expect(await destroyedTarget).toBe(await createdTarget);
-      #});
-      #it_fails_ffox('should create a worker from a service worker', async({page, server, context}) => {
-      #  await page.goto(server.PREFIX + '/serviceworkers/empty/sw.html');
+        destroyed_target = Promise.new do |resolve, _reject|
+          context.once :target_destroyed, -> (target) { resolve.(target) }
+        end
+        page.evaluate_function '() => window.registrationPromise.then(registration => registration.unregister())'
+        expect(await destroyed_target).to eq(await created_target)
+      end
 
-      #  const target = await context.waitForTarget(target => target.type() === 'service_worker');
-      #  const worker = await target.worker();
-      #  expect(await worker.evaluate(() => self.toString())).toBe('[object ServiceWorkerGlobalScope]');
-      #});
-      #it_fails_ffox('should create a worker from a shared worker', async({page, server, context}) => {
-      #  await page.goto(server.EMPTY_PAGE);
-      #  await page.evaluate(() => {
-      #    new SharedWorker('data:text/javascript,console.log("hi")');
-      #  });
-      #  const target = await context.waitForTarget(target => target.type() === 'shared_worker');
-      #  const worker = await target.worker();
-      #  expect(await worker.evaluate(() => self.toString())).toBe('[object SharedWorkerGlobalScope]');
-      #});
-      #it('should report when a target url changes', async({page, server, context}) => {
-      #  await page.goto(server.EMPTY_PAGE);
-      #  let changedTarget = new Promise(fulfill => context.once('targetchanged', target => fulfill(target)));
-      #  await page.goto(server.CROSS_PROCESS_PREFIX + '/');
-      #  expect((await changedTarget).url()).toBe(server.CROSS_PROCESS_PREFIX + '/');
+      xit 'should create a worker from a service worker' do
+        # TODO
+        page.goto server.domain + 'serviceworkers/empty/sw.html'
 
-      #  changedTarget = new Promise(fulfill => context.once('targetchanged', target => fulfill(target)));
-      #  await page.goto(server.EMPTY_PAGE);
-      #  expect((await changedTarget).url()).toBe(server.EMPTY_PAGE);
-      #});
-      #it_fails_ffox('should not report uninitialized pages', async({page, server, context}) => {
-      #  let targetChanged = false;
-      #  const listener = () => targetChanged = true;
-      #  context.on('targetchanged', listener);
-      #  const targetPromise = new Promise(fulfill => context.once('targetcreated', target => fulfill(target)));
-      #  const newPagePromise = context.newPage();
-      #  const target = await targetPromise;
-      #  expect(target.url()).toBe('about:blank');
+        target = await context.wait_for_target { |t| t.type == 'service_worker' }
+        worker = target.worker
+        expect(worker.evaluate_function '() => self.toString()').to eq '[object ServiceWorkerGlobalScope]'
+      end
 
-      #  const newPage = await newPagePromise;
-      #  const targetPromise2 = new Promise(fulfill => context.once('targetcreated', target => fulfill(target)));
-      #  const evaluatePromise = newPage.evaluate(() => window.open('about:blank'));
-      #  const target2 = await targetPromise2;
-      #  expect(target2.url()).toBe('about:blank');
-      #  await evaluatePromise;
-      #  await newPage.close();
-      #  expect(targetChanged).toBe(false, 'target should not be reported as changed');
-      #  context.removeListener('targetchanged', listener);
-      #});
+      xit 'should create a worker from a shared worker' do
+        page.goto server.empty_page
+        page.evaluate_function "() => { new SharedWorker('data:text/javascript,console.log(\"hi\")'); }"
+        target = await context.wait_for_target { |t| t.type == 'shared_worker' }
+        worker = await target.worker
+        expect(worker.evaluate_function('() => self.toString()')).to eq '[object SharedWorkerGlobalScope]'
+      end
+
+      it 'should report when a target url changes' do
+        page.goto server.empty_page
+        changed_target = Promise.new do |resolve, _reject|
+          context.once :target_changed, -> (target) { resolve.(target) }
+        end
+        page.goto server.cross_process_domain
+        expect((await changed_target).url).to eq server.cross_process_domain
+
+
+        changed_target = Promise.new do |resolve, _reject|
+          context.once :target_changed, -> (target) { resolve.(target) }
+        end
+        page.goto server.empty_page
+        expect((await changed_target).url).to eq server.empty_page
+      end
+
+      it 'should not report uninitialized pages' do
+        target_changed = false
+        listener = -> (_target) { target_changed = true }
+        context.on :target_changed, listener
+
+        target_promise = Promise.new do |resolve, _reject|
+          context.once :target_created, -> (target) { resolve.(target) }
+        end
+        new_page = context.new_page
+        target = await target_promise
+        expect(target.url).to eq 'about:blank'
+
+        target_promise_2 = Promise.new do |resolve, _reject|
+          context.once :target_created, -> (t) { resolve.(t) }
+        end
+        new_page.evaluate_function "() => { window.open('about:blank') }"
+
+        target_2 = await target_promise_2
+        expect(target_2.url).to eq 'about:blank'
+        new_page.close
+        expect(target_changed).to eq false
+        context.remove_listener :target_changed, listener
+      end
+
+      # TODO
       #it('should not crash while redirecting if original request was missed', async({page, server, context}) => {
       #  let serverResponse = null;
       #  server.setRoute('/one-style.css', (req, res) => serverResponse = res);
@@ -139,6 +157,8 @@ module Chromiebara
       #  // Cleanup.
       #  await newPage.close();
       #});
+
+      # TODO
       #it('should have an opener', async({page, server, context}) => {
       #  await page.goto(server.EMPTY_PAGE);
       #  const [createdTarget] = await Promise.all([
@@ -152,6 +172,7 @@ module Chromiebara
     end
 
     describe 'Browser#wait_for_target' do
+      # TODO
       #it('should wait for a target', async function({browser, server}) {
       #  let resolved = false;
       #  const targetPromise = browser.waitForTarget(target => target.url() === server.EMPTY_PAGE);

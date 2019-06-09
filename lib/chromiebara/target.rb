@@ -44,6 +44,23 @@ module Chromiebara
       @_page ||= Page.create(self, default_viewport: @_default_viewport)
     end
 
+    def worker
+      return if type != 'service_worker' || type != 'shared_worker'
+      #if (!this._workerPromise) {
+      #  this._workerPromise = this._sessionFactory().then(async client => {
+      #    // Top level workers have a fake page wrapping the actual worker.
+      #    const [targetAttached] = await Promise.all([
+      #      new Promise(x => client.once('Target.attachedToTarget', x)),
+      #      client.send('Target.setAutoAttach', {autoAttach: true, waitForDebuggerOnStart: false, flatten: true}),
+      #    ]);
+      #    const session = Connection.fromSession(client).session(targetAttached.sessionId);
+      #    // TODO(einbinder): Make workers send their console logs.
+      #    return new Worker(session, this._targetInfo.url, () => {} /* consoleAPICalled */, () => {} /* exceptionThrown */);
+      #  });
+      #}
+      #return this._workerPromise;
+    end
+
     def session
       @_session ||= @_client.create_session target_info
     end

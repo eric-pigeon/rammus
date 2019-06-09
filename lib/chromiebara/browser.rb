@@ -102,7 +102,7 @@ module Chromiebara
       predicate ||= block
 
       existing_target = targets.detect(&predicate)
-      return existing_target unless existing_target.nil?
+      return Promise.resolve(existing_target) unless existing_target.nil?
 
       target_promise, target_resolve, _reject = Promise.create
 
