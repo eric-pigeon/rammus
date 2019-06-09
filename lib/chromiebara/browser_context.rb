@@ -1,10 +1,12 @@
 module Chromiebara
   class BrowserContext
+    include EventEmitter
     class UncloseableContext < StandardError; end
 
     attr_reader :id, :browser, :client
 
     def initialize(browser:, client:, id: nil)
+      super()
       @id = id
       @browser = browser
       @client = client
@@ -46,6 +48,12 @@ module Chromiebara
     def targets
       browser.targets.select { |target| target.browser_context == self }
     end
+
+    def wait_for_target(timeout: 2, predicate: nil, &block)
+      predicate ||= block
+      browser.wait_for_target(timeout: timeout) { |target| target.browser_context == self && predicate.(target) }
+    end
+
 
     # browserContext.clearPermissionOverrides()
     # browserContext.isIncognito()

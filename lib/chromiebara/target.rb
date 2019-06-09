@@ -1,6 +1,7 @@
 module Chromiebara
   class Target
-    attr_reader :target_info, :browser_context, :target_id, :initialized
+    attr_reader :target_info, :browser_context, :target_id, :initialized,
+      :initialized_promise, :initialized_callback, :_closed_callback
 
     # @param [Hash] target_info
     # @param [Chromiebara::BrowserContext] browser_context
@@ -13,7 +14,24 @@ module Chromiebara
       @_default_viewport = default_viewport
       @target_id = target_info["targetId"]
       @_client = client
+
+      initialized_promise, @initialized_callback, _reject = Promise.create
+      @initialized_promise = initialized_promise.then do |success|
+        next false unless success
+        #const opener = this.opener();
+        #if (!opener || !opener._pagePromise || this.type() !== 'page')
+        #  return true;
+        #const openerPage = await opener._pagePromise;
+        #if (!openerPage.listenerCount(Events.Page.Popup))
+        #  return true;
+        #const popupPage = await this.page();
+        #openerPage.emit(Events.Page.Popup, popupPage);
+        true
+      end
+
+      @_is_closed_promise, @_closed_callback, _ = Promise.create
       @initialized = target_info["type"] != 'page' || target_info["url"] != ""
+      @initialized_callback.(true) if initialized
     end
 
     # If the target is not of type "page" or "background_page", returns null.
@@ -59,7 +77,7 @@ module Chromiebara
 
         if !initialized && (target_info["type"] != "page" || target_info["url"] != "")
           @initialized = true
-          # this._initializedCallback(true);
+          @initialized_callback.(true)
         end
       end
   end
