@@ -115,44 +115,47 @@ module Chromiebara
       end
     end
 
-    #describe_fails_ffox('Response.fromServiceWorker', function() {
-    #  it('should return |false| for non-service-worker content', async({page, server}) => {
-    #    const response = await page.goto(server.EMPTY_PAGE);
-    #    expect(response.fromServiceWorker()).toBe(false);
-    #  });
+    describe 'Response#from_service_worker' do
+      it 'should return |false| for non-service-worker content' do
+        response = page.goto server.empty_page
+        expect(response.from_service_worker).to eq false
+      end
 
-    #  it('Response.fromServiceWorker', async({page, server}) => {
-    #    const responses = new Map();
-    #    page.on('response', r => responses.set(r.url().split('/').pop(), r));
+      it 'Response#from_service_worker' do
+        responses = {}
+        page.on :response, -> (request) do
+          next if is_favicon request
+          responses[request.url.split('/').pop] = request
+        end
 
-    #    // Load and re-load to make sure serviceworker is installed and running.
-    #    await page.goto(server.PREFIX + '/serviceworkers/fetch/sw.html', {waitUntil: 'networkidle2'});
-    #    await page.evaluate(async() => await window.activationPromise);
-    #    await page.reload();
+        # Load and re-load to make sure serviceworker is installed and running.
+        page.goto server.domain + 'serviceworkers/fetch/sw.html',  wait_until: :networkidle2
+        page.evaluate_function 'async() => await window.activationPromise'
+        page.reload
 
-    #    expect(responses.size).toBe(2);
-    #    expect(responses.get('sw.html').status()).toBe(200);
-    #    expect(responses.get('sw.html').fromServiceWorker()).toBe(true);
-    #    expect(responses.get('style.css').status()).toBe(200);
-    #    expect(responses.get('style.css').fromServiceWorker()).toBe(true);
-    #  });
-    #});
+        expect(responses.size).to eq 2
+        expect(responses['sw.html'].status).to eq 200
+        expect(responses['sw.html'].from_service_worker).to eq true
+        expect(responses['style.css'].status).to eq 200
+        expect(responses['style.css'].from_service_worker).to eq true
+      end
+    end
 
-    #describe('Request.postData', function() {
-    #  it('should work', async({page, server}) => {
-    #    await page.goto(server.EMPTY_PAGE);
-    #    server.setRoute('/post', (req, res) => res.end());
-    #    let request = null;
-    #    page.on('request', r => request = r);
-    #    await page.evaluate(() => fetch('./post', { method: 'POST', body: JSON.stringify({foo: 'bar'})}));
-    #    expect(request).toBeTruthy();
-    #    expect(request.postData()).toBe('{"foo":"bar"}');
-    #  });
-    #  it('should be |undefined| when there is no post data', async({page, server}) => {
-    #    const response = await page.goto(server.EMPTY_PAGE);
-    #    expect(response.request().postData()).toBe(undefined);
-    #  });
-    #});
+    describe 'Request#post_data' do
+      it 'should work' do
+        page.goto server.empty_page
+        request = nil
+        page.on :request, -> (r) { request = r }
+        page.evaluate_function "() => fetch('./post', { method: 'POST', body: JSON.stringify({foo: 'bar'})})"
+        expect(request).not_to be_nil
+        expect(request.post_data).to eq '{"foo":"bar"}'
+      end
+
+      #it('should be |undefined| when there is no post data', async({page, server}) => {
+      #  const response = await page.goto(server.EMPTY_PAGE);
+      #  expect(response.request().postData()).toBe(undefined);
+      #});
+    end
 
     #describe('Response.text', function() {
     #  it('should work', async({page, server}) => {
