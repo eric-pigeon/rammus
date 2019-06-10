@@ -1,7 +1,8 @@
 module Chromiebara
   class Request
 
-    attr_reader :url, :frame
+    attr_reader :client, :url, :frame, :is_navigation_request, :headers
+    attr_accessor :response, :from_memory_cache
 
     # @param {!Puppeteer.CDPSession} client
     # @param {?Puppeteer.Frame} frame
@@ -11,26 +12,26 @@ module Chromiebara
     # @param {!Array<!Request>} redirectChain
     #
     def initialize(client, frame, interceptionId, allowInterception, event, redirectChain)
-      #this._client = client;
+      @client = client
       #this._requestId = event.requestId;
-      #this._isNavigationRequest = event.requestId === event.loaderId && event.type === 'Document';
+      @is_navigation_request = event["requestId"] == event["loaderId"] && event["type"] == 'Document'
       #this._interceptionId = interceptionId;
       #this._allowInterception = allowInterception;
       #this._interceptionHandled = false;
-      #this._response = null;
+      @response = nil
       #this._failureText = null;
 
       @url = event["request"]["url"]
       #this._resourceType = event.type.toLowerCase();
       #this._method = event.request.method;
       #this._postData = event.request.postData;
-      #this._headers = {};
       @frame = frame
       #this._redirectChain = redirectChain;
-      #for (const key of Object.keys(event.request.headers))
-      #  this._headers[key.toLowerCase()] = event.request.headers[key];
+      @headers = event["request"].fetch("headers", {}).map do |key, value|
+        [key.downcase, value]
+      end.to_h
 
-      #this._fromMemoryCache = false;
+      @from_memory_cache = false
     end
 
     #/**
@@ -52,27 +53,6 @@ module Chromiebara
     # */
     #postData() {
     #  return this._postData;
-    #}
-
-    #/**
-    # * @return {!Object}
-    # */
-    #headers() {
-    #  return this._headers;
-    #}
-
-    #/**
-    # * @return {?Response}
-    # */
-    #response() {
-    #  return this._response;
-    #}
-
-    #/**
-    # * @return {boolean}
-    # */
-    #isNavigationRequest() {
-    #  return this._isNavigationRequest;
     #}
 
     #/**

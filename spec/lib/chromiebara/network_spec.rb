@@ -83,38 +83,37 @@ module Chromiebara
       end
     end
 
-    #describe('Response.headers', function() {
-    #  it('should work', async({page, server}) => {
-    #    server.setRoute('/empty.html', (req, res) => {
-    #      res.setHeader('foo', 'bar');
-    #      res.end();
-    #    });
-    #    const response = await page.goto(server.EMPTY_PAGE);
-    #    expect(response.headers()['foo']).toBe('bar');
-    #  });
-    #});
+    describe 'Response#headers' do
+      it 'should work' do
+        response = page.goto server.domain + 'foo-header'
+        expect(response.headers['foo']).to eq 'bar'
+      end
+    end
 
-    #describe_fails_ffox('Response.fromCache', function() {
-    #  it('should return |false| for non-cached content', async({page, server}) => {
-    #    const response = await page.goto(server.EMPTY_PAGE);
-    #    expect(response.fromCache()).toBe(false);
-    #  });
+    describe 'Response#from_cache' do
+      it 'should return |false| for non-cached content' do
+        response = page.goto server.empty_page
+        expect(response.from_cache).to eq false
+      end
 
-    #  it('should work', async({page, server}) => {
-    #    const responses = new Map();
-    #    page.on('response', r => !utils.isFavicon(r.request()) && responses.set(r.url().split('/').pop(), r));
+      it 'should work' do
+        responses = {}
+        page.on :response, -> (request) do
+          next if is_favicon request
+          responses[request.url.split('/').pop] = request
+        end
 
-    #    // Load and re-load to make sure it's cached.
-    #    await page.goto(server.PREFIX + '/cached/one-style.html');
-    #    await page.reload();
+        # Load and re-load to make sure it's cached.
+        page.goto server.domain + 'cached/one-style.html'
+        page.reload
 
-    #    expect(responses.size).toBe(2);
-    #    expect(responses.get('one-style.css').status()).toBe(200);
-    #    expect(responses.get('one-style.css').fromCache()).toBe(true);
-    #    expect(responses.get('one-style.html').status()).toBe(304);
-    #    expect(responses.get('one-style.html').fromCache()).toBe(false);
-    #  });
-    #});
+        expect(responses.size).to eq 2
+        expect(responses['one-style.css'].status).to eq 200
+        expect(responses['one-style.css'].from_cache).to eq true
+        expect(responses['one-style.html'].status).to eq 304
+        expect(responses['one-style.html'].from_cache).to eq false
+      end
+    end
 
     #describe_fails_ffox('Response.fromServiceWorker', function() {
     #  it('should return |false| for non-service-worker content', async({page, server}) => {
