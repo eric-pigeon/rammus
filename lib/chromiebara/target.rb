@@ -41,7 +41,7 @@ module Chromiebara
     def page
       return unless type == "page" || type == "background_page"
 
-      @_page ||= Page.create(self, default_viewport: @_default_viewport)
+      @_page ||= Page.create(self, ignore_https_errors: @_ignore_https_errors, default_viewport: @_default_viewport)
     end
 
     def worker

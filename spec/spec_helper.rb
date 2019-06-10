@@ -33,6 +33,10 @@ module SeverHelper
     handle.as_element.content_frame
   end
 
+  def is_favicon(request)
+    request.url.include? 'favicon.ico'
+  end
+
   shared_context 'browser', browser: true do
     before(:context) { @_browser = Chromiebara::Launcher.launch }
 

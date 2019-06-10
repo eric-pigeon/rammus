@@ -5,66 +5,83 @@ module Chromiebara
     let(:context) { @_context }
     let!(:page) { context.new_page }
 
-    # TODO
-    #describe('Page.Events.Request', function() {
-    #  it('should fire for navigation requests', async({page, server}) => {
-    #    const requests = [];
-    #    page.on('request', request => !utils.isFavicon(request) && requests.push(request));
-    #    await page.goto(server.EMPTY_PAGE);
-    #    expect(requests.length).toBe(1);
-    #  });
-    #  it('should fire for iframes', async({page, server}) => {
-    #    const requests = [];
-    #    page.on('request', request => !utils.isFavicon(request) && requests.push(request));
-    #    await page.goto(server.EMPTY_PAGE);
-    #    await utils.attachFrame(page, 'frame1', server.EMPTY_PAGE);
-    #    expect(requests.length).toBe(2);
-    #  });
-    #  it('should fire for fetches', async({page, server}) => {
-    #    const requests = [];
-    #    page.on('request', request => !utils.isFavicon(request) && requests.push(request));
-    #    await page.goto(server.EMPTY_PAGE);
-    #    await page.evaluate(() => fetch('/empty.html'));
-    #    expect(requests.length).toBe(2);
-    #  });
-    #});
+    describe 'Page Events :request' do
+      it 'should fire for navigation requests' do
+        requests = []
+        page.on :request, -> (request) do
+          next if is_favicon request
+          requests << request
+        end
+        page.goto server.empty_page
+        expect(requests.length).to eq 1
+      end
 
-    #describe('Request.frame', function() {
-    #  it('should work for main frame navigation request', async({page, server}) => {
-    #    const requests = [];
-    #    page.on('request', request => !utils.isFavicon(request) && requests.push(request));
-    #    await page.goto(server.EMPTY_PAGE);
-    #    expect(requests.length).toBe(1);
-    #    expect(requests[0].frame()).toBe(page.mainFrame());
-    #  });
-    #  it('should work for subframe navigation request', async({page, server}) => {
-    #    await page.goto(server.EMPTY_PAGE);
-    #    const requests = [];
-    #    page.on('request', request => !utils.isFavicon(request) && requests.push(request));
-    #    await utils.attachFrame(page, 'frame1', server.EMPTY_PAGE);
-    #    expect(requests.length).toBe(1);
-    #    expect(requests[0].frame()).toBe(page.frames()[1]);
-    #  });
-    #  it('should work for fetch requests', async({page, server}) => {
-    #    await page.goto(server.EMPTY_PAGE);
-    #    let requests = [];
-    #    page.on('request', request => !utils.isFavicon(request) && requests.push(request));
-    #    await page.evaluate(() => fetch('/digits/1.png'));
-    #    requests = requests.filter(request => !request.url().includes('favicon'));
-    #    expect(requests.length).toBe(1);
-    #    expect(requests[0].frame()).toBe(page.mainFrame());
-    #  });
-    #});
+      it 'should fire for iframes' do
+        requests = []
+        page.on :request, -> (request) do
+          next if is_favicon request
+          requests << request
+        end
+        page.goto server.empty_page
+        attach_frame page, 'frame1', server.empty_page
+        expect(requests.length).to eq 2
+      end
 
-    #describe('Request.headers', function() {
-    #  it('should work', async({page, server}) => {
-    #    const response = await page.goto(server.EMPTY_PAGE);
-    #    if (CHROME)
-    #      expect(response.request().headers()['user-agent']).toContain('Chrome');
-    #    else
-    #      expect(response.request().headers()['user-agent']).toContain('Firefox');
-    #  });
-    #});
+      it 'should fire for fetches' do
+        requests = []
+        page.on :request, -> (request) do
+          next if is_favicon request
+          requests << request
+        end
+        page.goto server.empty_page
+        page.evaluate_function "() => fetch('/empty.html')"
+        expect(requests.length).to eq 2
+      end
+    end
+
+    describe 'Request#frame' do
+      it 'should work for main frame navigation request' do
+        requests = []
+        page.on :request, -> (request) do
+          next if is_favicon request
+          requests << request
+        end
+        page.goto server.empty_page
+        expect(requests.length).to eq 1
+        expect(requests[0].frame).to eq page.main_frame
+      end
+
+      it 'should work for subframe navigation request' do
+        page.goto server.empty_page
+        requests = []
+        page.on :request, -> (request) do
+          next if is_favicon request
+          requests << request
+        end
+        attach_frame page, 'frame1', server.empty_page
+        expect(requests.length).to eq 1
+        expect(requests[0].frame).to eq page.frames[1]
+      end
+
+      it 'should work for fetch requests' do
+        page.goto server.empty_page
+        requests = []
+        page.on :request, -> (request) do
+          next if is_favicon request
+          requests << request
+        end
+        page.evaluate_function "() => fetch('/digits/1.png')"
+        expect(requests.length).to eq 1
+        expect(requests[0].frame).to eq page.main_frame
+      end
+    end
+
+    describe 'Request#headers' do
+      it 'should work' do
+        response = page.goto server.empty_page
+        expect(response.request.headers['user-agent']).to include 'Chrome'
+      end
+    end
 
     #describe('Response.headers', function() {
     #  it('should work', async({page, server}) => {

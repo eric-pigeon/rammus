@@ -18,46 +18,42 @@ module Chromiebara
 
     attr_reader :target, :frame_manager, :javascript_enabled, :keyboard, :mouse, :touchscreen, :accessibility
     delegate [:url] => :main_frame
+    delegate [:network_manager] => :frame_manager
 
-    def self.create(target, default_viewport: nil)
-      new(target).tap do |page|
+    def self.create(target, default_viewport: nil, ignore_https_errors: false)
+      new(target, ignore_https_errors: ignore_https_errors).tap do |page|
         await Promise.all(
           page.frame_manager.start,
           target.session.command(Protocol::Target.set_auto_attach auto_attach: true, wait_for_debugger_on_start: false, flatten: true),
           target.session.command(Protocol::Performance.enable),
           target.session.command(Protocol::Log.enable),
         )
-        if default_viewport
-          page.set_viewport default_viewport
-        end
+        page.set_viewport default_viewport if default_viewport
       end
     end
 
     private_class_method :new
-    def initialize(target)
+    def initialize(target, ignore_https_errors:)
       super()
       @_closed = false
       @target = target
       @keyboard = Keyboard.new client
-      @mouse =  Mouse.new client, keyboard
-      @_timeoutSettings =  TimeoutSettings.new
+      @mouse = Mouse.new client, keyboard
+      @_timeoutSettings = TimeoutSettings.new
       @touchscreen = Touchscreen.new client, keyboard
       @accessibility = Accessibility.new client
-      # TODO ignore_https_errors
-      @frame_manager = FrameManager.new(client, self, false)
-      # this._frameManager = new FrameManager(client, this, ignoreHTTPSErrors, this._timeoutSettings);
+      @_ignore_https_errors = ignore_https_errors
+      @frame_manager = FrameManager.new(client, self, ignore_https_errors)
       @_emulation_manager = EmulationManager.new client
       # this._tracing = new Tracing(client);
       # /** @type {!Map<string, Function>} */
       # this._pageBindings = new Map();
       # this._coverage = new Coverage(client);
       @javascript_enabled = true
-      # /** @type {?Puppeteer.Viewport} */
+      # @type {?Puppeteer.Viewport}
       @_viewport = nil
 
-      # this._screenshotTaskQueue = screenshotTaskQueue;
-
-      # /** @type {!Map<string, Worker>} */
+      # @type {!Map<string, Worker>}
       @_workers = Hash.new
       client.on Protocol::Target.attached_to_target, -> (event) do
         if event.dig("targetInfo", "type") != 'worker'
@@ -82,11 +78,10 @@ module Chromiebara
       # this._frameManager.on(Events.FrameManager.FrameDetached, event => this.emit(Events.Page.FrameDetached, event));
       # this._frameManager.on(Events.FrameManager.FrameNavigated, event => this.emit(Events.Page.FrameNavigated, event));
 
-      # const networkManager = this._frameManager.networkManager();
-      # networkManager.on(Events.NetworkManager.Request, event => this.emit(Events.Page.Request, event));
-      # networkManager.on(Events.NetworkManager.Response, event => this.emit(Events.Page.Response, event));
-      # networkManager.on(Events.NetworkManager.RequestFailed, event => this.emit(Events.Page.RequestFailed, event));
-      # networkManager.on(Events.NetworkManager.RequestFinished, event => this.emit(Events.Page.RequestFinished, event));
+      network_manager.on :request, -> (event) { emit :request, event }
+      network_manager.on :response, -> (event) { emit :response, event }
+      network_manager.on :request_failed, -> (event) { emit :request_failed, event }
+      network_manager.on :equest_finished, -> (event) { emit :request_finished, event }
 
       # client.on('Page.domContentEventFired', event => this.emit(Events.Page.DOMContentLoaded));
       # client.on('Page.loadEventFired', event => this.emit(Events.Page.Load));
