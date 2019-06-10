@@ -1,9 +1,11 @@
+require 'chromiebara/request'
+
 module Chromiebara
   class NetworkManager
-    extend EventEmitter
+    include EventEmitter
     include Promise::Await
 
-    attr_reader :client
+    attr_reader :client, :frame_manager
 
     # @param [Chromiebara::CDPSession] client
     # @param [Chromiebara::FrameManager] frame_manager
@@ -14,32 +16,32 @@ module Chromiebara
       @client = client
       @frame_manager = frame_manager
       @_ignore_https_errors = ignore_https_errors
-    #   /** @type {!Map<string, !Request>} */
-    #   this._requestIdToRequest = new Map();
-    #   /** @type {!Map<string, !Protocol.Network.requestWillBeSentPayload>} */
-    #   this._requestIdToRequestWillBeSentEvent = new Map();
-    #   /** @type {!Object<string, string>} */
-    #   this._extraHTTPHeaders = {};
+      # @type {!Map<string, !Request>}
+      @_request_id_to_request = {}
+      # @type {!Map<string, !Protocol.Network.requestWillBeSentPayload>}
+      #this._requestIdToRequestWillBeSentEvent = new Map();
+      # @type {!Object<string, string>}
+      #this._extraHTTPHeaders = {};
 
-    #   this._offline = false;
+      #this._offline = false;
 
-    #   /** @type {?{username: string, password: string}} */
-    #   this._credentials = null;
-    #   /** @type {!Set<string>} */
-    #   this._attemptedAuthentications = new Set();
-    #   this._userRequestInterceptionEnabled = false;
-    #   this._protocolRequestInterceptionEnabled = false;
-    #   this._userCacheDisabled = false;
-    #   /** @type {!Map<string, string>} */
-    #   this._requestIdToInterceptionId = new Map();
+      # @type {?{username: string, password: string}}
+      #this._credentials = null;
+      # @type {!Set<string>}
+      #this._attemptedAuthentications = new Set();
+      @_user_request_interception_enabled = false
+      @_protocol_request_interception_enabled = false
+      #this._userCacheDisabled = false;
+      # @type {!Map<string, string>}
+      @_request_id_to_interception_id = {}
 
-    #   this._client.on('Fetch.requestPaused', this._onRequestPaused.bind(this));
-    #   this._client.on('Fetch.authRequired', this._onAuthRequired.bind(this));
-    #   this._client.on('Network.requestWillBeSent', this._onRequestWillBeSent.bind(this));
-    #   this._client.on('Network.requestServedFromCache', this._onRequestServedFromCache.bind(this));
-    #   this._client.on('Network.responseReceived', this._onResponseReceived.bind(this));
-    #   this._client.on('Network.loadingFinished', this._onLoadingFinished.bind(this));
-    #   this._client.on('Network.loadingFailed', this._onLoadingFailed.bind(this));
+      #this._client.on('Fetch.requestPaused', this._onRequestPaused.bind(this));
+      #this._client.on('Fetch.authRequired', this._onAuthRequired.bind(this));
+      client.on Protocol::Network.request_will_be_sent, method(:on_request_will_be_sent)
+      #this._client.on('Network.requestServedFromCache', this._onRequestServedFromCache.bind(this));
+      #this._client.on('Network.responseReceived', this._onResponseReceived.bind(this));
+      #this._client.on('Network.loadingFinished', this._onLoadingFinished.bind(this));
+      #this._client.on('Network.loadingFailed', this._onLoadingFailed.bind(this));
     end
 
     def start
@@ -49,7 +51,6 @@ module Chromiebara
       end
     end
 
-    # /**
     #  * @param {?{username: string, password: string}} credentials
     #  */
     # async authenticate(credentials) {
@@ -57,7 +58,6 @@ module Chromiebara
     #   await this._updateProtocolRequestInterception();
     # }
 
-    # /**
     #  * @param {!Object<string, string>} extraHTTPHeaders
     #  */
     # async setExtraHTTPHeaders(extraHTTPHeaders) {
@@ -70,14 +70,12 @@ module Chromiebara
     #   await this._client.send('Network.setExtraHTTPHeaders', { headers: this._extraHTTPHeaders });
     # }
 
-    # /**
     #  * @return {!Object<string, string>}
     #  */
     # extraHTTPHeaders() {
     #   return Object.assign({}, this._extraHTTPHeaders);
     # }
 
-    # /**
     #  * @param {boolean} value
     #  */
     # async setOfflineMode(value) {
@@ -99,7 +97,6 @@ module Chromiebara
       await client.command Protocol::Network.set_user_agent_override user_agent: user_agent
     end
 
-    # /**
     #  * @param {boolean} enabled
     #  */
     # async setCacheEnabled(enabled) {
@@ -107,7 +104,6 @@ module Chromiebara
     #   await this._updateProtocolCacheDisabled();
     # }
 
-    # /**
     #  * @param {boolean} value
     #  */
     # async setRequestInterception(value) {
@@ -142,26 +138,6 @@ module Chromiebara
     #   });
     # }
 
-    # /**
-    #  * @param {!Protocol.Network.requestWillBeSentPayload} event
-    #  */
-    # _onRequestWillBeSent(event) {
-    #   // Request interception doesn't happen for data URLs with Network Service.
-    #   if (this._protocolRequestInterceptionEnabled && !event.request.url.startsWith('data:')) {
-    #     const requestId = event.requestId;
-    #     const interceptionId = this._requestIdToInterceptionId.get(requestId);
-    #     if (interceptionId) {
-    #       this._onRequest(event, interceptionId);
-    #       this._requestIdToInterceptionId.delete(requestId);
-    #     } else {
-    #       this._requestIdToRequestWillBeSentEvent.set(event.requestId, event);
-    #     }
-    #     return;
-    #   }
-    #   this._onRequest(event, null);
-    # }
-
-    # /**
     #  * @param {!Protocol.Fetch.authRequiredPayload} event
     #  */
     # _onAuthRequired(event) {
@@ -180,7 +156,6 @@ module Chromiebara
     #   }).catch(debugError);
     # }
 
-    # /**
     #  * @param {!Protocol.Fetch.requestPausedPayload} event
     #  */
     # _onRequestPaused(event) {
@@ -201,27 +176,6 @@ module Chromiebara
     #   }
     # }
 
-    # /**
-    #  * @param {!Protocol.Network.requestWillBeSentPayload} event
-    #  * @param {?string} interceptionId
-    #  */
-    # _onRequest(event, interceptionId) {
-    #   let redirectChain = [];
-    #   if (event.redirectResponse) {
-    #     const request = this._requestIdToRequest.get(event.requestId);
-    #     // If we connect late to the target, we could have missed the requestWillBeSent event.
-    #     if (request) {
-    #       this._handleRequestRedirect(request, event.redirectResponse);
-    #       redirectChain = request._redirectChain;
-    #     }
-    #   }
-    #   const frame = event.frameId && this._frameManager ? this._frameManager.frame(event.frameId) : null;
-    #   const request = new Request(this._client, frame, interceptionId, this._userRequestInterceptionEnabled, event, redirectChain);
-    #   this._requestIdToRequest.set(event.requestId, request);
-    #   this.emit(Events.NetworkManager.Request, request);
-    # }
-
-    # /**
     #  * @param {!Protocol.Network.requestServedFromCachePayload} event
     #  */
     # _onRequestServedFromCache(event) {
@@ -230,7 +184,6 @@ module Chromiebara
     #     request._fromMemoryCache = true;
     # }
 
-    # /**
     #  * @param {!Request} request
     #  * @param {!Protocol.Network.Response} responsePayload
     #  */
@@ -245,7 +198,6 @@ module Chromiebara
     #   this.emit(Events.NetworkManager.RequestFinished, request);
     # }
 
-    # /**
     #  * @param {!Protocol.Network.responseReceivedPayload} event
     #  */
     # _onResponseReceived(event) {
@@ -258,7 +210,6 @@ module Chromiebara
     #   this.emit(Events.NetworkManager.Response, response);
     # }
 
-    # /**
     #  * @param {!Protocol.Network.loadingFinishedPayload} event
     #  */
     # _onLoadingFinished(event) {
@@ -277,7 +228,6 @@ module Chromiebara
     #   this.emit(Events.NetworkManager.RequestFinished, request);
     # }
 
-    # /**
     #  * @param {!Protocol.Network.loadingFailedPayload} event
     #  */
     # _onLoadingFailed(event) {
@@ -294,5 +244,46 @@ module Chromiebara
     #   this._attemptedAuthentications.delete(request._interceptionId);
     #   this.emit(Events.NetworkManager.RequestFailed, request);
     # }
+
+    private
+
+      # @param {!Protocol.Network.requestWillBeSentPayload} event
+      #
+      def on_request_will_be_sent(event)
+        # Request interception doesn't happen for data URLs with Network Service.
+        if @_protocol_request_interception_enabled && !event.dig("request", "url").starts_with?('data:')
+          request_id = event["requestId"]
+          interception_id = @_request_id_to_interception_id[request_id]
+
+          # TODO
+          if interception_id
+            #this._onRequest(event, interceptionId);
+            #this._requestIdToInterceptionId.delete(requestId);
+          else
+            #this._requestIdToRequestWillBeSentEvent.set(event.requestId, event);
+          end
+          return
+        end
+        on_request event, nil
+      end
+
+      # @param {!Protocol.Network.requestWillBeSentPayload} event
+      # @param {?string} interceptionId
+      #
+      def on_request(event, interception_id)
+        redirect_chain = []
+        if event["redirectResponse"]
+          #const request = this._requestIdToRequest.get(event.requestId);
+          # If we connect late to the target, we could have missed the requestWillBeSent event.
+          #if (request) {
+          #  this._handleRequestRedirect(request, event.redirectResponse);
+          #  redirectChain = request._redirectChain;
+          #}
+        end
+        frame = event["frameId"] && frame_manager ? frame_manager.frame(event["frameId"]) : nil
+        request = Request.new client, frame, interception_id, @_user_request_interception_enabled, event, redirect_chain
+        @_request_id_to_request[event["requestId"]] = request
+        emit :request, request
+      end
   end
 end
