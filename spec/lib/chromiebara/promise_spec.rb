@@ -26,6 +26,19 @@ module Chromiebara
       end
     end
 
+    describe '.race' do
+      it 'returns the first promise to complete' do
+        promise_1, resolve_1, _ = Promise.create
+        promise_2, resolve_2, _ = Promise.create
+
+        Thread.new { sleep 10; resolve_1.("one") }
+        Thread.new { sleep 0.001; resolve_2.("two") }
+
+        promise_3 = Promise.race(promise_1, promise_2)
+        expect(await promise_3).to eq "two"
+      end
+    end
+
     describe '.create' do
       it "returns a promise and it's fulfill methods" do
         promise, resolve, reject = Promise.create

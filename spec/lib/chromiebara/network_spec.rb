@@ -1,5 +1,6 @@
 module Chromiebara
   RSpec.describe 'Screenshot', browser: true do
+    include Promise::Await
     before { @_context = browser.create_context }
     after { @_context.close }
     let(:context) { @_context }

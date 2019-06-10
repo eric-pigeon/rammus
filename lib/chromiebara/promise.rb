@@ -29,6 +29,12 @@ module Chromiebara
       merged.then { results }
     end
 
+    def self.race(*promises)
+      Promise.new do |resolve, reject|
+        promises.each { |promise| promise.then(resolve, reject) }
+      end
+    end
+
     def self.create
       promise = new
       [promise, promise.method(:resolve), promise.method(:reject)]

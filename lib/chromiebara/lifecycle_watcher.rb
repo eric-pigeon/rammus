@@ -3,7 +3,7 @@ module Chromiebara
   class LifecycleWatcher
     include Promise::Await
 
-    attr_reader :frame_manager, :frame
+    attr_reader :frame_manager, :frame, :same_document_navigation_promise, :new_document_navigation_promise
 
     # @param [Chromiebara::FrameManager] frame_manager
     # @param [Chromiebara::Frame] frame
@@ -19,41 +19,22 @@ module Chromiebara
         PROTOCOL_MAPPING.fetch event
       end.to_set
       @_has_same_document_navigation = false
-      # @_complete_promise = Promise.new
+      # @type {?Puppeteer.Request}
+      @_navigation_request = nil
       @_event_listeners = [
         #helper.addEventListener(frameManager._client, Events.CDPSession.Disconnected, () => this._terminate(new Error('Navigation failed because browser has disconnected!'))),
         Util.add_event_listener(frame_manager, FrameManager.LifecycleEvent, method(:check_lifecycle_complete)),
-        # helper.addEventListener(this._frameManager, Events.FrameManager.FrameNavigatedWithinDocument, this._navigatedWithinDocument.bind(this)),
+        Util.add_event_listener(frame_manager, :frame_navigated_within_document, method(:navigated_within_document)),
         # helper.addEventListener(this._frameManager, Events.FrameManager.FrameDetached, this._onFrameDetached.bind(this)),
         Util.add_event_listener(frame_manager.network_manager, :request, method(:on_request))
       ]
 
-      lifecycle_callback = nil
-      @_lifecycle_promise = Promise.new do |fulfill|
-        lifecycle_callback = fulfill
-      end
-      @_lifecycle_callback = lifecycle_callback
+      @same_document_navigation_promise, @_same_document_navigation_complete_callback, _ = Promise.create
 
-      #if (Array.isArray(waitUntil))
-      #  waitUntil = waitUntil.slice();
-      #else if (typeof waitUntil === 'string')
-      #  waitUntil = [waitUntil];
-      #
-      # @type {?Puppeteer.Request}
-      @_navigation_request = nil
-      #
-      #this._sameDocumentNavigationPromise = new Promise(fulfill => {
-      #  this._sameDocumentNavigationCompleteCallback = fulfill;
-      #});
-      #
-      #this._lifecyclePromise = new Promise(fulfill => {
-      #  this._lifecycleCallback = fulfill;
-      #});
-      #
-      #this._newDocumentNavigationPromise = new Promise(fulfill => {
-      #  this._newDocumentNavigationCompleteCallback = fulfill;
-      #});
-      #
+      @_lifecycle_promise, @_lifecycle_callback, _ = Promise.create
+
+      @new_document_navigation_promise, @_new_document_navigation_complete_callback, _ = Promise.create
+
       #this._timeoutPromise = this._createTimeoutPromise();
       #this._terminationPromise = new Promise(fulfill => {
       #  this._terminationCallback = fulfill;
@@ -64,7 +45,6 @@ module Chromiebara
     # TODO
     def await_complete
       await lifecycle_promise, @timeout
-      # @_complete_promise.await
     end
 
     # * @param {!Puppeteer.Frame} frame
@@ -87,20 +67,6 @@ module Chromiebara
     #   */
     #  _terminate(error) {
     #    this._terminationCallback.call(null, error);
-    #  }
-    #
-    #  /**
-    #   * @return {!Promise<?Error>}
-    #   */
-    #  sameDocumentNavigationPromise() {
-    #    return this._sameDocumentNavigationPromise;
-    #  }
-    #
-    #  /**
-    #   * @return {!Promise<?Error>}
-    #   */
-    #  newDocumentNavigationPromise() {
-    #    return this._newDocumentNavigationPromise;
     #  }
 
     # @return [Chromiebara::Promise]
@@ -126,17 +92,6 @@ module Chromiebara
     #    return new Promise(fulfill => this._maximumTimer = setTimeout(fulfill, this._timeout))
     #        .then(() => new TimeoutError(errorMessage));
     #  }
-    #
-    #  /**
-    #   * @param {!Puppeteer.Frame} frame
-    #   */
-    #  _navigatedWithinDocument(frame) {
-    #    if (frame !== this._frame)
-    #      return;
-    #    this._hasSameDocumentNavigation = true;
-    #    this._checkLifecycleComplete();
-    #  }
-    #
 
     def dispose
       Util.remove_event_listeners @_event_listeners
@@ -155,17 +110,17 @@ module Chromiebara
         return unless LifecycleWatcher.check_lifecycle(frame, @_expected_lifecycle)
 
         @_lifecycle_callback.(nil)
-        # this._lifecycleCallback();
 
         # TODO is this ever going to happen?
         return if @frame.loader_id == @_initial_loader_id && !@_has_same_document_navigation
-        # if (this._hasSameDocumentNavigation)
-        #   this._sameDocumentNavigationCompleteCallback();
-        if @frame.loader_id != @_initial_loader_id
-        end
-        #   this._newDocumentNavigationCompleteCallback();
 
-        # @_complete_promise.resolve true
+        if @_has_same_document_navigation
+          @_same_document_navigation_complete_callback.(nil)
+        end
+
+        if @frame.loader_id != @_initial_loader_id
+          @_new_document_navigation_complete_callback.(nil)
+        end
       end
 
       # @param {!Puppeteer.Request} request
@@ -173,6 +128,14 @@ module Chromiebara
       def on_request(request)
         return if request.frame != frame || !request.is_navigation_request
         @_navigation_request = request
+      end
+
+      # @param {!Puppeteer.Frame} frame
+      #
+      def navigated_within_document(frame)
+        return if frame != frame
+        @_has_same_document_navigation = true
+        check_lifecycle_complete
       end
 
       # @return [Boolean]

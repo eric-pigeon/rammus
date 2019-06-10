@@ -135,7 +135,7 @@ module Chromiebara
       # return watcher.navigationResponse();
       Promise.resolve(nil).then do
         begin
-          watcher.await_complete
+          await Promise.race(watcher.same_document_navigation_promise, watcher.new_document_navigation_promise)
           watcher.navigation_response
         ensure
           watcher.dispose
