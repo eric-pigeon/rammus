@@ -152,195 +152,197 @@ module Chromiebara
         expect(request.post_data).to eq '{"foo":"bar"}'
       end
 
-      #it('should be |undefined| when there is no post data', async({page, server}) => {
-      #  const response = await page.goto(server.EMPTY_PAGE);
-      #  expect(response.request().postData()).toBe(undefined);
+      it 'should be |undefined| when there is no post data' do
+        response = page.goto server.empty_page
+        expect(response.request.post_data).to eq nil
+      end
+    end
+
+    describe 'Response#text' do
+      it 'should work' do
+        response = page.goto server.domain + 'simple.json'
+        expect(response.text).to eq "{\"foo\": \"bar\"}\n"
+      end
+
+      # TODO
+      #it 'should return uncompressed text' do
+      #  server.enableGzip('/simple.json');
+      #  const response = await page.goto(server.PREFIX + '/simple.json');
+      #  expect(response.headers()['content-encoding']).toBe('gzip');
+      #  expect(await response.text()).toBe('{"foo": "bar"}\n');
+      #end
+
+      it 'should throw when requesting body of redirected response' do
+        response = page.goto server.domain + 'empty-redirect'
+        redirect_chain = response.request.redirect_chain
+        expect(redirect_chain.length).to eq 1
+        redirected = redirect_chain[0].response
+        expect(redirected.status).to eq 302
+
+        expect { redirected.text }
+          .to raise_error(/Response body is unavailable for redirect responses/)
+      end
+
+      # TODO
+      xit 'should wait until response completes' do
+        page.goto server.empty_page
+        # Setup server to trap request.
+        #let serverResponse = null;
+        #server.setRoute('/get', (req, res) => {
+        #  serverResponse = res;
+        #  // In Firefox, |fetch| will be hanging until it receives |Content-Type| header
+        #  // from server.
+        #  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        #  res.write('hello ');
+        #});
+        #// Setup page to trap response.
+        #let requestFinished = false;
+        #page.on('requestfinished', r => requestFinished = requestFinished || r.url().includes('/get'));
+        #// send request and wait for server response
+        #const [pageResponse] = await Promise.all([
+        #  page.waitForResponse(r => !utils.isFavicon(r.request())),
+        #  page.evaluate(() => fetch('./get', { method: 'GET'})),
+        #  server.waitForRequest('/get'),
+        #]);
+
+        #expect(serverResponse).toBeTruthy();
+        #expect(pageResponse).toBeTruthy();
+        #expect(pageResponse.status()).toBe(200);
+        #expect(requestFinished).toBe(false);
+
+        #const responseText = pageResponse.text();
+        #// Write part of the response and wait for it to be flushed.
+        #await new Promise(x => serverResponse.write('wor', x));
+        #// Finish response.
+        #await new Promise(x => serverResponse.end('ld!', x));
+        #expect(await responseText).toBe('hello world!');
+      end
+    end
+
+    describe 'Response#json' do
+      it 'should work' do
+        response = page.goto server.domain + 'simple.json'
+        expect(response.json).to eq 'foo' => 'bar'
+      end
+    end
+
+    describe 'Response#buffer' do
+      # REALLY TODO
+      #it('should work', async({page, server}) => {
+      #  const response = await page.goto(server.PREFIX + '/pptr.png');
+      #  const imageBuffer = fs.readFileSync(path.join(__dirname, 'assets', 'pptr.png'));
+      #  const responseBuffer = await response.buffer();
+      #  expect(responseBuffer.equals(imageBuffer)).toBe(true);
+      #});
+      #it('should work with compression', async({page, server}) => {
+      #  server.enableGzip('/pptr.png');
+      #  const response = await page.goto(server.PREFIX + '/pptr.png');
+      #  const imageBuffer = fs.readFileSync(path.join(__dirname, 'assets', 'pptr.png'));
+      #  const responseBuffer = await response.buffer();
+      #  expect(responseBuffer.equals(imageBuffer)).toBe(true);
       #});
     end
 
-    #describe('Response.text', function() {
-    #  it('should work', async({page, server}) => {
-    #    const response = await page.goto(server.PREFIX + '/simple.json');
-    #    expect(await response.text()).toBe('{"foo": "bar"}\n');
-    #  });
-    #  it('should return uncompressed text', async({page, server}) => {
-    #    server.enableGzip('/simple.json');
-    #    const response = await page.goto(server.PREFIX + '/simple.json');
-    #    expect(response.headers()['content-encoding']).toBe('gzip');
-    #    expect(await response.text()).toBe('{"foo": "bar"}\n');
-    #  });
-    #  it('should throw when requesting body of redirected response', async({page, server}) => {
-    #    server.setRedirect('/foo.html', '/empty.html');
-    #    const response = await page.goto(server.PREFIX + '/foo.html');
-    #    const redirectChain = response.request().redirectChain();
-    #    expect(redirectChain.length).toBe(1);
-    #    const redirected = redirectChain[0].response();
-    #    expect(redirected.status()).toBe(302);
-    #    let error = null;
-    #    await redirected.text().catch(e => error = e);
-    #    expect(error.message).toContain('Response body is unavailable for redirect responses');
-    #  });
-    #  it('should wait until response completes', async({page, server}) => {
-    #    await page.goto(server.EMPTY_PAGE);
-    #    // Setup server to trap request.
-    #    let serverResponse = null;
-    #    server.setRoute('/get', (req, res) => {
-    #      serverResponse = res;
-    #      // In Firefox, |fetch| will be hanging until it receives |Content-Type| header
-    #      // from server.
-    #      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-    #      res.write('hello ');
-    #    });
-    #    // Setup page to trap response.
-    #    let requestFinished = false;
-    #    page.on('requestfinished', r => requestFinished = requestFinished || r.url().includes('/get'));
-    #    // send request and wait for server response
-    #    const [pageResponse] = await Promise.all([
-    #      page.waitForResponse(r => !utils.isFavicon(r.request())),
-    #      page.evaluate(() => fetch('./get', { method: 'GET'})),
-    #      server.waitForRequest('/get'),
-    #    ]);
+    describe 'Response#status_text' do
+      it 'should work' do
+        response = page.goto server.domain + 'empty'
+        expect(response.status_text).to eq 'OK'
+      end
+    end
 
-    #    expect(serverResponse).toBeTruthy();
-    #    expect(pageResponse).toBeTruthy();
-    #    expect(pageResponse.status()).toBe(200);
-    #    expect(requestFinished).toBe(false);
+    describe 'Network Events' do
+      # TODO
+      #it('Page.Events.Request', async({page, server}) => {
+      #  const requests = [];
+      #  page.on('request', request => requests.push(request));
+      #  await page.goto(server.EMPTY_PAGE);
+      #  expect(requests.length).toBe(1);
+      #  expect(requests[0].url()).toBe(server.EMPTY_PAGE);
+      #  expect(requests[0].resourceType()).toBe('document');
+      #  expect(requests[0].method()).toBe('GET');
+      #  expect(requests[0].response()).toBeTruthy();
+      #  expect(requests[0].frame() === page.mainFrame()).toBe(true);
+      #  expect(requests[0].frame().url()).toBe(server.EMPTY_PAGE);
+      #});
+      #it('Page.Events.Response', async({page, server}) => {
+      #  const responses = [];
+      #  page.on('response', response => responses.push(response));
+      #  await page.goto(server.EMPTY_PAGE);
+      #  expect(responses.length).toBe(1);
+      #  expect(responses[0].url()).toBe(server.EMPTY_PAGE);
+      #  expect(responses[0].status()).toBe(200);
+      #  expect(responses[0].ok()).toBe(true);
+      #  expect(responses[0].request()).toBeTruthy();
+      #  const remoteAddress = responses[0].remoteAddress();
+      #  // Either IPv6 or IPv4, depending on environment.
+      #  expect(remoteAddress.ip.includes('::1') || remoteAddress.ip === '127.0.0.1').toBe(true);
+      #  expect(remoteAddress.port).toBe(server.PORT);
+      #});
 
-    #    const responseText = pageResponse.text();
-    #    // Write part of the response and wait for it to be flushed.
-    #    await new Promise(x => serverResponse.write('wor', x));
-    #    // Finish response.
-    #    await new Promise(x => serverResponse.end('ld!', x));
-    #    expect(await responseText).toBe('hello world!');
-    #  });
-    #});
+      #it('Page.Events.RequestFailed', async({page, server}) => {
+      #  await page.setRequestInterception(true);
+      #  page.on('request', request => {
+      #    if (request.url().endsWith('css'))
+      #      request.abort();
+      #    else
+      #      request.continue();
+      #  });
+      #  const failedRequests = [];
+      #  page.on('requestfailed', request => failedRequests.push(request));
+      #  await page.goto(server.PREFIX + '/one-style.html');
+      #  expect(failedRequests.length).toBe(1);
+      #  expect(failedRequests[0].url()).toContain('one-style.css');
+      #  expect(failedRequests[0].response()).toBe(null);
+      #  expect(failedRequests[0].resourceType()).toBe('stylesheet');
+      #  if (CHROME)
+      #    expect(failedRequests[0].failure().errorText).toBe('net::ERR_FAILED');
+      #  else
+      #    expect(failedRequests[0].failure().errorText).toBe('NS_ERROR_FAILURE');
+      #  expect(failedRequests[0].frame()).toBeTruthy();
+      #});
+      #it('Page.Events.RequestFinished', async({page, server}) => {
+      #  const requests = [];
+      #  page.on('requestfinished', request => requests.push(request));
+      #  await page.goto(server.EMPTY_PAGE);
+      #  expect(requests.length).toBe(1);
+      #  expect(requests[0].url()).toBe(server.EMPTY_PAGE);
+      #  expect(requests[0].response()).toBeTruthy();
+      #  expect(requests[0].frame() === page.mainFrame()).toBe(true);
+      #  expect(requests[0].frame().url()).toBe(server.EMPTY_PAGE);
+      #});
+      #it('should fire events in proper order', async({page, server}) => {
+      #  const events = [];
+      #  page.on('request', request => events.push('request'));
+      #  page.on('response', response => events.push('response'));
+      #  page.on('requestfinished', request => events.push('requestfinished'));
+      #  await page.goto(server.EMPTY_PAGE);
+      #  expect(events).toEqual(['request', 'response', 'requestfinished']);
+      #});
+      #it('should support redirects', async({page, server}) => {
+      #  const events = [];
+      #  page.on('request', request => events.push(`${request.method()} ${request.url()}`));
+      #  page.on('response', response => events.push(`${response.status()} ${response.url()}`));
+      #  page.on('requestfinished', request => events.push(`DONE ${request.url()}`));
+      #  page.on('requestfailed', request => events.push(`FAIL ${request.url()}`));
+      #  server.setRedirect('/foo.html', '/empty.html');
+      #  const FOO_URL = server.PREFIX + '/foo.html';
+      #  const response = await page.goto(FOO_URL);
+      #  expect(events).toEqual([
+      #    `GET ${FOO_URL}`,
+      #    `302 ${FOO_URL}`,
+      #    `DONE ${FOO_URL}`,
+      #    `GET ${server.EMPTY_PAGE}`,
+      #    `200 ${server.EMPTY_PAGE}`,
+      #    `DONE ${server.EMPTY_PAGE}`
+      #  ]);
 
-    #describe('Response.json', function() {
-    #  it('should work', async({page, server}) => {
-    #    const response = await page.goto(server.PREFIX + '/simple.json');
-    #    expect(await response.json()).toEqual({foo: 'bar'});
-    #  });
-    #});
-
-    #describe('Response.buffer', function() {
-    #  it('should work', async({page, server}) => {
-    #    const response = await page.goto(server.PREFIX + '/pptr.png');
-    #    const imageBuffer = fs.readFileSync(path.join(__dirname, 'assets', 'pptr.png'));
-    #    const responseBuffer = await response.buffer();
-    #    expect(responseBuffer.equals(imageBuffer)).toBe(true);
-    #  });
-    #  it('should work with compression', async({page, server}) => {
-    #    server.enableGzip('/pptr.png');
-    #    const response = await page.goto(server.PREFIX + '/pptr.png');
-    #    const imageBuffer = fs.readFileSync(path.join(__dirname, 'assets', 'pptr.png'));
-    #    const responseBuffer = await response.buffer();
-    #    expect(responseBuffer.equals(imageBuffer)).toBe(true);
-    #  });
-    #});
-
-    #describe('Response.statusText', function() {
-    #  it('should work', async({page, server}) => {
-    #    server.setRoute('/cool', (req, res) => {
-    #      res.writeHead(200, 'cool!');
-    #      res.end();
-    #    });
-    #    const response = await page.goto(server.PREFIX + '/cool');
-    #    expect(response.statusText()).toBe('cool!');
-    #  });
-    #});
-
-    #describe('Network Events', function() {
-    #  it('Page.Events.Request', async({page, server}) => {
-    #    const requests = [];
-    #    page.on('request', request => requests.push(request));
-    #    await page.goto(server.EMPTY_PAGE);
-    #    expect(requests.length).toBe(1);
-    #    expect(requests[0].url()).toBe(server.EMPTY_PAGE);
-    #    expect(requests[0].resourceType()).toBe('document');
-    #    expect(requests[0].method()).toBe('GET');
-    #    expect(requests[0].response()).toBeTruthy();
-    #    expect(requests[0].frame() === page.mainFrame()).toBe(true);
-    #    expect(requests[0].frame().url()).toBe(server.EMPTY_PAGE);
-    #  });
-    #  it('Page.Events.Response', async({page, server}) => {
-    #    const responses = [];
-    #    page.on('response', response => responses.push(response));
-    #    await page.goto(server.EMPTY_PAGE);
-    #    expect(responses.length).toBe(1);
-    #    expect(responses[0].url()).toBe(server.EMPTY_PAGE);
-    #    expect(responses[0].status()).toBe(200);
-    #    expect(responses[0].ok()).toBe(true);
-    #    expect(responses[0].request()).toBeTruthy();
-    #    const remoteAddress = responses[0].remoteAddress();
-    #    // Either IPv6 or IPv4, depending on environment.
-    #    expect(remoteAddress.ip.includes('::1') || remoteAddress.ip === '127.0.0.1').toBe(true);
-    #    expect(remoteAddress.port).toBe(server.PORT);
-    #  });
-
-    #  it('Page.Events.RequestFailed', async({page, server}) => {
-    #    await page.setRequestInterception(true);
-    #    page.on('request', request => {
-    #      if (request.url().endsWith('css'))
-    #        request.abort();
-    #      else
-    #        request.continue();
-    #    });
-    #    const failedRequests = [];
-    #    page.on('requestfailed', request => failedRequests.push(request));
-    #    await page.goto(server.PREFIX + '/one-style.html');
-    #    expect(failedRequests.length).toBe(1);
-    #    expect(failedRequests[0].url()).toContain('one-style.css');
-    #    expect(failedRequests[0].response()).toBe(null);
-    #    expect(failedRequests[0].resourceType()).toBe('stylesheet');
-    #    if (CHROME)
-    #      expect(failedRequests[0].failure().errorText).toBe('net::ERR_FAILED');
-    #    else
-    #      expect(failedRequests[0].failure().errorText).toBe('NS_ERROR_FAILURE');
-    #    expect(failedRequests[0].frame()).toBeTruthy();
-    #  });
-    #  it('Page.Events.RequestFinished', async({page, server}) => {
-    #    const requests = [];
-    #    page.on('requestfinished', request => requests.push(request));
-    #    await page.goto(server.EMPTY_PAGE);
-    #    expect(requests.length).toBe(1);
-    #    expect(requests[0].url()).toBe(server.EMPTY_PAGE);
-    #    expect(requests[0].response()).toBeTruthy();
-    #    expect(requests[0].frame() === page.mainFrame()).toBe(true);
-    #    expect(requests[0].frame().url()).toBe(server.EMPTY_PAGE);
-    #  });
-    #  it('should fire events in proper order', async({page, server}) => {
-    #    const events = [];
-    #    page.on('request', request => events.push('request'));
-    #    page.on('response', response => events.push('response'));
-    #    page.on('requestfinished', request => events.push('requestfinished'));
-    #    await page.goto(server.EMPTY_PAGE);
-    #    expect(events).toEqual(['request', 'response', 'requestfinished']);
-    #  });
-    #  it('should support redirects', async({page, server}) => {
-    #    const events = [];
-    #    page.on('request', request => events.push(`${request.method()} ${request.url()}`));
-    #    page.on('response', response => events.push(`${response.status()} ${response.url()}`));
-    #    page.on('requestfinished', request => events.push(`DONE ${request.url()}`));
-    #    page.on('requestfailed', request => events.push(`FAIL ${request.url()}`));
-    #    server.setRedirect('/foo.html', '/empty.html');
-    #    const FOO_URL = server.PREFIX + '/foo.html';
-    #    const response = await page.goto(FOO_URL);
-    #    expect(events).toEqual([
-    #      `GET ${FOO_URL}`,
-    #      `302 ${FOO_URL}`,
-    #      `DONE ${FOO_URL}`,
-    #      `GET ${server.EMPTY_PAGE}`,
-    #      `200 ${server.EMPTY_PAGE}`,
-    #      `DONE ${server.EMPTY_PAGE}`
-    #    ]);
-
-    #    // Check redirect chain
-    #    const redirectChain = response.request().redirectChain();
-    #    expect(redirectChain.length).toBe(1);
-    #    expect(redirectChain[0].url()).toContain('/foo.html');
-    #    expect(redirectChain[0].response().remoteAddress().port).toBe(server.PORT);
-    #  });
-    #});
+      #  // Check redirect chain
+      #  const redirectChain = response.request().redirectChain();
+      #  expect(redirectChain.length).toBe(1);
+      #  expect(redirectChain[0].url()).toContain('/foo.html');
+      #  expect(redirectChain[0].response().remoteAddress().port).toBe(server.PORT);
+      #});
+    end
 
     #describe('Request.isNavigationRequest', () => {
     #  it('should work', async({page, server}) => {
@@ -399,42 +401,39 @@ module Chromiebara
     #  });
     #});
 
-    #describe_fails_ffox('Page.authenticate', function() {
-    #  it('should work', async({page, server}) => {
-    #    server.setAuth('/empty.html', 'user', 'pass');
-    #    let response = await page.goto(server.EMPTY_PAGE);
-    #    expect(response.status()).toBe(401);
-    #    await page.authenticate({
-    #      username: 'user',
-    #      password: 'pass'
-    #    });
-    #    response = await page.reload();
-    #    expect(response.status()).toBe(200);
-    #  });
-    #  it('should fail if wrong credentials', async({page, server}) => {
-    #    // Use unique user/password since Chrome caches credentials per origin.
-    #    server.setAuth('/empty.html', 'user2', 'pass2');
-    #    await page.authenticate({
-    #      username: 'foo',
-    #      password: 'bar'
-    #    });
-    #    const response = await page.goto(server.EMPTY_PAGE);
-    #    expect(response.status()).toBe(401);
-    #  });
-    #  it('should allow disable authentication', async({page, server}) => {
-    #    // Use unique user/password since Chrome caches credentials per origin.
-    #    server.setAuth('/empty.html', 'user3', 'pass3');
-    #    await page.authenticate({
-    #      username: 'user3',
-    #      password: 'pass3'
-    #    });
-    #    let response = await page.goto(server.EMPTY_PAGE);
-    #    expect(response.status()).toBe(200);
-    #    await page.authenticate(null);
-    #    // Navigate to a different origin to bust Chrome's credential caching.
-    #    response = await page.goto(server.CROSS_PROCESS_PREFIX + '/empty.html');
-    #    expect(response.status()).toBe(401);
-    #  });
-    #});
+    describe 'Page#authenticate' do
+      it 'should work' do
+        response = page.goto server.domain + 'protected'
+        expect(response.status).to eq 401
+        page.authenticate username: 'user', password: 'pass'
+        response = page.reload
+        expect(response.status).to eq 200
+      end
+
+      #it('should fail if wrong credentials', async({page, server}) => {
+      #  // Use unique user/password since Chrome caches credentials per origin.
+      #  server.setAuth('/empty.html', 'user2', 'pass2');
+      #  await page.authenticate({
+      #    username: 'foo',
+      #    password: 'bar'
+      #  });
+      #  const response = await page.goto(server.EMPTY_PAGE);
+      #  expect(response.status()).toBe(401);
+      #});
+      #it('should allow disable authentication', async({page, server}) => {
+      #  // Use unique user/password since Chrome caches credentials per origin.
+      #  server.setAuth('/empty.html', 'user3', 'pass3');
+      #  await page.authenticate({
+      #    username: 'user3',
+      #    password: 'pass3'
+      #  });
+      #  let response = await page.goto(server.EMPTY_PAGE);
+      #  expect(response.status()).toBe(200);
+      #  await page.authenticate(null);
+      #  // Navigate to a different origin to bust Chrome's credential caching.
+      #  response = await page.goto(server.CROSS_PROCESS_PREFIX + '/empty.html');
+      #  expect(response.status()).toBe(401);
+      #});
+    end
   end
 end

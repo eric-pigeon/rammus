@@ -1,7 +1,7 @@
 module Chromiebara
   class Request
 
-    attr_reader :client, :url, :frame, :is_navigation_request, :headers, :post_data
+    attr_reader :client, :request_id, :url, :frame, :is_navigation_request, :headers, :post_data, :redirect_chain
     attr_accessor :response, :from_memory_cache
 
     # @param {!Puppeteer.CDPSession} client
@@ -11,9 +11,9 @@ module Chromiebara
     # @param {!Protocol.Network.requestWillBeSentPayload} event
     # @param {!Array<!Request>} redirectChain
     #
-    def initialize(client, frame, interceptionId, allowInterception, event, redirectChain)
+    def initialize(client, frame, interception_id, allow_interception, event, redirect_chain)
       @client = client
-      #this._requestId = event.requestId;
+      @request_id = event["requestId"]
       @is_navigation_request = event["requestId"] == event["loaderId"] && event["type"] == 'Document'
       #this._interceptionId = interceptionId;
       #this._allowInterception = allowInterception;
@@ -26,7 +26,7 @@ module Chromiebara
       #this._method = event.request.method;
       @post_data = event["request"]["postData"]
       @frame = frame
-      #this._redirectChain = redirectChain;
+      @redirect_chain = redirect_chain
       @headers = event["request"].fetch("headers", {}).map do |key, value|
         [key.downcase, value]
       end.to_h
@@ -46,13 +46,6 @@ module Chromiebara
     # */
     #method() {
     #  return this._method;
-    #}
-
-    #/**
-    # * @return {!Array<!Request>}
-    # */
-    #redirectChain() {
-    #  return this._redirectChain.slice();
     #}
 
     #/**

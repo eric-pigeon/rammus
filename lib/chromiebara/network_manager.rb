@@ -20,28 +20,28 @@ module Chromiebara
       # @type {!Map<string, !Request>}
       @_request_id_to_request = {}
       # @type {!Map<string, !Protocol.Network.requestWillBeSentPayload>}
-      #this._requestIdToRequestWillBeSentEvent = new Map();
+      @_request_id_to_request_will_be_sent_event = {}
       # @type {!Object<string, string>}
       @_extra_http_headers = {}
 
       #this._offline = false;
 
       # @type {?{username: string, password: string}}
-      #this._credentials = null;
+      @_credentials = nil
       # @type {!Set<string>}
-      #this._attemptedAuthentications = new Set();
+      @_attempted_authentications = Set.new
       @_user_request_interception_enabled = false
       @_protocol_request_interception_enabled = false
-      #this._userCacheDisabled = false;
+      @_user_cache_disabled = false
       # @type {!Map<string, string>}
       @_request_id_to_interception_id = {}
 
-      #this._client.on('Fetch.requestPaused', this._onRequestPaused.bind(this));
-      #this._client.on('Fetch.authRequired', this._onAuthRequired.bind(this));
+      client.on Protocol::Fetch.request_paused, method(:on_request_paused)
+      client.on Protocol::Fetch.auth_required, method(:on_auth_required)
       client.on Protocol::Network.request_will_be_sent, method(:on_request_will_be_sent)
       client.on Protocol::Network.request_served_from_cache, method(:on_request_served_from_cache)
       client.on Protocol::Network.response_received, method(:on_response_received)
-      #this._client.on('Network.loadingFinished', this._onLoadingFinished.bind(this));
+      client.on Protocol::Network.loading_finished, method(:on_loading_finished)
       #this._client.on('Network.loadingFailed', this._onLoadingFailed.bind(this));
     end
 
@@ -52,12 +52,12 @@ module Chromiebara
       end
     end
 
-    #  * @param {?{username: string, password: string}} credentials
-    #  */
-    # async authenticate(credentials) {
-    #   this._credentials = credentials;
-    #   await this._updateProtocolRequestInterception();
-    # }
+    # @param {?{username: string, password: string}} credentials
+    #
+    def authenticate(username: nil, password: nil)
+       @_credentials = { username: username, password: password }
+       update_protocol_request_interception
+    end
 
     #  * @param {!Object<string, string>} extraHTTPHeaders
     #  */
@@ -112,103 +112,6 @@ module Chromiebara
     #   await this._updateProtocolRequestInterception();
     # }
 
-    # async _updateProtocolRequestInterception() {
-    #   const enabled = this._userRequestInterceptionEnabled || !!this._credentials;
-    #   if (enabled === this._protocolRequestInterceptionEnabled)
-    #     return;
-    #   this._protocolRequestInterceptionEnabled = enabled;
-    #   if (enabled) {
-    #     await Promise.all([
-    #       this._updateProtocolCacheDisabled(),
-    #       this._client.send('Fetch.enable', {
-    #         handleAuthRequests: true,
-    #         patterns: [{urlPattern: '*'}],
-    #       }),
-    #     ]);
-    #   } else {
-    #     await Promise.all([
-    #       this._updateProtocolCacheDisabled(),
-    #       this._client.send('Fetch.disable')
-    #     ]);
-    #   }
-    # }
-
-    # async _updateProtocolCacheDisabled() {
-    #   await this._client.send('Network.setCacheDisabled', {
-    #     cacheDisabled: this._userCacheDisabled || this._protocolRequestInterceptionEnabled
-    #   });
-    # }
-
-    #  * @param {!Protocol.Fetch.authRequiredPayload} event
-    #  */
-    # _onAuthRequired(event) {
-    #   /** @type {"Default"|"CancelAuth"|"ProvideCredentials"} */
-    #   let response = 'Default';
-    #   if (this._attemptedAuthentications.has(event.requestId)) {
-    #     response = 'CancelAuth';
-    #   } else if (this._credentials) {
-    #     response = 'ProvideCredentials';
-    #     this._attemptedAuthentications.add(event.requestId);
-    #   }
-    #   const {username, password} = this._credentials || {username: undefined, password: undefined};
-    #   this._client.send('Fetch.continueWithAuth', {
-    #     requestId: event.requestId,
-    #     authChallengeResponse: { response, username, password },
-    #   }).catch(debugError);
-    # }
-
-    #  * @param {!Protocol.Fetch.requestPausedPayload} event
-    #  */
-    # _onRequestPaused(event) {
-    #   if (!this._userRequestInterceptionEnabled && this._protocolRequestInterceptionEnabled) {
-    #     this._client.send('Fetch.continueRequest', {
-    #       requestId: event.requestId
-    #     }).catch(debugError);
-    #   }
-
-    #   const requestId = event.networkId;
-    #   const interceptionId = event.requestId;
-    #   if (requestId && this._requestIdToRequestWillBeSentEvent.has(requestId)) {
-    #     const requestWillBeSentEvent = this._requestIdToRequestWillBeSentEvent.get(requestId);
-    #     this._onRequest(requestWillBeSentEvent, interceptionId);
-    #     this._requestIdToRequestWillBeSentEvent.delete(requestId);
-    #   } else {
-    #     this._requestIdToInterceptionId.set(requestId, interceptionId);
-    #   }
-    # }
-
-    #  * @param {!Request} request
-    #  * @param {!Protocol.Network.Response} responsePayload
-    #  */
-    # _handleRequestRedirect(request, responsePayload) {
-    #   const response = new Response(this._client, request, responsePayload);
-    #   request._response = response;
-    #   request._redirectChain.push(request);
-    #   response._bodyLoadedPromiseFulfill.call(null, new Error('Response body is unavailable for redirect responses'));
-    #   this._requestIdToRequest.delete(request._requestId);
-    #   this._attemptedAuthentications.delete(request._interceptionId);
-    #   this.emit(Events.NetworkManager.Response, response);
-    #   this.emit(Events.NetworkManager.RequestFinished, request);
-    # }
-
-    #  * @param {!Protocol.Network.loadingFinishedPayload} event
-    #  */
-    # _onLoadingFinished(event) {
-    #   const request = this._requestIdToRequest.get(event.requestId);
-    #   // For certain requestIds we never receive requestWillBeSent event.
-    #   // @see https://crbug.com/750469
-    #   if (!request)
-    #     return;
-
-    #   // Under certain conditions we never get the Network.responseReceived
-    #   // event from protocol. @see https://crbug.com/883475
-    #   if (request.response())
-    #     request.response()._bodyLoadedPromiseFulfill.call(null);
-    #   this._requestIdToRequest.delete(request._requestId);
-    #   this._attemptedAuthentications.delete(request._interceptionId);
-    #   this.emit(Events.NetworkManager.RequestFinished, request);
-    # }
-
     #  * @param {!Protocol.Network.loadingFailedPayload} event
     #  */
     # _onLoadingFailed(event) {
@@ -232,16 +135,16 @@ module Chromiebara
       #
       def on_request_will_be_sent(event)
         # Request interception doesn't happen for data URLs with Network Service.
-        if @_protocol_request_interception_enabled && !event.dig("request", "url").starts_with?('data:')
+        if @_protocol_request_interception_enabled && !event.dig("request", "url").start_with?('data:')
           request_id = event["requestId"]
           interception_id = @_request_id_to_interception_id[request_id]
 
-          # TODO
           if interception_id
+            # TODO
             #this._onRequest(event, interceptionId);
             #this._requestIdToInterceptionId.delete(requestId);
           else
-            #this._requestIdToRequestWillBeSentEvent.set(event.requestId, event);
+            @_request_id_to_request_will_be_sent_event[event["requestId"]]= event
           end
           return
         end
@@ -254,12 +157,12 @@ module Chromiebara
       def on_request(event, interception_id)
         redirect_chain = []
         if event["redirectResponse"]
-          #const request = this._requestIdToRequest.get(event.requestId);
+          request = @_request_id_to_request[event["requestId"]]
           # If we connect late to the target, we could have missed the requestWillBeSent event.
-          #if (request) {
-          #  this._handleRequestRedirect(request, event.redirectResponse);
-          #  redirectChain = request._redirectChain;
-          #}
+          if request
+            handle_request_redirect request, event["redirectResponse"]
+            redirect_chain = request.redirect_chain
+          end
         end
         frame = event["frameId"] && frame_manager ? frame_manager.frame(event["frameId"]) : nil
         request = Request.new client, frame, interception_id, @_user_request_interception_enabled, event, redirect_chain
@@ -278,11 +181,112 @@ module Chromiebara
         emit :response, response
       end
 
+      # @param {!Protocol.Network.loadingFinishedPayload} event
+      #
+      def on_loading_finished(event)
+        request = @_request_id_to_request[event["requestId"]]
+        # For certain requestIds we never receive requestWillBeSent event.
+        # @see https://crbug.com/750469
+        return if request.nil?
+
+        # Under certain conditions we never get the Network.responseReceived
+        # event from protocol. @see https://crbug.com/883475
+        unless request.response.nil?
+          request.response.body_loaded_promise_fulfill.call(nil)
+        end
+        @_request_id_to_request.delete(request.request_id)
+        # TODO
+        #this._attemptedAuthentications.delete(request._interceptionId);
+        #this.emit(Events.NetworkManager.RequestFinished, request);
+      end
+
       # @param {!Protocol.Network.requestServedFromCachePayload} event
       #
       def on_request_served_from_cache(event)
         request = @_request_id_to_request[event["requestId"]]
         request.from_memory_cache = true if request
+      end
+
+      # @param {!Request} request
+      # @param {!Protocol.Network.Response} responsePayload
+      #
+      def handle_request_redirect(request, response_payload)
+        response = Response.new client, request, response_payload
+        request.response = response
+        request.redirect_chain << request
+
+        response.body_loaded_promise_fulfill.(StandardError.new 'Response body is unavailable for redirect responses')
+        @_request_id_to_request.delete(request.request_id)
+        # TODO
+        # this._attemptedAuthentications.delete(request._interceptionId);
+        # this.emit(Events.NetworkManager.Response, response);
+        # this.emit(Events.NetworkManager.RequestFinished, request);
+      end
+
+      def update_protocol_cache_disabled
+        client.command Protocol::Network.set_cache_disabled(
+          cache_disabled: @_user_cache_disabled || @_protocol_request_interception_enabled
+        )
+      end
+
+      def update_protocol_request_interception
+        enabled = @_user_request_interception_enabled || !!@_credentials
+
+        return if enabled == @_protocol_request_interception_enabled
+
+        @_protocol_request_interception_enabled = enabled
+        if enabled
+          await Promise.all(
+            update_protocol_cache_disabled,
+            client.command(Protocol::Fetch.enable(handle_auth_requests: true, patterns: [urlPattern: '*']))
+          )
+        else
+          await Promise.all(
+            update_protocol_cache_disabled,
+            client.command(Protocol::Fetch.disable)
+          )
+        end
+      end
+
+      # @param {!Protocol.Fetch.requestPausedPayload} event
+      #
+      def on_request_paused(event)
+        if !@_user_request_interception_enabled && @_protocol_request_interception_enabled
+          client.command Protocol::Fetch.continue_request(request_id: event["requestId"])
+          # TODO .catch debugError
+        end
+
+        request_id = event["networkId"]
+        interception_id = event["requestId"]
+
+        if request_id && @_request_id_to_request_will_be_sent_event.include?(request_id)
+          request_will_be_sent_event = @_request_id_to_request_will_be_sent_event[request_id]
+          on_request request_will_be_sent_event, interception_id
+          @_request_id_to_request_will_be_sent_event.delete request_id
+        else
+          @_request_id_to_interception_id[request_id] = interception_id
+        end
+      end
+
+      # @param {!Protocol.Fetch.authRequiredPayload} event
+      #
+      def on_auth_required(event)
+        # @type {"Default"|"CancelAuth"|"ProvideCredentials"}
+        response = 'Default'
+        if @_attempted_authentications.include? event["requestId"]
+          response = 'CancelAuth'
+        elsif @_credentials
+          response = 'ProvideCredentials'
+          @_attempted_authentications.add event["requestId"]
+        end
+
+        username ||= @_credentials[:username]
+        password ||= @_credentials[:password]
+        client.command Protocol::Fetch.continue_with_auth(
+          request_id: event["requestId"],
+          auth_challenge_response: { response: response, username: username, password: password }
+        )
+        # TODO catch debugError
       end
   end
 end

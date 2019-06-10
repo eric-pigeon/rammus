@@ -349,11 +349,11 @@ module Chromiebara
     #   }
     # }
 
-    #  * @param {?{username: string, password: string}} credentials
-    #  */
-    # async authenticate(credentials) {
-    #   return this._frameManager.networkManager().authenticate(credentials);
-    # }
+    # @param {?{username: string, password: string}} credentials
+    #
+    def authenticate(username: nil, password: nil)
+      frame_manager.network_manager.authenticate username: username, password: password
+    end
 
     #  * @param {!Object<string, string>} headers
     #  */
