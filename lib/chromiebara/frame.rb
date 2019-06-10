@@ -48,8 +48,8 @@ module Chromiebara
     # @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
     # @return {!Promise<?Puppeteer.Response>}
     #
-    def wait_for_navigation(options)
-      frame_manager.wait_for_frame_navigation self, options
+    def wait_for_navigation(timeout: nil, wait_until: nil)
+      frame_manager.wait_for_frame_navigation self, timeout: timeout, wait_until: wait_until
     end
 
     # @return {!Promise<!ExecutionContext>}

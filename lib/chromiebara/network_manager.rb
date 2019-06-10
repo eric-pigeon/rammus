@@ -1,4 +1,5 @@
 require 'chromiebara/request'
+require 'chromiebara/response'
 
 module Chromiebara
   class NetworkManager
@@ -21,7 +22,7 @@ module Chromiebara
       # @type {!Map<string, !Protocol.Network.requestWillBeSentPayload>}
       #this._requestIdToRequestWillBeSentEvent = new Map();
       # @type {!Object<string, string>}
-      #this._extraHTTPHeaders = {};
+      @_extra_http_headers = {}
 
       #this._offline = false;
 
@@ -38,8 +39,8 @@ module Chromiebara
       #this._client.on('Fetch.requestPaused', this._onRequestPaused.bind(this));
       #this._client.on('Fetch.authRequired', this._onAuthRequired.bind(this));
       client.on Protocol::Network.request_will_be_sent, method(:on_request_will_be_sent)
-      #this._client.on('Network.requestServedFromCache', this._onRequestServedFromCache.bind(this));
-      #this._client.on('Network.responseReceived', this._onResponseReceived.bind(this));
+      client.on Protocol::Network.request_served_from_cache, method(:on_request_served_from_cache)
+      client.on Protocol::Network.response_received, method(:on_response_received)
       #this._client.on('Network.loadingFinished', this._onLoadingFinished.bind(this));
       #this._client.on('Network.loadingFailed', this._onLoadingFailed.bind(this));
     end
@@ -70,11 +71,11 @@ module Chromiebara
     #   await this._client.send('Network.setExtraHTTPHeaders', { headers: this._extraHTTPHeaders });
     # }
 
-    #  * @return {!Object<string, string>}
-    #  */
-    # extraHTTPHeaders() {
-    #   return Object.assign({}, this._extraHTTPHeaders);
-    # }
+    # @return {!Object<string, string>}
+    #
+    def extra_http_headers
+      @_extra_http_headers.dup
+    end
 
     #  * @param {boolean} value
     #  */
@@ -176,14 +177,6 @@ module Chromiebara
     #   }
     # }
 
-    #  * @param {!Protocol.Network.requestServedFromCachePayload} event
-    #  */
-    # _onRequestServedFromCache(event) {
-    #   const request = this._requestIdToRequest.get(event.requestId);
-    #   if (request)
-    #     request._fromMemoryCache = true;
-    # }
-
     #  * @param {!Request} request
     #  * @param {!Protocol.Network.Response} responsePayload
     #  */
@@ -196,18 +189,6 @@ module Chromiebara
     #   this._attemptedAuthentications.delete(request._interceptionId);
     #   this.emit(Events.NetworkManager.Response, response);
     #   this.emit(Events.NetworkManager.RequestFinished, request);
-    # }
-
-    #  * @param {!Protocol.Network.responseReceivedPayload} event
-    #  */
-    # _onResponseReceived(event) {
-    #   const request = this._requestIdToRequest.get(event.requestId);
-    #   // FileUpload sends a response without a matching request.
-    #   if (!request)
-    #     return;
-    #   const response = new Response(this._client, request, event.response);
-    #   request._response = response;
-    #   this.emit(Events.NetworkManager.Response, response);
     # }
 
     #  * @param {!Protocol.Network.loadingFinishedPayload} event
@@ -284,6 +265,24 @@ module Chromiebara
         request = Request.new client, frame, interception_id, @_user_request_interception_enabled, event, redirect_chain
         @_request_id_to_request[event["requestId"]] = request
         emit :request, request
+      end
+
+      # @param {!Protocol.Network.responseReceivedPayload} event
+      #
+      def on_response_received(event)
+        request = @_request_id_to_request[event["requestId"]]
+        # FileUpload sends a response without a matching request.
+        return if request.nil?
+        response = Response.new client, request, event["response"]
+        request.response = response
+        emit :response, response
+      end
+
+      # @param {!Protocol.Network.requestServedFromCachePayload} event
+      #
+      def on_request_served_from_cache(event)
+        request = @_request_id_to_request[event["requestId"]]
+        request.from_memory_cache = true if request
       end
   end
 end

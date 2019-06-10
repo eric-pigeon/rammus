@@ -25,7 +25,6 @@ module Chromiebara
       end
 
       it 'should support touch emulation' do
-        pending 'need to implement page#reload'
         page.goto server.domain + 'mobile.html'
         expect(page.evaluate_function "() => 'ontouchstart' in window").to eq false
         page.set_viewport iPhone[:viewport]
@@ -59,7 +58,6 @@ module Chromiebara
       end
 
       it 'should detect touch when applying viewport with touches' do
-        pending 'need to implement page#reload'
         page.set_viewport width: 800, height: 600, has_touch: true
         page.add_script_tag url: server.domain + 'modernizr.js'
         expect(page.evaluate_function "() => Modernizr.touchevents").to eq true

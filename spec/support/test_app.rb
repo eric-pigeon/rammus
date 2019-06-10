@@ -17,4 +17,8 @@ class TestApp < Sinatra::Base
     response.set_cookie 'http_cookie', value: 'test-cookie', http_only: true
     ''
   end
+
+  get '/foo-header' do
+    response.set_header 'foo', 'bar'
+  end
 end

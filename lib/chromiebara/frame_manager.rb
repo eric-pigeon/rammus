@@ -66,13 +66,17 @@ module Chromiebara
     # TODO
     #
     def navigate_frame(frame, url, referrer: nil, timeout: nil, wait_until: nil)
-      # referrer || network_manager.extrea_http_headers['referer']
+      referrer || network_manager.extra_http_headers['referer']
       wait_until ||= [:load]
       # timeout ||= timeout_settings.navigation_timeout
 
       watcher = LifecycleWatcher.new self, frame, wait_until, timeout
       await client.command Protocol::Page.navigate url: url, referrer: referrer, frame_id: frame.id
       watcher.await_complete
+
+      watcher.dispose
+
+      watcher.navigation_response
 
       #   let ensureNewDocumentNavigation = false;
       #   let error = await Promise.race([
@@ -129,6 +133,14 @@ module Chromiebara
       # if (error)
       #   throw error;
       # return watcher.navigationResponse();
+      Promise.resolve(nil).then do
+        begin
+          watcher.await_complete
+          watcher.navigation_response
+        ensure
+          watcher.dispose
+        end
+      end
     end
 
     # @return [Array<Frame>]

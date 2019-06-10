@@ -469,21 +469,19 @@ module Chromiebara
     # @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
     # @return {!Promise<?Puppeteer.Response>}
     #
-    def reload(options = {})
-      # TODO
-    #   const [response] = await Promise.all([
-    #     this.waitForNavigation(options),
-    #     this._client.send('Page.reload')
-    #   ]);
-    #   return response;
+    def reload(timeout: nil, wait_until: nil)
+      response, _ = await Promise.all(
+        wait_for_navigation(timeout: timeout, wait_until: wait_until),
+        client.command(Protocol::Page.reload)
+      )
+      response
     end
 
     # @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
     # @return {!Promise<?Puppeteer.Response>}
     #
-    def wait_for_navigation(options = {})
-      # TODO
-      await frame_manager.main_frame.wait_for_navigation options
+    def wait_for_navigation(timeout: nil, wait_until: nil)
+      frame_manager.main_frame.wait_for_navigation timeout: timeout, wait_until: wait_until
     end
 
     #  * @param {(string|Function)} urlOrPredicate
