@@ -1,22 +1,22 @@
 module Chromiebara
   class Response
-    attr_reader :client, :request, :url, :status, :from_service_worker
+    include Promise::Await
+
+    attr_reader :client, :request, :url, :status, :status_text, :from_service_worker, :body_loaded_promise_fulfill
 
     def initialize(client, request, response_payload)
       @client = client
       @request = request
       #this._contentPromise = null;
 
-      #this._bodyLoadedPromise = new Promise(fulfill => {
-      #  this._bodyLoadedPromiseFulfill = fulfill;
-      #});
+      @_body_loaded_promise, @body_loaded_promise_fulfill, _ = Promise.create
 
       #this._remoteAddress = {
       #  ip: responsePayload.remoteIPAddress,
       #  port: responsePayload.remotePort,
       #};
       @status = response_payload["status"]
-      #this._statusText = responsePayload.statusText;
+      @status_text = response_payload["statusText"]
       @url = request.url
       @_from_disk_cache = !!response_payload["fromDiskCache"]
       @from_service_worker = !!response_payload["fromServiceWorker"]
@@ -38,12 +38,6 @@ module Chromiebara
     #  return this._status === 0 || (this._status >= 200 && this._status <= 299);
     #}
 
-    # * @return {string}
-    # */
-    #statusText() {
-    #  return this._statusText;
-    #}
-
     # @return {!Object}
     #
     def headers
@@ -56,35 +50,26 @@ module Chromiebara
     #  return this._securityDetails;
     #}
 
-    # * @return {!Promise<!Buffer>}
-    # */
-    #buffer() {
-    #  if (!this._contentPromise) {
-    #    this._contentPromise = this._bodyLoadedPromise.then(async error => {
-    #      if (error)
-    #        throw error;
-    #      const response = await this._client.send('Network.getResponseBody', {
-    #        requestId: this._request._requestId
-    #      });
-    #      return Buffer.from(response.body, response.base64Encoded ? 'base64' : 'utf8');
-    #    });
-    #  }
-    #  return this._contentPromise;
-    #}
+    def buffer
+      @_buffer ||= await(@_body_loaded_promise.then do |error|
+        raise error if error
 
-    # * @return {!Promise<string>}
-    # */
-    #async text() {
-    #  const content = await this.buffer();
-    #  return content.toString('utf8');
-    #}
+        response = await client.command Protocol::Network.get_response_body(request_id: request.request_id)
+        if response["base64Encoded"]
+          Base64.decode64 response["body"]
+        else
+          response["body"]
+        end
+      end)
+    end
 
-    # * @return {!Promise<!Object>}
-    # */
-    #async json() {
-    #  const content = await this.text();
-    #  return JSON.parse(content);
-    #}
+    def text
+      buffer
+    end
+
+    def json
+      JSON.parse(text)
+    end
 
     # @return [Boolean]
     #
