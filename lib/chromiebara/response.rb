@@ -1,6 +1,6 @@
 module Chromiebara
   class Response
-    attr_reader :client, :request, :url, :status
+    attr_reader :client, :request, :url, :status, :from_service_worker
 
     def initialize(client, request, response_payload)
       @client = client
@@ -19,7 +19,7 @@ module Chromiebara
       #this._statusText = responsePayload.statusText;
       @url = request.url
       @_from_disk_cache = !!response_payload["fromDiskCache"]
-      #this._fromServiceWorker = !!responsePayload.fromServiceWorker;
+      @from_service_worker = !!response_payload["fromServiceWorker"]
       @_headers = response_payload.fetch("headers", {}).map do |name, value|
         [name.downcase, value]
       end.to_h

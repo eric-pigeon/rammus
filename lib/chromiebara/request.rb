@@ -1,7 +1,7 @@
 module Chromiebara
   class Request
 
-    attr_reader :client, :url, :frame, :is_navigation_request, :headers
+    attr_reader :client, :url, :frame, :is_navigation_request, :headers, :post_data
     attr_accessor :response, :from_memory_cache
 
     # @param {!Puppeteer.CDPSession} client
@@ -24,7 +24,7 @@ module Chromiebara
       @url = event["request"]["url"]
       #this._resourceType = event.type.toLowerCase();
       #this._method = event.request.method;
-      #this._postData = event.request.postData;
+      @post_data = event["request"]["postData"]
       @frame = frame
       #this._redirectChain = redirectChain;
       @headers = event["request"].fetch("headers", {}).map do |key, value|
@@ -46,13 +46,6 @@ module Chromiebara
     # */
     #method() {
     #  return this._method;
-    #}
-
-    #/**
-    # * @return {string|undefined}
-    # */
-    #postData() {
-    #  return this._postData;
     #}
 
     #/**
