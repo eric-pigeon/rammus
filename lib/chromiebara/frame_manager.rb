@@ -71,8 +71,14 @@ module Chromiebara
       # timeout ||= timeout_settings.navigation_timeout
 
       watcher = LifecycleWatcher.new self, frame, wait_until, timeout
-      await client.command Protocol::Page.navigate url: url, referrer: referrer, frame_id: frame.id
-      watcher.await_complete
+      response = await client.command Protocol::Page.navigate url: url, referrer: referrer, frame_id: frame.id
+      ensure_new_document_navigation = !!response["loaderId"]
+
+      if ensure_new_document_navigation
+        await watcher.new_document_navigation_promise
+      else
+        await watcher.same_document_navigation_promise
+      end
 
       watcher.dispose
 

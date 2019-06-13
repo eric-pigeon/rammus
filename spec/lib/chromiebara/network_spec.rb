@@ -86,7 +86,11 @@ module Chromiebara
 
     describe 'Response#headers' do
       it 'should work' do
-        response = page.goto server.domain + 'foo-header'
+        server.set_route '/empty.html' do |req, res|
+          res.header['foo'] = 'bar'
+          res.finish
+        end
+        response = page.goto server.empty_page
         expect(response.headers['foo']).to eq 'bar'
       end
     end
@@ -173,7 +177,8 @@ module Chromiebara
       #end
 
       it 'should throw when requesting body of redirected response' do
-        response = page.goto server.domain + 'empty-redirect'
+        server.set_redirect '/foo.html', '/empty.html'
+        response = page.goto server.domain + "foo.html"
         redirect_chain = response.request.redirect_chain
         expect(redirect_chain.length).to eq 1
         redirected = redirect_chain[0].response
@@ -245,7 +250,7 @@ module Chromiebara
 
     describe 'Response#status_text' do
       it 'should work' do
-        response = page.goto server.domain + 'empty'
+        response = page.goto server.domain + 'empty.html'
         expect(response.status_text).to eq 'OK'
       end
     end
@@ -344,96 +349,87 @@ module Chromiebara
       #});
     end
 
-    #describe('Request.isNavigationRequest', () => {
-    #  it('should work', async({page, server}) => {
-    #    const requests = new Map();
-    #    page.on('request', request => requests.set(request.url().split('/').pop(), request));
-    #    server.setRedirect('/rrredirect', '/frames/one-frame.html');
-    #    await page.goto(server.PREFIX + '/rrredirect');
-    #    expect(requests.get('rrredirect').isNavigationRequest()).toBe(true);
-    #    expect(requests.get('one-frame.html').isNavigationRequest()).toBe(true);
-    #    expect(requests.get('frame.html').isNavigationRequest()).toBe(true);
-    #    expect(requests.get('script.js').isNavigationRequest()).toBe(false);
-    #    expect(requests.get('style.css').isNavigationRequest()).toBe(false);
-    #  });
-    #  it('should work with request interception', async({page, server}) => {
-    #    const requests = new Map();
-    #    page.on('request', request => {
-    #      requests.set(request.url().split('/').pop(), request);
-    #      request.continue();
-    #    });
-    #    await page.setRequestInterception(true);
-    #    server.setRedirect('/rrredirect', '/frames/one-frame.html');
-    #    await page.goto(server.PREFIX + '/rrredirect');
-    #    expect(requests.get('rrredirect').isNavigationRequest()).toBe(true);
-    #    expect(requests.get('one-frame.html').isNavigationRequest()).toBe(true);
-    #    expect(requests.get('frame.html').isNavigationRequest()).toBe(true);
-    #    expect(requests.get('script.js').isNavigationRequest()).toBe(false);
-    #    expect(requests.get('style.css').isNavigationRequest()).toBe(false);
-    #  });
-    #  it('should work when navigating to image', async({page, server}) => {
-    #    const requests = [];
-    #    page.on('request', request => requests.push(request));
-    #    await page.goto(server.PREFIX + '/pptr.png');
-    #    expect(requests[0].isNavigationRequest()).toBe(true);
-    #  });
-    #});
+    describe 'Request#is_navigation_Request' do
+      #it('should work', async({page, server}) => {
+      #  const requests = new Map();
+      #  page.on('request', request => requests.set(request.url().split('/').pop(), request));
+      #  server.setRedirect('/rrredirect', '/frames/one-frame.html');
+      #  await page.goto(server.PREFIX + '/rrredirect');
+      #  expect(requests.get('rrredirect').isNavigationRequest()).toBe(true);
+      #  expect(requests.get('one-frame.html').isNavigationRequest()).toBe(true);
+      #  expect(requests.get('frame.html').isNavigationRequest()).toBe(true);
+      #  expect(requests.get('script.js').isNavigationRequest()).toBe(false);
+      #  expect(requests.get('style.css').isNavigationRequest()).toBe(false);
+      #});
 
-    #describe('Page.setExtraHTTPHeaders', function() {
-    #  it('should work', async({page, server}) => {
-    #    await page.setExtraHTTPHeaders({
-    #      foo: 'bar'
-    #    });
-    #    const [request] = await Promise.all([
-    #      server.waitForRequest('/empty.html'),
-    #      page.goto(server.EMPTY_PAGE),
-    #    ]);
-    #    expect(request.headers['foo']).toBe('bar');
-    #  });
-    #  it('should throw for non-string header values', async({page, server}) => {
-    #    let error = null;
-    #    try {
-    #      await page.setExtraHTTPHeaders({ 'foo': 1 });
-    #    } catch (e) {
-    #      error = e;
-    #    }
-    #    expect(error.message).toBe('Expected value of header "foo" to be String, but "number" is found.');
-    #  });
-    #});
+      it 'should work with request interception' do
+        requests = {}
+        page.on :request, -> (request) do
+          requests[request.url.split('/').pop] = request
+          request.continue
+        end
+        page.set_request_interception true
+        server.set_redirect '/rrredirect', '/frames/one-frame.html'
+        page.goto server.domain + 'rrredirect'
+        expect(requests['rrredirect'].is_navigation_request).to eq true
+        expect(requests['one-frame.html'].is_navigation_request).to eq true
+        expect(requests['frame.html'].is_navigation_request).to eq true
+        expect(requests['script.js'].is_navigation_request).to eq true
+        expect(requests['style.css'].is_navigation_request).to eq true
+      end
+
+      it 'should work when navigating to image' do
+        requests = []
+        page.on :request, -> (request) { requests << request }
+        page.goto server.domain + 'pptr.png'
+        expect(requests[0].is_navigation_request).to eq true
+      end
+    end
+
+    describe 'Page#set_extra_http_headers' do
+      it 'should work' do
+        page.set_extra_http_headers foo: 'bar'
+        request, _ = await Promise.all(
+          server.wait_for_request('/empty.html'),
+          page.goto(server.empty_page)
+        )
+        expect(request.headers['foo']).to eq 'bar'
+      end
+
+      it 'should throw for non-string header values' do
+        expect { page.set_extra_http_headers 'foo' => 1 }
+          .to raise_error "Expected value of header 'foo' to be String, but 'Integer' is found."
+      end
+    end
 
     describe 'Page#authenticate' do
       it 'should work' do
-        response = page.goto server.domain + 'protected'
+        server.set_auth '/empty.html', 'user', 'pass'
+        response = page.goto server.empty_page
         expect(response.status).to eq 401
         page.authenticate username: 'user', password: 'pass'
         response = page.reload
         expect(response.status).to eq 200
       end
 
-      #it('should fail if wrong credentials', async({page, server}) => {
-      #  // Use unique user/password since Chrome caches credentials per origin.
-      #  server.setAuth('/empty.html', 'user2', 'pass2');
-      #  await page.authenticate({
-      #    username: 'foo',
-      #    password: 'bar'
-      #  });
-      #  const response = await page.goto(server.EMPTY_PAGE);
-      #  expect(response.status()).toBe(401);
-      #});
-      #it('should allow disable authentication', async({page, server}) => {
-      #  // Use unique user/password since Chrome caches credentials per origin.
-      #  server.setAuth('/empty.html', 'user3', 'pass3');
-      #  await page.authenticate({
-      #    username: 'user3',
-      #    password: 'pass3'
-      #  });
-      #  let response = await page.goto(server.EMPTY_PAGE);
-      #  expect(response.status()).toBe(200);
-      #  await page.authenticate(null);
-      #  // Navigate to a different origin to bust Chrome's credential caching.
-      #  response = await page.goto(server.CROSS_PROCESS_PREFIX + '/empty.html');
-      #  expect(response.status()).toBe(401);
-      #});
+      it 'should fail if wrong credentials' do
+        server.set_auth '/empty.html', 'user2', 'pass2'
+        page.authenticate username: 'foo', password: 'bar'
+        response = page.goto server.empty_page
+        expect(response.status).to eq 401
+      end
+
+      it 'should allow disable authentication' do
+        server.set_auth '/empty.html', 'user3', 'pass3'
+        page.authenticate username: 'user3', password: 'pass3'
+        response = page.goto server.empty_page
+        expect(response.status).to eq 200
+
+        page.authenticate
+        # Navigate to a different origin to bust Chrome's credential caching.
+        response = page.goto server.cross_process_domain + 'empty.html'
+        expect(response.status).to eq 401
+      end
     end
   end
 end

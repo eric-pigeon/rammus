@@ -1,22 +1,54 @@
 require 'chromiebara'
-require 'support/test_app'
+#require 'support/test_app'
+require 'support/test_server'
 require 'support/match_screenshot'
 require 'support/test_emitter'
 if RUBY_ENGINE != "jruby"
   require 'byebug'
 end
 
+class Server
+  def domain
+    'http://localhost:4567/'
+  end
+
+  def cross_process_domain
+    'http://127.0.0.1:4567/'
+  end
+
+  def empty_page
+    domain + "empty.html"
+  end
+
+  def set_content_security_policy(path, policy)
+    raise 'what'
+  end
+
+  def set_route(path, &block)
+    TestServer.instance.set_route path, &block
+  end
+
+  def set_redirect(from, to)
+    TestServer.instance.set_redirect from, to
+  end
+
+  def set_auth(path, username, password)
+    TestServer.instance.set_auth path, username, password
+  end
+
+  def wait_for_request(path)
+    TestServer.instance.wait_for_request path
+  end
+
+  def reset
+    TestServer.instance.reset
+  end
+end
+
 module SeverHelper
   extend RSpec::SharedContext
 
-  let(:server) do
-    domain = 'http://localhost:4567/'
-    OpenStruct.new(
-      domain: domain,
-      cross_process_domain: 'http://127.0.0.1:4567/',
-      empty_page: "#{domain}empty"
-    )
-  end
+  let(:server) { Server.new }
 
   def attach_frame(page, frame_id, url)
     function = <<~JAVASCRIPT
@@ -37,6 +69,8 @@ module SeverHelper
     request.url.include? 'favicon.ico'
   end
 
+  after(:each) { server.reset }
+
   shared_context 'browser', browser: true do
     before(:context) { @_browser = Chromiebara::Launcher.launch }
 
@@ -51,11 +85,13 @@ RSpec.configure do |config|
   config.include MatchScreenshot
 
   config.before(:suite) do
-    Thread.new { TestApp.run! }
+    #Thread.new { TestApp.run! }
+    Thread.new { TestServer.start! }
   end
 
   config.after(:suite) do
-    TestApp.stop!
+    #TestApp.stop!
+    TestServer.stop!
   end
   # rspec-expectations config goes here. You can use an alternate
   # assertion/expectation library such as wrong or the stdlib/minitest

@@ -159,11 +159,11 @@ module Chromiebara
       @_workers.values
     end
 
-    #  * @param {boolean} value
-    #  */
-    # async setRequestInterception(value) {
-    #   return this._frameManager.networkManager().setRequestInterception(value);
-    # }
+    #  @param {boolean} value
+    #
+    def set_request_interception(value)
+      frame_manager.network_manager.set_request_interception value
+    end
 
     #  * @param {boolean} enabled
     #  */
@@ -355,11 +355,11 @@ module Chromiebara
       frame_manager.network_manager.authenticate username: username, password: password
     end
 
-    #  * @param {!Object<string, string>} headers
-    #  */
-    # async setExtraHTTPHeaders(headers) {
-    #   return this._frameManager.networkManager().setExtraHTTPHeaders(headers);
-    # }
+    # @param {!Object<string, string>} headers
+    #
+    def set_extra_http_headers(headers)
+      frame_manager.network_manager.set_extra_http_headers headers
+    end
 
     # @param [String] user_agent
     #
@@ -609,13 +609,13 @@ module Chromiebara
       main_frame.evaluate_function function, *args
     end
 
-    #  * @param {Function|string} pageFunction
-    #  * @param {!Array<*>} args
-    #  */
-    # async evaluateOnNewDocument(pageFunction, ...args) {
-    #   const source = helper.evaluationString(pageFunction, ...args);
-    #   await this._client.send('Page.addScriptToEvaluateOnNewDocument', { source });
-    # }
+    # @param {Function|string} pageFunction
+    # @param {!Array<*>} args
+    #
+    def evaluate_on_new_document(page_function, *args)
+      source =  "(#{page_function})(#{args.map(&:to_json).join(',')})"
+      await client.command Protocol::Page.add_script_to_evaluate_on_new_document source: source
+    end
 
     #  * @param {boolean} enabled
     #  */
