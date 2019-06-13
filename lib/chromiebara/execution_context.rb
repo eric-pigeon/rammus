@@ -18,6 +18,7 @@ module Chromiebara
 
     EVALUATION_SCRIPT_URL = '__puppeteer_evaluation_script__';
     SOURCE_URL_REGEX = /^[\040\t]*\/\/[@#] sourceURL=\s*(\S*?)\s*$/m;
+    SUFFIX = "//# sourceURL=#{EVALUATION_SCRIPT_URL}"
 
     attr_reader :client, :world, :context_id
 
@@ -37,10 +38,10 @@ module Chromiebara
       world.nil? ? nil : world.frame
     end
 
-    #  * @param {Function|string} pageFunction
-    #  * @param {...*} args
-    #  * @return {!Promise<(!Object|undefined)>}
-    #  */
+    # @param {Function|string} pageFunction
+    # @param {...*} args
+    # @return {!Promise<(!Object|undefined)>}
+    #
     def evaluate(page_function, *args)
       handle = evaluate_handle page_function, *args
       result = handle.json_value
@@ -56,47 +57,12 @@ module Chromiebara
     end
 
     def evaluate_function(page_function, *args)
-      handle = evaluate_handle_function page_function, *args
-      result = handle.json_value
-      # const result = await handle.jsonValue().catch(error => {
-      #   if (error.message.includes('Object reference chain is too long'))
-      #     return;
-      #   if (error.message.includes('Object couldn\'t be returned by value'))
-      #     return;
-      #   throw error;
-      # });
-      handle.dispose
-      result
+      evaluate_function_internal true, page_function, *args
     end
 
     def evaluate_handle_function(page_function, *args)
       suffix = "//# sourceURL=#{EVALUATION_SCRIPT_URL}"
       function_text = page_function
-
-      _arguments = args.map do |arg|
-        if arg == Float::INFINITY then next { unserializableValue: 'Infinity' } end
-        if arg == -Float::INFINITY then next { unserializableValue: '-Infinity' } end
-
-        object_handle = arg && arg.is_a?(JSHandle) ? arg : nil
-        if object_handle
-          if object_handle.context != self
-           raise 'JSHandles can be evaluated only in the context they were created!'
-          end
-          if object_handle.disposed?
-            raise 'JSHandle is disposed!'
-          end
-          if object_handle.remote_object["unserializable_value"]
-            raise 'TODO'
-            # return { unserializableValue: objectHandle._remoteObject.unserializableValue };
-          end
-          if !object_handle.remote_object["objectId"]
-            next { value: object_handle.remote_object["value"] }
-          end
-          next { objectId: object_handle.remote_object["objectId"] }
-        end
-
-        { value: arg }
-      end
 
       response = await client.command(Protocol::Runtime.call_function_on(
         function_declaration: function_text + "\n" + suffix + "\n",
@@ -140,43 +106,12 @@ module Chromiebara
       # if (exceptionDetails)
       #   throw new Error('Evaluation failed: ' + helper.getExceptionMessage(exceptionDetails));
       # return createJSHandle(this, remoteObject);
-
-      # /**
-      #  * @param {*} arg
-      #  * @return {*}
-      #  * @this {ExecutionContext}
-      #  */
-      # function convertArgument(arg) {
-      #   if (typeof arg === 'bigint') // eslint-disable-line valid-typeof
-      #     return { unserializableValue: `${arg.toString()}n` };
-      #   if (Object.is(arg, -0))
-      #     return { unserializableValue: '-0' };
-      #   if (Object.is(arg, Infinity))
-      #     return { unserializableValue: 'Infinity' };
-      #   if (Object.is(arg, -Infinity))
-      #     return { unserializableValue: '-Infinity' };
-      #   if (Object.is(arg, NaN))
-      #     return { unserializableValue: 'NaN' };
-      #   const objectHandle = arg && (arg instanceof JSHandle) ? arg : null;
-      #   if (objectHandle) {
-      #     if (objectHandle._context !== this)
-      #       throw new Error('JSHandles can be evaluated only in the context they were created!');
-      #     if (objectHandle._disposed)
-      #       throw new Error('JSHandle is disposed!');
-      #     if (objectHandle._remoteObject.unserializableValue)
-      #       return { unserializableValue: objectHandle._remoteObject.unserializableValue };
-      #     if (!objectHandle._remoteObject.objectId)
-      #       return { value: objectHandle._remoteObject.value };
-      #     return { objectId: objectHandle._remoteObject.objectId };
-      #   }
-      #   return { value: arg };
-      # }
     end
 
-    #  * @param {Function|string} pageFunction
-    #  * @param {...*} args
-    #  * @return {!Promise<!JSHandle>}
-    #  */
+    # @param {Function|string} pageFunction
+    # @param {...*} args
+    # @return {!Promise<!JSHandle>}
+    #
     def evaluate_handle(page_function, *args)
       suffix = "//# sourceURL=#{EVALUATION_SCRIPT_URL}"
 
@@ -230,6 +165,36 @@ module Chromiebara
     # }
 
     private
+
+      def evaluate_function_internal(return_by_value, function_text, *args)
+        call_function_on_promise =
+          begin
+             client.command Protocol::Runtime.call_function_on(
+              function_declaration: function_text + "\n" + SUFFIX + "\n",
+              execution_context_id: context_id,
+              arguments: args.map { |arg| convert_argument arg },
+              return_by_value: return_by_value,
+              await_promise: true,
+              user_gesture: true
+            )
+          rescue => err
+            #  if (err instanceof TypeError && err.message === 'Converting circular structure to JSON')
+            #    err.message += ' Are you passing a nested JSHandle?';
+            raise err
+          end
+
+        response = await call_function_on_promise
+
+        if response["exceptionDetails"]
+          #throw new Error('Evaluation failed: ' + helper.getExceptionMessage(exceptionDetails));
+        end
+
+        if return_by_value
+          Util.value_from_remote_object response["result"]
+        else
+          JSHandle.create_js_handle self, response["result"]
+        end
+      end
 
       def convert_argument(arg)
         #if (typeof arg === 'bigint') // eslint-disable-line valid-typeof

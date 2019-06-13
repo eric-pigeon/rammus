@@ -1,8 +1,8 @@
 module Chromiebara
   class Request
 
-    attr_reader :client, :request_id, :url, :frame, :is_navigation_request, :headers, :post_data, :redirect_chain
-    attr_accessor :response, :from_memory_cache
+    attr_reader :client, :request_id, :url, :frame, :is_navigation_request, :headers, :post_data, :redirect_chain, :interception_id
+    attr_accessor :response, :from_memory_cache, :failure_text
 
     # @param {!Puppeteer.CDPSession} client
     # @param {?Puppeteer.Frame} frame
@@ -15,11 +15,11 @@ module Chromiebara
       @client = client
       @request_id = event["requestId"]
       @is_navigation_request = event["requestId"] == event["loaderId"] && event["type"] == 'Document'
-      #this._interceptionId = interceptionId;
+      @interception_id = interception_id
       #this._allowInterception = allowInterception;
       #this._interceptionHandled = false;
       @response = nil
-      #this._failureText = null;
+      @failure_text = nil
 
       @url = event["request"]["url"]
       #this._resourceType = event.type.toLowerCase();
@@ -59,34 +59,33 @@ module Chromiebara
     #  };
     #}
 
-    #/**
-    # * @param {!{url?: string, method?:string, postData?: string, headers?: !Object}} overrides
-    # */
-    #async continue(overrides = {}) {
-    #  // Request interception is not supported for data: urls.
-    #  if (this._url.startsWith('data:'))
-    #    return;
-    #  assert(this._allowInterception, 'Request Interception is not enabled!');
-    #  assert(!this._interceptionHandled, 'Request is already handled!');
-    #  const {
-    #    url,
-    #    method,
-    #    postData,
-    #    headers
-    #  } = overrides;
-    #  this._interceptionHandled = true;
-    #  await this._client.send('Fetch.continueRequest', {
-    #    requestId: this._interceptionId,
-    #    url,
-    #    method,
-    #    postData,
-    #    headers: headers ? headersArray(headers) : undefined,
-    #  }).catch(error => {
-    #    // In certain cases, protocol will return error if the request was already canceled
-    #    // or the page was closed. We should tolerate these errors.
-    #    debugError(error);
-    #  });
-    #}
+    # @param {!{url?: string, method?:string, postData?: string, headers?: !Object}} overrides
+    #
+    def continue(url: nil, method: nil, post_date: nil, headers: nil)
+      # Request interception is not supported for data: urls.
+      #  if (this._url.startsWith('data:'))
+      #    return;
+      #  assert(this._allowInterception, 'Request Interception is not enabled!');
+      #  assert(!this._interceptionHandled, 'Request is already handled!');
+      #  const {
+      #    url,
+      #    method,
+      #    postData,
+      #    headers
+      #  } = overrides;
+      #  this._interceptionHandled = true;
+      #  await this._client.send('Fetch.continueRequest', {
+      #    requestId: this._interceptionId,
+      #    url,
+      #    method,
+      #    postData,
+      #    headers: headers ? headersArray(headers) : undefined,
+      #  }).catch(error => {
+      #    // In certain cases, protocol will return error if the request was already canceled
+      #    // or the page was closed. We should tolerate these errors.
+      #    debugError(error);
+      #  });
+    end
 
     #/**
     # * @param {!{status: number, headers: Object, contentType: string, body: (string|Buffer)}} response

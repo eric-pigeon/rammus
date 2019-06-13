@@ -42,7 +42,7 @@ module Chromiebara
       client.on Protocol::Network.request_served_from_cache, method(:on_request_served_from_cache)
       client.on Protocol::Network.response_received, method(:on_response_received)
       client.on Protocol::Network.loading_finished, method(:on_loading_finished)
-      #this._client.on('Network.loadingFailed', this._onLoadingFailed.bind(this));
+      client.on Protocol::Network.loading_failed, method(:on_loading_failed)
     end
 
     def start
@@ -59,17 +59,15 @@ module Chromiebara
        update_protocol_request_interception
     end
 
-    #  * @param {!Object<string, string>} extraHTTPHeaders
-    #  */
-    # async setExtraHTTPHeaders(extraHTTPHeaders) {
-    #   this._extraHTTPHeaders = {};
-    #   for (const key of Object.keys(extraHTTPHeaders)) {
-    #     const value = extraHTTPHeaders[key];
-    #     assert(helper.isString(value), `Expected value of header "${key}" to be String, but "${typeof value}" is found.`);
-    #     this._extraHTTPHeaders[key.toLowerCase()] = value;
-    #   }
-    #   await this._client.send('Network.setExtraHTTPHeaders', { headers: this._extraHTTPHeaders });
-    # }
+    # @param {!Object<string, string>} extraHTTPHeaders
+    #
+    def set_extra_http_headers(extra_http_headers)
+      @_extra_http_headers = extra_http_headers.map do |key, value|
+        raise "Expected value of header '#{key}' to be String, but '#{value.class}' is found." unless value.is_a? String
+        [key.downcase, value]
+      end.to_h
+      await client.command Protocol::Network.set_extra_http_headers headers: @_extra_http_headers
+    end
 
     # @return {!Object<string, string>}
     #
@@ -105,29 +103,12 @@ module Chromiebara
     #   await this._updateProtocolCacheDisabled();
     # }
 
-    #  * @param {boolean} value
-    #  */
-    # async setRequestInterception(value) {
-    #   this._userRequestInterceptionEnabled = value;
-    #   await this._updateProtocolRequestInterception();
-    # }
-
-    #  * @param {!Protocol.Network.loadingFailedPayload} event
-    #  */
-    # _onLoadingFailed(event) {
-    #   const request = this._requestIdToRequest.get(event.requestId);
-    #   // For certain requestIds we never receive requestWillBeSent event.
-    #   // @see https://crbug.com/750469
-    #   if (!request)
-    #     return;
-    #   request._failureText = event.errorText;
-    #   const response = request.response();
-    #   if (response)
-    #     response._bodyLoadedPromiseFulfill.call(null);
-    #   this._requestIdToRequest.delete(request._requestId);
-    #   this._attemptedAuthentications.delete(request._interceptionId);
-    #   this.emit(Events.NetworkManager.RequestFailed, request);
-    # }
+    # @param {boolean} value
+    #
+    def set_request_interception(value)
+      @_user_request_interception_enabled = value
+      update_protocol_request_interception
+    end
 
     private
 
@@ -284,9 +265,24 @@ module Chromiebara
         password ||= @_credentials[:password]
         client.command Protocol::Fetch.continue_with_auth(
           request_id: event["requestId"],
-          auth_challenge_response: { response: response, username: username, password: password }
+          auth_challenge_response: { response: response, username: username, password: password }.compact
         )
         # TODO catch debugError
+      end
+
+      # @param {!Protocol.Network.loadingFailedPayload} event
+      #
+      def on_loading_failed(event)
+        request = @_request_id_to_request[event["requestId"]]
+        # For certain requestIds we never receive requestWillBeSent event.
+        # @see https://crbug.com/750469
+        return if request.nil?
+        request.failure_text = event["errorText"]
+        response = request.response
+        response.body_loaded_promise_fulfill.(nil) if response
+        @_request_id_to_request.delete request.request_id
+        @_attempted_authentications.delete request.interception_id
+        emit :request_failed, request
       end
   end
 end
