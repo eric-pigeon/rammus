@@ -121,9 +121,8 @@ module Chromiebara
           interception_id = @_request_id_to_interception_id[request_id]
 
           if interception_id
-            # TODO
-            #this._onRequest(event, interceptionId);
-            #this._requestIdToInterceptionId.delete(requestId);
+            on_request event, interception_id
+            @_request_id_to_interception_id.delete request_id
           else
             @_request_id_to_request_will_be_sent_event[event["requestId"]]= event
           end
@@ -176,9 +175,8 @@ module Chromiebara
           request.response.body_loaded_promise_fulfill.call(nil)
         end
         @_request_id_to_request.delete(request.request_id)
-        # TODO
-        #this._attemptedAuthentications.delete(request._interceptionId);
-        #this.emit(Events.NetworkManager.RequestFinished, request);
+        @_attempted_authentications.delete request.interception_id
+        emit :request_finished, request
       end
 
       # @param {!Protocol.Network.requestServedFromCachePayload} event
@@ -198,10 +196,9 @@ module Chromiebara
 
         response.body_loaded_promise_fulfill.(StandardError.new 'Response body is unavailable for redirect responses')
         @_request_id_to_request.delete(request.request_id)
-        # TODO
-        # this._attemptedAuthentications.delete(request._interceptionId);
-        # this.emit(Events.NetworkManager.Response, response);
-        # this.emit(Events.NetworkManager.RequestFinished, request);
+        @_attempted_authentications.delete request.interception_id
+        emit :response, response
+        emit :request_finished, request
       end
 
       def update_protocol_cache_disabled

@@ -16,6 +16,10 @@ class Server
     'http://127.0.0.1:4567/'
   end
 
+  def port
+    4567
+  end
+
   def empty_page
     domain + "empty.html"
   end
@@ -38,6 +42,10 @@ class Server
 
   def wait_for_request(path)
     TestServer.instance.wait_for_request path
+  end
+
+  def enable_gzip(path)
+    TestServer.instance.enable_gzip path
   end
 
   def reset

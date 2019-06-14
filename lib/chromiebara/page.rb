@@ -81,7 +81,7 @@ module Chromiebara
       network_manager.on :request, -> (event) { emit :request, event }
       network_manager.on :response, -> (event) { emit :response, event }
       network_manager.on :request_failed, -> (event) { emit :request_failed, event }
-      network_manager.on :equest_finished, -> (event) { emit :request_finished, event }
+      network_manager.on :request_finished, -> (event) { emit :request_finished, event }
 
       # client.on('Page.domContentEventFired', event => this.emit(Events.Page.DOMContentLoaded));
       # client.on('Page.loadEventFired', event => this.emit(Events.Page.Load));

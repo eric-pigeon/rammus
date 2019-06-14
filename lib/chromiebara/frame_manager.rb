@@ -284,7 +284,6 @@ module Chromiebara
 
         # Detach all child frames first.
         if (frame)
-
           frame.child_frames.each do |child|
             remove_frames_recursively child
           end
@@ -294,8 +293,9 @@ module Chromiebara
         if is_main_frame
           if frame
             # Update frame id to retain frame identity on cross-process navigation.
-            #    this._frames.delete(frame._id);
-            #    frame._id = framePayload.id;
+            @_frames.delete frame.id
+            # TODO
+            frame.instance_variable_set(:@id, frame_payload["id"])
           else
             # Initial main frame navigation.
             frame = Frame.new self, client, nil, frame_payload["id"]
@@ -307,7 +307,7 @@ module Chromiebara
         # Update frame payload.
         frame.send(:navigated, frame_payload);
 
-        #   this.emit(Events.FrameManager.FrameNavigated, frame);
+        # this.emit(Events.FrameManager.FrameNavigated, frame);
       end
 
       # @param {!Protocol.Page.lifecycleEventPayload} event
