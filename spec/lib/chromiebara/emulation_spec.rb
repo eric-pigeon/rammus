@@ -9,8 +9,7 @@ module Chromiebara
 
     describe 'Page#viewport' do
       it 'should get the proper viewport size' do
-        # TODO
-        # expect(page.viewport).to eq(width: 800, height: 600)
+        expect(page.viewport).to eq(width: 800, height: 600)
         page.set_viewport width: 123, height: 456
         expect(page.viewport).to eq(width: 123, height: 456)
       end
