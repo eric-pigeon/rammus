@@ -2,7 +2,8 @@ module Chromiebara
   class Response
     include Promise::Await
 
-    attr_reader :client, :request, :url, :status, :status_text, :from_service_worker, :body_loaded_promise_fulfill
+    attr_reader :client, :request, :url, :status, :status_text, :from_service_worker, :body_loaded_promise_fulfill,
+      :remote_address
 
     def initialize(client, request, response_payload)
       @client = client
@@ -11,10 +12,10 @@ module Chromiebara
 
       @_body_loaded_promise, @body_loaded_promise_fulfill, _ = Promise.create
 
-      #this._remoteAddress = {
-      #  ip: responsePayload.remoteIPAddress,
-      #  port: responsePayload.remotePort,
-      #};
+      @remote_address = {
+        ip: response_payload["remoteIPAddress"],
+        port: response_payload["remotePort"]
+      }
       @status = response_payload["status"]
       @status_text = response_payload["statusText"]
       @url = request.url
@@ -26,17 +27,11 @@ module Chromiebara
       #this._securityDetails = responsePayload.securityDetails ? new SecurityDetails(responsePayload.securityDetails) : null;
     end
 
-    # * @return {{ip: string, port: number}}
-    # */
-    #remoteAddress() {
-    #  return this._remoteAddress;
-    #}
-
-    # * @return {boolean}
-    # */
-    #ok() {
-    #  return this._status === 0 || (this._status >= 200 && this._status <= 299);
-    #}
+    # @return {boolean}
+    #
+    def ok?
+      status == 0 || status >= 200 && status <= 299
+    end
 
     # @return {!Object}
     #

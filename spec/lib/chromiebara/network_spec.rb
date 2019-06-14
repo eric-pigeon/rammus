@@ -168,13 +168,12 @@ module Chromiebara
         expect(response.text).to eq "{\"foo\": \"bar\"}\n"
       end
 
-      # TODO
-      #it 'should return uncompressed text' do
-      #  server.enableGzip('/simple.json');
-      #  const response = await page.goto(server.PREFIX + '/simple.json');
-      #  expect(response.headers()['content-encoding']).toBe('gzip');
-      #  expect(await response.text()).toBe('{"foo": "bar"}\n');
-      #end
+      it 'should return uncompressed text' do
+        server.enable_gzip '/simple.json'
+        response = page.goto server.domain + 'simple.json'
+        expect(response.headers['content-encoding']).to eq 'gzip'
+        expect(response.text).to eq "{\"foo\": \"bar\"}\n"
+      end
 
       it 'should throw when requesting body of redirected response' do
         server.set_redirect '/foo.html', '/empty.html'
@@ -192,16 +191,16 @@ module Chromiebara
       xit 'should wait until response completes' do
         page.goto server.empty_page
         # Setup server to trap request.
-        #let serverResponse = null;
-        #server.setRoute('/get', (req, res) => {
-        #  serverResponse = res;
-        #  // In Firefox, |fetch| will be hanging until it receives |Content-Type| header
-        #  // from server.
-        #  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-        #  res.write('hello ');
-        #});
-        #// Setup page to trap response.
-        #let requestFinished = false;
+        server_response = nil
+        server.set_route '/get' do |req, res|
+          server_response = res
+          # In Firefox, |fetch| will be hanging until it receives |Content-Type| header
+          # from server.
+          #res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+          #res.write('hello ');
+        end
+        # Setup page to trap response.
+        _request_finished = false
         #page.on('requestfinished', r => requestFinished = requestFinished || r.url().includes('/get'));
         #// send request and wait for server response
         #const [pageResponse] = await Promise.all([
@@ -232,20 +231,20 @@ module Chromiebara
     end
 
     describe 'Response#buffer' do
-      # REALLY TODO
-      #it('should work', async({page, server}) => {
+      # TODO
+      xit 'should work' do
       #  const response = await page.goto(server.PREFIX + '/pptr.png');
       #  const imageBuffer = fs.readFileSync(path.join(__dirname, 'assets', 'pptr.png'));
       #  const responseBuffer = await response.buffer();
       #  expect(responseBuffer.equals(imageBuffer)).toBe(true);
-      #});
-      #it('should work with compression', async({page, server}) => {
+      end
+      xit 'should work with compression' do
       #  server.enableGzip('/pptr.png');
       #  const response = await page.goto(server.PREFIX + '/pptr.png');
       #  const imageBuffer = fs.readFileSync(path.join(__dirname, 'assets', 'pptr.png'));
       #  const responseBuffer = await response.buffer();
       #  expect(responseBuffer.equals(imageBuffer)).toBe(true);
-      #});
+      end;
     end
 
     describe 'Response#status_text' do
@@ -256,111 +255,112 @@ module Chromiebara
     end
 
     describe 'Network Events' do
-      # TODO
-      #it('Page.Events.Request', async({page, server}) => {
-      #  const requests = [];
-      #  page.on('request', request => requests.push(request));
-      #  await page.goto(server.EMPTY_PAGE);
-      #  expect(requests.length).toBe(1);
-      #  expect(requests[0].url()).toBe(server.EMPTY_PAGE);
-      #  expect(requests[0].resourceType()).toBe('document');
-      #  expect(requests[0].method()).toBe('GET');
-      #  expect(requests[0].response()).toBeTruthy();
-      #  expect(requests[0].frame() === page.mainFrame()).toBe(true);
-      #  expect(requests[0].frame().url()).toBe(server.EMPTY_PAGE);
-      #});
-      #it('Page.Events.Response', async({page, server}) => {
-      #  const responses = [];
-      #  page.on('response', response => responses.push(response));
-      #  await page.goto(server.EMPTY_PAGE);
-      #  expect(responses.length).toBe(1);
-      #  expect(responses[0].url()).toBe(server.EMPTY_PAGE);
-      #  expect(responses[0].status()).toBe(200);
-      #  expect(responses[0].ok()).toBe(true);
-      #  expect(responses[0].request()).toBeTruthy();
-      #  const remoteAddress = responses[0].remoteAddress();
-      #  // Either IPv6 or IPv4, depending on environment.
-      #  expect(remoteAddress.ip.includes('::1') || remoteAddress.ip === '127.0.0.1').toBe(true);
-      #  expect(remoteAddress.port).toBe(server.PORT);
-      #});
+      it 'Page.Events.Request' do
+        requests = []
+        page.on :request, -> (request) { requests << request }
+        page.goto server.empty_page
+        expect(requests.length).to eq 1
+        expect(requests[0].url).to eq server.empty_page
+        expect(requests[0].resource_type).to eq 'document'
+        expect(requests[0].method).to eq 'GET'
+        expect(requests[0].response).not_to be_nil
+        expect(requests[0].frame == page.main_frame).to eq true
+        expect(requests[0].frame.url).to eq server.empty_page
+      end
 
-      #it('Page.Events.RequestFailed', async({page, server}) => {
-      #  await page.setRequestInterception(true);
-      #  page.on('request', request => {
-      #    if (request.url().endsWith('css'))
-      #      request.abort();
-      #    else
-      #      request.continue();
-      #  });
-      #  const failedRequests = [];
-      #  page.on('requestfailed', request => failedRequests.push(request));
-      #  await page.goto(server.PREFIX + '/one-style.html');
-      #  expect(failedRequests.length).toBe(1);
-      #  expect(failedRequests[0].url()).toContain('one-style.css');
-      #  expect(failedRequests[0].response()).toBe(null);
-      #  expect(failedRequests[0].resourceType()).toBe('stylesheet');
-      #  if (CHROME)
-      #    expect(failedRequests[0].failure().errorText).toBe('net::ERR_FAILED');
-      #  else
-      #    expect(failedRequests[0].failure().errorText).toBe('NS_ERROR_FAILURE');
-      #  expect(failedRequests[0].frame()).toBeTruthy();
-      #});
-      #it('Page.Events.RequestFinished', async({page, server}) => {
-      #  const requests = [];
-      #  page.on('requestfinished', request => requests.push(request));
-      #  await page.goto(server.EMPTY_PAGE);
-      #  expect(requests.length).toBe(1);
-      #  expect(requests[0].url()).toBe(server.EMPTY_PAGE);
-      #  expect(requests[0].response()).toBeTruthy();
-      #  expect(requests[0].frame() === page.mainFrame()).toBe(true);
-      #  expect(requests[0].frame().url()).toBe(server.EMPTY_PAGE);
-      #});
-      #it('should fire events in proper order', async({page, server}) => {
-      #  const events = [];
-      #  page.on('request', request => events.push('request'));
-      #  page.on('response', response => events.push('response'));
-      #  page.on('requestfinished', request => events.push('requestfinished'));
-      #  await page.goto(server.EMPTY_PAGE);
-      #  expect(events).toEqual(['request', 'response', 'requestfinished']);
-      #});
-      #it('should support redirects', async({page, server}) => {
-      #  const events = [];
-      #  page.on('request', request => events.push(`${request.method()} ${request.url()}`));
-      #  page.on('response', response => events.push(`${response.status()} ${response.url()}`));
-      #  page.on('requestfinished', request => events.push(`DONE ${request.url()}`));
-      #  page.on('requestfailed', request => events.push(`FAIL ${request.url()}`));
-      #  server.setRedirect('/foo.html', '/empty.html');
-      #  const FOO_URL = server.PREFIX + '/foo.html';
-      #  const response = await page.goto(FOO_URL);
-      #  expect(events).toEqual([
-      #    `GET ${FOO_URL}`,
-      #    `302 ${FOO_URL}`,
-      #    `DONE ${FOO_URL}`,
-      #    `GET ${server.EMPTY_PAGE}`,
-      #    `200 ${server.EMPTY_PAGE}`,
-      #    `DONE ${server.EMPTY_PAGE}`
-      #  ]);
+      it 'Page.Events.Response' do
+        responses = []
+        page.on :response, -> (response) { responses << response }
+        page.goto server.empty_page
+        expect(responses.length).to eq 1
+        expect(responses[0].url).to eq server.empty_page
+        expect(responses[0].status).to eq 200
+        expect(responses[0].ok?).to eq true
+        expect(responses[0].request).not_to be_nil
+        remote_address = responses[0].remote_address
+        # Either IPv6 or IPv4, depending on environment.
+        expect(remote_address[:ip].include?('::1') || remote_address.ip == '127.0.0.1').to eq true
+        expect(remote_address[:port]).to eq server.port
+      end
 
-      #  // Check redirect chain
-      #  const redirectChain = response.request().redirectChain();
-      #  expect(redirectChain.length).toBe(1);
-      #  expect(redirectChain[0].url()).toContain('/foo.html');
-      #  expect(redirectChain[0].response().remoteAddress().port).toBe(server.PORT);
-      #});
+      it 'Page.Events.RequestFailed' do
+        page.set_request_interception true
+        page.on :request, -> (request) do
+          if request.url.end_with? 'css'
+            request.abort
+          else
+            request.continue
+          end
+        end
+        failed_requests = []
+        page.on :request_failed, -> (request) {failed_requests << request }
+        page.goto server.domain + 'one-style.html'
+        expect(failed_requests.length).to eq 1
+        expect(failed_requests[0].url).to include 'one-style.css'
+        expect(failed_requests[0].response).to eq nil
+        expect(failed_requests[0].resource_type).to eq 'stylesheet'
+        expect(failed_requests[0].failure[:error_text]).to eq 'net::ERR_FAILED'
+        expect(failed_requests[0].frame).not_to be_nil
+      end
+
+      it 'Page.Events.RequestFinished' do
+        requests = []
+        page.on :request_finished, -> (request) { requests << request }
+        page.goto server.empty_page
+        expect(requests.length).to eq 1
+        expect(requests[0].url).to eq server.empty_page
+        expect(requests[0].response).not_to be_nil
+        expect(requests[0].frame == page.main_frame).to eq true
+        expect(requests[0].frame.url).to eq server.empty_page
+      end
+
+      it 'should fire events in proper order' do
+        events = []
+        page.on :request, -> (request) { events << 'request' }
+        page.on :response, -> (response) { events << 'response' }
+        page.on :request_finished, -> (request) { events << 'requestfinished' }
+        page.goto server.empty_page
+        expect(events).to eq ['request', 'response', 'requestfinished']
+      end
+
+      it 'should support redirects' do
+        events = []
+        page.on :request, -> (request) { events << "#{request.method} #{request.url}" }
+        page.on :response, -> (response) { events << "#{response.status} #{response.url}" }
+        page.on :request_finished, -> (request) { events << "DONE #{request.url}" }
+        page.on :request_failed, -> (request) { events <<  "FAIL #{request.url}" }
+        server.set_redirect '/foo.html', '/empty.html'
+        foo_url = server.domain + 'foo.html'
+        response = page.goto foo_url
+        expect(events).to eq([
+          "GET #{foo_url}",
+          "302 #{foo_url}",
+          "DONE #{foo_url}",
+          "GET #{server.empty_page}",
+          "200 #{server.empty_page}",
+          "DONE #{server.empty_page}"
+        ]);
+
+        # Check redirect chain
+        redirect_chain = response.request.redirect_chain
+        expect(redirect_chain.length).to eq 1
+        expect(redirect_chain[0].url).to include  '/foo.html'
+        expect(redirect_chain[0].response.remote_address[:port]).to eq server.port
+      end
     end
 
     describe 'Request#is_navigation_Request' do
-      #it('should work', async({page, server}) => {
-      #  const requests = new Map();
-      #  page.on('request', request => requests.set(request.url().split('/').pop(), request));
-      #  server.setRedirect('/rrredirect', '/frames/one-frame.html');
-      #  await page.goto(server.PREFIX + '/rrredirect');
-      #  expect(requests.get('rrredirect').isNavigationRequest()).toBe(true);
-      #  expect(requests.get('one-frame.html').isNavigationRequest()).toBe(true);
-      #  expect(requests.get('frame.html').isNavigationRequest()).toBe(true);
-      #  expect(requests.get('script.js').isNavigationRequest()).toBe(false);
-      #  expect(requests.get('style.css').isNavigationRequest()).toBe(false);
-      #});
+      it 'should work' do
+        requests = {}
+        page.on :request, -> (request) { requests[request.url.split('/').pop] = request }
+        server.set_redirect '/rrredirect', '/frames/one-frame.html'
+        page.goto server.domain + 'rrredirect'
+        expect(requests['rrredirect'].is_navigation_request).to eq true
+        expect(requests['one-frame.html'].is_navigation_request).to eq true
+        expect(requests['frame.html'].is_navigation_request).to eq true
+        expect(requests['script.js'].is_navigation_request).to eq false
+        expect(requests['style.css'].is_navigation_request).to eq false
+      end
 
       it 'should work with request interception' do
         requests = {}
@@ -374,8 +374,8 @@ module Chromiebara
         expect(requests['rrredirect'].is_navigation_request).to eq true
         expect(requests['one-frame.html'].is_navigation_request).to eq true
         expect(requests['frame.html'].is_navigation_request).to eq true
-        expect(requests['script.js'].is_navigation_request).to eq true
-        expect(requests['style.css'].is_navigation_request).to eq true
+        expect(requests['script.js'].is_navigation_request).to eq false
+        expect(requests['style.css'].is_navigation_request).to eq false
       end
 
       it 'should work when navigating to image' do

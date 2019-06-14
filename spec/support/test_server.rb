@@ -1,4 +1,5 @@
 require 'rack'
+require "zlib"
 
 class TestServer
   HANDLER = Rack::Handler.get('puma')
@@ -109,6 +110,10 @@ class TestServer
     @_auths[path] = [username, password]
   end
 
+  def enable_gzip(path)
+    @_gzip_routes << path
+  end
+
   def reset
     @_routes.clear
     @_auths.clear
@@ -156,11 +161,9 @@ class TestServer
       response.header[Rack::CONTENT_TYPE] = content_type
 
       if @_gzip_routes.include? path
-        # response.setHeader('Content-Encoding', 'gzip');
-        # const zlib = require('zlib');
-        # zlib.gzip(data, (_, result) => {
-        #   response.end(result);
-        # });
+        response.headers['Content-Encoding'] = 'gzip'
+        response.write Zlib.gzip data
+        response.finish
       else
         response.write data
         response.finish
