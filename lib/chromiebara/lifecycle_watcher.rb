@@ -135,7 +135,7 @@ module Chromiebara
       def navigated_within_document(frame)
         return if frame != frame
         @_has_same_document_navigation = true
-        check_lifecycle_complete
+        check_lifecycle_complete nil
       end
 
       # @return [Boolean]

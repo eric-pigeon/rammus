@@ -34,8 +34,8 @@ module Chromiebara
 
       client.on 'Page.frameAttached', -> (event) { on_frame_attached event["frameId"], event["parentFrameId"] }
       client.on 'Page.frameNavigated', -> (event) { on_frame_navigated event["frame"] }
-      # this._client.on('Page.navigatedWithinDocument', event => this._onFrameNavigatedWithinDocument(event.frameId, event.url));
-      # this._client.on('Page.frameDetached', event => this._onFrameDetached(event.frameId));
+      client.on Protocol::Page.navigated_within_document, -> (event) { on_frame_navigated_within_document event["frameId"], event["url"] }
+      client.on Protocol::Page.frame_detached, -> (event) { on_frame_detached event["frameId"] }
       client.on Protocol::Page.frame_stopped_loading, -> (event) { on_frame_stopped_loading event["frameId"] }
       client.on Protocol::Runtime.execution_context_created, -> (event) { on_execution_context_created event["context"] }
       client.on Protocol::Runtime.execution_context_destroyed, -> (event) { on_execution_context_destroyed(event["executionContextId"]) }
@@ -197,28 +197,6 @@ module Chromiebara
     # }
 
     # /**
-    #  * @param {string} frameId
-    #  * @param {string} url
-    #  */
-    # _onFrameNavigatedWithinDocument(frameId, url) {
-    #   const frame = this._frames.get(frameId);
-    #   if (!frame)
-    #     return;
-    #   frame._navigatedWithinDocument(url);
-    #   this.emit(Events.FrameManager.FrameNavigatedWithinDocument, frame);
-    #   this.emit(Events.FrameManager.FrameNavigated, frame);
-    # }
-
-    # /**
-    #  * @param {string} frameId
-    #  */
-    # _onFrameDetached(frameId) {
-    #   const frame = this._frames.get(frameId);
-    #   if (frame)
-    #     this._removeFramesRecursively(frame);
-    # }
-
-    # /**
     #  * @param {number} contextId
     #  * @return {!ExecutionContext}
     #  */
@@ -228,22 +206,10 @@ module Chromiebara
     #   return context;
     # }
 
-    # /**
-    #  * @param {!Frame} frame
-    #  */
-    # _removeFramesRecursively(frame) {
-    #   for (const child of frame.childFrames())
-    #     this._removeFramesRecursively(child);
-    #   frame._detach();
-    #   this._frames.delete(frame._id);
-    #   this.emit(Events.FrameManager.FrameDetached, frame);
-    # }
-
     private
 
-      # /**
-      #  * @param {!Protocol.Page.FrameTree} frameTree
-      #  */
+      # @param {!Protocol.Page.FrameTree} frameTree
+      #
       def handle_frame_tree(frame_tree)
         if frame_tree.dig "frame", "parentId"
           on_frame_attached(frame_tree.dig("frame", "id"), frameTree.dig("frame", "parentId"))
@@ -307,7 +273,7 @@ module Chromiebara
         # Update frame payload.
         frame.send(:navigated, frame_payload);
 
-        # this.emit(Events.FrameManager.FrameNavigated, frame);
+        emit :frame_navigated, frame
       end
 
       # @param {!Protocol.Page.lifecycleEventPayload} event
@@ -329,7 +295,7 @@ module Chromiebara
         parent_frame = @_frames.fetch parent_frame_id
         frame = Frame.new(self, client, parent_frame, frame_id)
         @_frames[frame.id] = frame
-        # this.emit(Events.FrameManager.FrameAttached, frame);
+        emit :frame_attached, frame
       end
 
       # @param [String] frame_id
@@ -379,6 +345,33 @@ module Chromiebara
         end
 
         @_execution_contexts.clear
+      end
+
+      # @param {!Frame} frame
+      #
+      def remove_frames_recursively(frame)
+        frame.child_frames.each { |child| remove_frames_recursively child }
+        frame._detach
+        @_frames.delete frame.id
+        emit :frame_detached, frame
+      end
+
+      # @param {string} frame_id
+      #
+      def on_frame_detached(frame_id)
+        frame = @_frames[frame_id]
+
+        remove_frames_recursively frame if frame
+      end
+
+      # @param {string} frame_id
+      # @param {string} url
+      #
+      def on_frame_navigated_within_document(frame_id, url)
+        return unless frame = @_frames[frame_id]
+        frame._navigated_within_document url
+        emit :frame_navigated_within_document, frame
+        emit :frame_navigated, frame
       end
   end
 end

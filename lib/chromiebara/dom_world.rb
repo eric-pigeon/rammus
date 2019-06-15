@@ -34,18 +34,10 @@ module Chromiebara
       @_context_resolve_callback.nil?
     end
 
-    # _detach() {
-    #   this._detached = true;
-    #   for (const waitTask of this._waitTasks)
-    #     waitTask.terminate(new Error('waitForFunction failed: frame got detached.'));
-    # }
-
     # @return {!Promise<!Puppeteer.ExecutionContext>}
     #
     def execution_context
-      # if (this._detached)
-      #   throw new Error(`Execution Context is not available in detached frame "${this._frame.url()}" (are you trying to evaluate?)`);
-      # return this._contextPromise;
+      raise "Execution Context is not available in detached frame \"#{frame.url}\" (are you trying to evaluate?)" if @_detached
       await @_context_promise
     end
 
@@ -466,6 +458,13 @@ module Chromiebara
     #     }
     #   }
     # }
+
+    def _detach
+      @_detached = true
+      # TODO
+      #   for (const waitTask of this._waitTasks)
+      #     waitTask.terminate(new Error('waitForFunction failed: frame got detached.'));
+    end
 
     private
 

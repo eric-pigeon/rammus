@@ -73,8 +73,32 @@ module SeverHelper
     handle.as_element.content_frame
   end
 
+  def detach_frame(page, frame_id)
+    function = <<~JAVASCRIPT
+      function detachFrame(frameId) {
+        const frame = document.getElementById(frameId);
+        frame.remove();
+      }
+    JAVASCRIPT
+    page.evaluate_function function, frame_id
+  end
+
   def is_favicon(request)
     request.url.include? 'favicon.ico'
+  end
+
+  def wait_event(emitter, event_name, predicate = nil, &block)
+    predicate ||= block || ->(_) { true }
+
+    Chromiebara::Promise.new do |resolve, _|
+      listener = -> (event) do
+        next unless predicate.(event)
+
+        emitter.remove_listener event_name, listener
+        resolve.(event)
+      end
+      emitter.on event_name, listener
+    end
   end
 
   after(:each) { server.reset }
