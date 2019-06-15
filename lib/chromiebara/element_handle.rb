@@ -59,14 +59,13 @@ module Chromiebara
       page.mouse.click(point[:x], point[:y], options)
     end
 
-    #/**
-    # * @param {!Array<string>} filePaths
-    # */
-    #async uploadFile(...filePaths) {
-    #  const files = filePaths.map(filePath => path.resolve(filePath));
-    #  const objectId = this._remoteObject.objectId;
-    #  await this._client.send('DOM.setFileInputFiles', { objectId, files });
-    #}
+    # @param {!Array<string>} file_paths
+    #
+    def upload_file(*file_paths)
+      files = file_paths.map { |file_path| File.expand_path file_path }
+      object_id = remote_object["objectId"]
+      await client.command Protocol::DOM.set_file_input_files(object_id: object_id, files: files)
+    end
 
     def tap
       scroll_into_view_if_needed
@@ -89,9 +88,9 @@ module Chromiebara
     # @param {string} key
     # @param {!{delay?: number, text?: string}=} options
     #
-    def press(key, delay: nil)
+    def press(key, delay: nil, text: nil)
       focus
-      page.keyboard.press key, delay: delay
+      page.keyboard.press key, delay: delay, text: text
     end
 
     # @return {!Promise<?{x: number, y: number, width: number, height: number}>}
