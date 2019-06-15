@@ -74,9 +74,9 @@ module Chromiebara
         @_workers.delete event["sessionId"]
       end
 
-      # this._frameManager.on(Events.FrameManager.FrameAttached, event => this.emit(Events.Page.FrameAttached, event));
-      # this._frameManager.on(Events.FrameManager.FrameDetached, event => this.emit(Events.Page.FrameDetached, event));
-      # this._frameManager.on(Events.FrameManager.FrameNavigated, event => this.emit(Events.Page.FrameNavigated, event));
+      frame_manager.on :frame_attached, -> (event) { emit :frame_attached, event }
+      frame_manager.on :frame_detached, -> (event) { emit :frame_detached, event }
+      frame_manager.on :frame_navigated, -> (event) { emit :frame_navigated, event }
 
       network_manager.on :request, -> (event) { emit :request, event }
       network_manager.on :response, -> (event) { emit :response, event }

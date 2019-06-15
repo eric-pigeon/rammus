@@ -1,6 +1,6 @@
 module Chromiebara
   class Frame
-    attr_reader :id, :frame_manager, :parent_frame, :loader_id, :main_world
+    attr_reader :id, :frame_manager, :parent_frame, :loader_id, :main_world, :name
 
     # @param [Chromiebara::FrameManager] frame_manager
     # @param [Chromiebara::CPDSession] client
@@ -14,7 +14,7 @@ module Chromiebara
       @_url = ''
       @id = id
       @_detached = false
-      @name = ''
+      @_name = nil
 
       @loader_id = ''
       # /** @type {!Set<string>} */
@@ -136,11 +136,9 @@ module Chromiebara
       @_secondary_world.set_content html, timeout: timeout, wait_until: wait_until
     end
 
-    #  * @return {string}
-    #  */
-    # name() {
-    #   return this._name || '';
-    # }
+    def name
+      @_name || ''
+    end
 
     # Frame's URL
     #
@@ -156,11 +154,11 @@ module Chromiebara
       @child_frames.to_a
     end
 
-    #  * @return {boolean}
-    #  */
-    # isDetached() {
-    #   return this._detached;
-    # }
+    # @return {boolean}
+    #
+    def is_detached?
+      @_detached
+    end
 
     #  * @param {!{url?: string, path?: string, content?: string, type?: string}} options
     #  * @return {!Promise<!Puppeteer.ElementHandle>}
@@ -289,22 +287,29 @@ module Chromiebara
       secondary_world.title
     end
 
+    def _detach
+      @_detached = true
+      main_world._detach
+      secondary_world._detach
+      # TODO
+      parent_frame.instance_variable_get(:@child_frames).delete self if parent_frame
+      @parent_frame = nil
+    end
+
+    # @param {string} url
+    #
+    def _navigated_within_document(url)
+      @_url = url
+    end
+
     private
 
       # @param [Hash] frame_payload Protocol.Page.Frame
       #
       def navigated(frame_payload)
-        @name = frame_payload["name"]
-        # TODO(lushnikov): remove this once requestInterception has loaderId exposed.
-        # this._navigationURL = framePayload.url;
+        @_name = frame_payload["name"]
         @_url = frame_payload["url"]
       end
-
-      #  * @param {string} url
-      #  */
-      # _navigatedWithinDocument(url) {
-      #   this._url = url;
-      # }
 
       # @param [String] loader_id
       # @param [String] name
@@ -322,14 +327,5 @@ module Chromiebara
         @_lifecycle_events.add 'DOMContentLoaded'
         @_lifecycle_events.add 'load'
       end
-
-      # _detach() {
-      #   this._detached = true;
-      #   this._mainWorld._detach();
-      #   this._secondaryWorld._detach();
-      #   if (this._parentFrame)
-      #     this._parentFrame._childFrames.delete(this);
-      #   this._parentFrame = null;
-      # }
   end
 end
