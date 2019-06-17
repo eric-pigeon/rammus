@@ -39,11 +39,11 @@ module Chromiebara
       @target = target
       @keyboard = Keyboard.new client
       @mouse = Mouse.new client, keyboard
-      @_timeoutSettings = TimeoutSettings.new
+      @_timeout_settings = TimeoutSettings.new
       @touchscreen = Touchscreen.new client, keyboard
       @accessibility = Accessibility.new client
       @_ignore_https_errors = ignore_https_errors
-      @frame_manager = FrameManager.new(client, self, ignore_https_errors)
+      @frame_manager = FrameManager.new(client, self, ignore_https_errors, @_timeout_settings)
       @_emulation_manager = EmulationManager.new client
       # this._tracing = new Tracing(client);
       # /** @type {!Map<string, Function>} */
@@ -84,7 +84,7 @@ module Chromiebara
       network_manager.on :request_finished, -> (event) { emit :request_finished, event }
 
       # client.on('Page.domContentEventFired', event => this.emit(Events.Page.DOMContentLoaded));
-      # client.on('Page.loadEventFired', event => this.emit(Events.Page.Load));
+      client.on Protocol::Page.load_event_fired, -> (_event) { emit :load }
       # client.on('Runtime.consoleAPICalled', event => this._onConsoleAPI(event));
       # client.on('Runtime.bindingCalled', event => this._onBindingCalled(event));
       client.on Protocol::Page.javascript_dialog_opening, method(:on_dialog)
@@ -171,19 +171,17 @@ module Chromiebara
     #   return this._frameManager.networkManager().setOfflineMode(enabled);
     # }
 
-    # /**
-    #  * @param {number} timeout
-    #  */
-    # setDefaultNavigationTimeout(timeout) {
-    #   this._timeoutSettings.setDefaultNavigationTimeout(timeout);
-    # }
+    # @param {number} timeout
+    #
+    def set_default_navigation_timeout(timeout)
+      @_timeout_settings.set_default_navigation_timeout timeout
+    end
 
-    # /**
-    #  * @param {number} timeout
-    #  */
-    # setDefaultTimeout(timeout) {
-    #   this._timeoutSettings.setDefaultTimeout(timeout);
-    # }
+    # @param {number} timeout
+    #
+    def set_default_timeout(timeout)
+      @_timeout_settings.timeout = timeout
+    end
 
     # @param {string} selector
     # @return {!Promise<?Puppeteer.ElementHandle>}
@@ -462,8 +460,8 @@ module Chromiebara
     # @param [String] url
     # TODO
     #
-    def goto(url, referrer: nil, timeout: nil, wait_until: nil)
-      main_frame.goto url, referrer: referrer, timeout: timeout, wait_until: wait_until
+    def goto(url, referer: nil, timeout: nil, wait_until: nil)
+      main_frame.goto url, referer: referer, timeout: timeout, wait_until: wait_until
     end
 
     # @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
@@ -518,34 +516,19 @@ module Chromiebara
     #   }, timeout);
     # }
 
-    #  * @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
-    #  * @return {!Promise<?Puppeteer.Response>}
-    #  */
-    # async goBack(options) {
-    #   return this._go(-1, options);
-    # }
+    # @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
+    # @return {!Promise<?Puppeteer.Response>}
+    #
+    def go_back(timeout: nil, wait_until: nil)
+      go(-1, timeout: timeout, wait_until: wait_until)
+    end
 
-    #  * @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
-    #  * @return {!Promise<?Puppeteer.Response>}
-    #  */
-    # async goForward(options) {
-    #   return this._go(+1, options);
-    # }
-
-    #  * @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
-    #  * @return {!Promise<?Puppeteer.Response>}
-    #  */
-    # async _go(delta, options) {
-    #   const history = await this._client.send('Page.getNavigationHistory');
-    #   const entry = history.entries[history.currentIndex + delta];
-    #   if (!entry)
-    #     return null;
-    #   const [response] = await Promise.all([
-    #     this.waitForNavigation(options),
-    #     this._client.send('Page.navigateToHistoryEntry', {entryId: entry.id}),
-    #   ]);
-    #   return response;
-    # }
+    # @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
+    # @return {!Promise<?Puppeteer.Response>}
+    #
+    def go_forward(timeout: nil, wait_until: nil)
+      go(1, timeout: timeout, wait_until: wait_until)
+    end
 
     # async bringToFront() {
     #   await this._client.send('Page.bringToFront');
@@ -617,11 +600,11 @@ module Chromiebara
       await client.command Protocol::Page.add_script_to_evaluate_on_new_document source: source
     end
 
-    #  * @param {boolean} enabled
-    #  */
-    # async setCacheEnabled(enabled = true) {
-    #   await this._frameManager.networkManager().setCacheEnabled(enabled);
-    # }
+    # @param {boolean} enabled
+    #
+    def set_cache_enabled(enabled = true)
+      frame_manager.network_manager.set_cache_enabled enabled
+    end
 
     # @param {!ScreenshotOptions=} options
     # @return {!Promise<!Buffer|!String>}
@@ -798,11 +781,11 @@ module Chromiebara
       end
     end
 
-    #  * @return {boolean}
-    #  */
-    # isClosed() {
-    #   return this._closed;
-    # }
+    # @return {boolean}
+    #
+    def is_closed?
+       @_closed
+    end
 
     # @param {string} selector
     # @param {!{delay?: number, button?: "left"|"right"|"middle", clickCount?: number}=} options
@@ -978,6 +961,20 @@ module Chromiebara
                    end
         message = ConsoleMessage.new type, text_tokens.join(' '), args, location
         emit(:console, message)
+      end
+
+      # @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
+      # @return {!Promise<?Puppeteer.Response>}
+      #
+      def go(delta, timeout: nil, wait_until: nil)
+        history = await client.command Protocol::Page.get_navigation_history
+        entry = history["entries"][history["currentIndex"] + delta]
+        return if entry.nil?
+        response, _ = await Promise.all(
+         wait_for_navigation(timeout: timeout, wait_until: wait_until),
+         client.command(Protocol::Page.navigate_to_history_entry entry_id: entry["id"])
+        )
+        response
       end
   end
 end

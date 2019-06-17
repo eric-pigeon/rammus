@@ -78,10 +78,10 @@ module Chromiebara
     #  return this._fromServiceWorker;
     #}
 
-    # * @return {?Puppeteer.Frame}
-    # */
-    #frame() {
-    #  return this._request.frame();
-    #}
+    # @return {?Puppeteer.Frame}
+    #
+    def frame
+      request.frame
+    end
   end
 end

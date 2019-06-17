@@ -25,7 +25,7 @@ module Chromiebara
         #helper.addEventListener(frameManager._client, Events.CDPSession.Disconnected, () => this._terminate(new Error('Navigation failed because browser has disconnected!'))),
         Util.add_event_listener(frame_manager, FrameManager.LifecycleEvent, method(:check_lifecycle_complete)),
         Util.add_event_listener(frame_manager, :frame_navigated_within_document, method(:navigated_within_document)),
-        # helper.addEventListener(this._frameManager, Events.FrameManager.FrameDetached, this._onFrameDetached.bind(this)),
+        Util.add_event_listener(frame_manager, :frame_detached, method(:on_frame_detached)),
         Util.add_event_listener(frame_manager.network_manager, :request, method(:on_request))
       ]
 
@@ -36,26 +36,14 @@ module Chromiebara
       @new_document_navigation_promise, @_new_document_navigation_complete_callback, _ = Promise.create
 
       #this._timeoutPromise = this._createTimeoutPromise();
-      #this._terminationPromise = new Promise(fulfill => {
-      #  this._terminationCallback = fulfill;
-      #});
-      #this._checkLifecycleComplete();
+      @_terminal_promise, @_termination_callback, _ = Promise.create
+      check_lifecycle_complete(nil)
     end
 
     # TODO
     def await_complete
       await lifecycle_promise, @timeout
     end
-
-    # * @param {!Puppeteer.Frame} frame
-    # */
-    #_onFrameDetached(frame) {
-    #  if (this._frame === frame) {
-    #    this._terminationCallback.call(null, new Error('Navigating frame was detached'));
-    #    return;
-    #  }
-    #  this._checkLifecycleComplete();
-    #}
 
     # @return {?Puppeteer.Response}
     #
@@ -75,7 +63,10 @@ module Chromiebara
       @_lifecycle_promise
     end
 
-    #  /**
+    def termination_promise
+      @_terminal_promise
+    end
+
     #   * @return {!Promise<?Error>}
     #   */
     #  timeoutOrTerminationPromise() {
@@ -135,6 +126,16 @@ module Chromiebara
       def navigated_within_document(frame)
         return if frame != frame
         @_has_same_document_navigation = true
+        check_lifecycle_complete nil
+      end
+
+      # @param {!Puppeteer.Frame} frame
+      #
+      def on_frame_detached(frame)
+        if self.frame == frame
+          @_termination_callback.('Navigating frame was detached')
+          return
+        end
         check_lifecycle_complete nil
       end
 

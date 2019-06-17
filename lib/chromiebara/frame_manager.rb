@@ -17,12 +17,13 @@ module Chromiebara
     # @param [Chromiebara::CDPSession] client
     # @param [Chromiebara::Page] page
     #
-    def initialize(client, page, ignore_https_errors)
+    def initialize(client, page, ignore_https_errors, timeout_settings)
       super()
       @client = client
       @page = page
 
       @network_manager = NetworkManager.new client, self, ignore_https_errors
+      @_timeout_settings = timeout_settings
 
       # @type [Hash<String, Frame>]
       @_frames = {}
@@ -32,15 +33,15 @@ module Chromiebara
       @_isolated_worlds = Set.new
       @_main_frame = nil
 
-      client.on 'Page.frameAttached', -> (event) { on_frame_attached event["frameId"], event["parentFrameId"] }
-      client.on 'Page.frameNavigated', -> (event) { on_frame_navigated event["frame"] }
+      client.on Protocol::Page.frame_attached, -> (event) { on_frame_attached event["frameId"], event["parentFrameId"] }
+      client.on Protocol::Page.frame_navigated, -> (event) { on_frame_navigated event["frame"] }
       client.on Protocol::Page.navigated_within_document, -> (event) { on_frame_navigated_within_document event["frameId"], event["url"] }
       client.on Protocol::Page.frame_detached, -> (event) { on_frame_detached event["frameId"] }
       client.on Protocol::Page.frame_stopped_loading, -> (event) { on_frame_stopped_loading event["frameId"] }
       client.on Protocol::Runtime.execution_context_created, -> (event) { on_execution_context_created event["context"] }
       client.on Protocol::Runtime.execution_context_destroyed, -> (event) { on_execution_context_destroyed(event["executionContextId"]) }
       client.on Protocol::Runtime.execution_contexts_cleared, method(:on_execution_contexts_cleared)
-      client.on 'Page.lifecycleEvent', method(:on_lifecycle_event)
+      client.on Protocol::Page.lifecycle_event, method(:on_lifecycle_event)
     end
 
     def start
@@ -63,59 +64,37 @@ module Chromiebara
     end
 
     # @param [String] url
-    # TODO
     #
-    def navigate_frame(frame, url, referrer: nil, timeout: nil, wait_until: nil)
-      referrer || network_manager.extra_http_headers['referer']
+    def navigate_frame(frame, url, referer: nil, timeout: nil, wait_until: nil)
+      referer || network_manager.extra_http_headers['referer']
       wait_until ||= [:load]
-      # timeout ||= timeout_settings.navigation_timeout
+      timeout ||= @_timeout_settings.navigation_timeout
+      error_message = "Navigation Timeout Exceeded: #{timeout}s exceeded"
 
       watcher = LifecycleWatcher.new self, frame, wait_until, timeout
-      response = await client.command Protocol::Page.navigate url: url, referrer: referrer, frame_id: frame.id
+      response = await client.command(Protocol::Page.navigate url: url, referrer: referer, frame_id: frame.id),
+        timeout, error: error_message
+      raise "#{response["errorText"]} at #{url}" if response["errorText"]
       ensure_new_document_navigation = !!response["loaderId"]
 
-      if ensure_new_document_navigation
-        await watcher.new_document_navigation_promise
+      #if ensure_new_document_navigation
+      #  await watcher.new_document_navigation_promise, timeout, error: error_message
+      #else
+      #  await watcher.same_document_navigation_promise, timeout, error: error_message
+      #end
+
+      navigation_promise = if ensure_new_document_navigation
+        watcher.new_document_navigation_promise
       else
-        await watcher.same_document_navigation_promise
+        watcher.same_document_navigation_promise
       end
 
-      watcher.dispose
+      error = await Promise.race(watcher.termination_promise, navigation_promise), timeout, error: error_message
+      raise error unless error.nil?
 
       watcher.navigation_response
-
-      #   let ensureNewDocumentNavigation = false;
-      #   let error = await Promise.race([
-      #     navigate(this._client, url, referer, frame._id),
-      #     watcher.timeoutOrTerminationPromise(),
-      #   ]);
-      #   if (!error) {
-      #     error = await Promise.race([
-      #       watcher.timeoutOrTerminationPromise(),
-      #       ensureNewDocumentNavigation ? watcher.newDocumentNavigationPromise() : watcher.sameDocumentNavigationPromise(),
-      #     ]);
-      #   }
-      #   watcher.dispose();
-      #   if (error)
-      #     throw error;
-      #   return watcher.navigationResponse();
-
-      #   /**
-      #    * @param {!Puppeteer.CDPSession} client
-      #    * @param {string} url
-      #    * @param {string} referrer
-      #    * @param {string} frameId
-      #    * @return {!Promise<?Error>}
-      #    */
-      #   async function navigate(client, url, referrer, frameId) {
-      #     try {
-      #       const response = await client.send('Page.navigate', {url, referrer, frameId});
-      #       ensureNewDocumentNavigation = !!response.loaderId;
-      #       return response.errorText ? new Error(`${response.errorText} at ${url}`) : null;
-      #     } catch (error) {
-      #       return error;
-      #     }
-      #   }
+    ensure
+      watcher&.dispose
     end
 
     # @param {!Puppeteer.Frame} frame
@@ -124,10 +103,7 @@ module Chromiebara
     #
     def wait_for_frame_navigation(frame, timeout: nil, wait_until: nil)
       wait_until ||= [:load]
-      # const {
-      #   waitUntil = ['load'],
-      #   timeout = this._timeoutSettings.navigationTimeout(),
-      # } = options;
+      timeout ||= @_timeout_settings.navigation_timeout
       watcher = LifecycleWatcher.new self, frame, wait_until, timeout
       # const watcher = new LifecycleWatcher(this, frame, waitUntil, timeout);
       # const error = await Promise.race([
@@ -141,7 +117,12 @@ module Chromiebara
       # return watcher.navigationResponse();
       Promise.resolve(nil).then do
         begin
-          await Promise.race(watcher.same_document_navigation_promise, watcher.new_document_navigation_promise)
+          error = await Promise.race(
+            watcher.termination_promise,
+            watcher.same_document_navigation_promise,
+            watcher.new_document_navigation_promise
+          )
+          raise error unless error.nil?
           watcher.navigation_response
         ensure
           watcher.dispose
