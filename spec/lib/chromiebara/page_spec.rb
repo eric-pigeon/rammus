@@ -13,6 +13,14 @@ module Chromiebara
         new_page.close
         expect(browser.pages).not_to include new_page
       end
+
+      it 'should set the page close state' do
+        pending 'is closed promise'
+        new_page = context.new_page
+        expect(new_page.is_closed?).to eq false
+        new_page.close
+        expect(new_page.is_closed?).to eq true
+      end
     end
 
     describe '#evaluate' do

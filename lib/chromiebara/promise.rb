@@ -73,9 +73,9 @@ module Chromiebara
             end
           end
 
-          to_wait = deadline - current_time
+          to_wait = timeout.zero? ? nil : deadline - current_time
 
-          if to_wait <= 0
+          if timeout != 0 && to_wait <= 0
             if error
               raise Timeout::Error, error
             else

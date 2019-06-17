@@ -96,12 +96,12 @@ module Chromiebara
       await client.command Protocol::Network.set_user_agent_override user_agent: user_agent
     end
 
-    #  * @param {boolean} enabled
-    #  */
-    # async setCacheEnabled(enabled) {
-    #   this._userCacheDisabled = !enabled;
-    #   await this._updateProtocolCacheDisabled();
-    # }
+    # @param {boolean} enabled
+    #
+    def set_cache_enabled(enabled)
+      @_user_cache_disabled = !enabled
+      update_protocol_cache_disabled
+    end
 
     # @param {boolean} value
     #

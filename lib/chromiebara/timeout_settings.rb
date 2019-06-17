@@ -8,6 +8,10 @@ module Chromiebara
       @_navigation_timeout = nil
     end
 
+    def set_default_navigation_timeout(timeout)
+      @_navigation_timeout = timeout
+    end
+
     def navigation_timeout
       @_navigation_timeout || timeout || DEFAULT_TIMEOUT
     end

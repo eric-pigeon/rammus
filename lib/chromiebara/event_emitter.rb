@@ -50,7 +50,7 @@ module Chromiebara
       # @param [String] event
       # @[aram [Hash] data
       #
-      def emit(event, data)
+      def emit(event, data = nil)
         @_event_callbacks_mutex.synchronize do
           @_event_callbacks[event].each do |callable|
             EVENT_QUEUE << -> { callable.call data }
