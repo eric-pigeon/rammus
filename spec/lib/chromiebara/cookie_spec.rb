@@ -30,7 +30,11 @@ module Chromiebara
       end
 
       it 'should report httpOnly' do
-        page.goto server.domain + 'http-cookie'
+        server.set_route '/empty.html' do |req, res|
+          res.set_cookie 'http_cookie', value: 'test-cookie', http_only: true
+          res.finish
+        end
+        page.goto server.empty_page
         cookie = page.cookies.first
         expect(cookie['httpOnly']).to eq true
       end
