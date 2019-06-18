@@ -66,7 +66,7 @@ module Chromiebara
     # @param [String] url
     #
     def navigate_frame(frame, url, referer: nil, timeout: nil, wait_until: nil)
-      referer || network_manager.extra_http_headers['referer']
+      referer ||= network_manager.extra_http_headers[:referer]
       wait_until ||= [:load]
       timeout ||= @_timeout_settings.navigation_timeout
       error_message = "Navigation Timeout Exceeded: #{timeout}s exceeded"
@@ -177,15 +177,12 @@ module Chromiebara
     #   this.emit(Events.FrameManager.FrameNavigated, frame);
     # }
 
-    # /**
-    #  * @param {number} contextId
-    #  * @return {!ExecutionContext}
-    #  */
-    # executionContextById(contextId) {
-    #   const context = this._contextIdToContext.get(contextId);
-    #   assert(context, 'INTERNAL ERROR: missing context with id = ' + contextId);
-    #   return context;
-    # }
+    # @param {number} contextId
+    # @return {!ExecutionContext}
+    #
+    def execution_context_by_id(context_id)
+      @_execution_contexts.fetch context_id
+    end
 
     private
 

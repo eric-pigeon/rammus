@@ -3,10 +3,17 @@ module Chromiebara
     EVENT_QUEUE = Queue.new
     EXECUTOR = Thread.new do
       loop do
-        callback = EVENT_QUEUE.pop
-        callback.call
+        begin
+          callback = EVENT_QUEUE.pop
+          callback.call
+        rescue => error
+          # Normally would just set `#abort_on_exception = true` for this thread
+          # but any test that is expecting an error to be raised in an event callback
+          # would swallow the error but this thread would silently die
+          Thread.main.raise error
+        end
       end
-    end.abort_on_exception = true
+    end
 
     def initialize
       @_event_callbacks = Hash.new { |h, k| h[k] = [] }

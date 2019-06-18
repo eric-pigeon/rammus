@@ -6,6 +6,7 @@ require 'chromiebara/dialog'
 require 'chromiebara/frame_manager'
 require 'chromiebara/console_message'
 require 'chromiebara/emulation_manager'
+require 'chromiebara/js_handle'
 require 'chromiebara/timeout_settings'
 require 'chromiebara/worker'
 
@@ -85,7 +86,7 @@ module Chromiebara
 
       # client.on('Page.domContentEventFired', event => this.emit(Events.Page.DOMContentLoaded));
       client.on Protocol::Page.load_event_fired, -> (_event) { emit :load }
-      # client.on('Runtime.consoleAPICalled', event => this._onConsoleAPI(event));
+      client.on Protocol::Runtime.console_api_called, method(:on_console_api)
       # client.on('Runtime.bindingCalled', event => this._onBindingCalled(event));
       client.on Protocol::Page.javascript_dialog_opening, method(:on_dialog)
       client.on Protocol::Runtime.exception_thrown, ->(exception) { handle_exception exception["exceptionDetails"] }
@@ -875,13 +876,15 @@ module Chromiebara
       #  @param {!Protocol.Log.entryAddedPayload} event
       #
       def on_log_entry_added(event)
-        #   const {level, text, args, source, url, lineNumber} = event.entry;
+        level = event["entry"]["level"]
+        text = event["entry"]["text"]
+        args = event["entry"]["args"]
+        url = event["entry"]["url"]
+        line_number = event["entry"]["line_number"]
         if event.dig "entry", "args"
-          # TODO
-          # args.map(arg => helper.releaseObject(this._client, arg));
+          arts.map { |arg| Util.release_object client, args }
         elsif event.dig "entry", "source" != 'worker'
-          # TODO
-          # this.emit(Events.Page.Console, new ConsoleMessage(level, text, [], {url, lineNumber}));
+          emit :console, ConsoleMessage.new(level, text, [], url: url, line_number: line_number)
         end
       end
 
@@ -911,25 +914,25 @@ module Chromiebara
       # @param {!Protocol.Runtime.consoleAPICalledPayload} event
       #
       def on_console_api(event)
-      #   if (event.executionContextId === 0) {
-      #     // DevTools protocol stores the last 1000 console messages. These
-      #     // messages are always reported even for removed execution contexts. In
-      #     // this case, they are marked with executionContextId = 0 and are
-      #     // reported upon enabling Runtime agent.
-      #     //
-      #     // Ignore these messages since:
-      #     // - there's no execution context we can use to operate with message
-      #     //   arguments
-      #     // - these messages are reported before Puppeteer clients can subscribe
-      #     //   to the 'console'
-      #     //   page event.
-      #     //
-      #     // @see https://github.com/GoogleChrome/puppeteer/issues/3865
-      #     return;
-      #   }
-      #   const context = this._frameManager.executionContextById(event.executionContextId);
-      #   const values = event.args.map(arg => createJSHandle(context, arg));
-      #   this._addConsoleMessage(event.type, values, event.stackTrace);
+        if event["executionContextId"] == 0
+          # DevTools protocol stores the last 1000 console messages. These
+          # messages are always reported even for removed execution contexts. In
+          # this case, they are marked with executionContextId = 0 and are
+          # reported upon enabling Runtime agent.
+          #
+          # Ignore these messages since:
+          # - there's no execution context we can use to operate with message
+          #   arguments
+          # - these messages are reported before Puppeteer clients can subscribe
+          #   to the 'console'
+          #   page event.
+          #
+          # @see https://github.com/GoogleChrome/puppeteer/issues/3865
+          return
+        end
+        context = frame_manager.execution_context_by_id event["executionContextId"]
+        values = event["args"].map { |arg| JSHandle.create_js_handle context, arg }
+        add_console_message event["type"], values, event["stack_trace"]
       end
 
       # @param {string} type

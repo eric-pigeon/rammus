@@ -177,6 +177,14 @@ class TestServer
     def headers
       @_headers = Headers.new self
     end
+
+    def method
+      headers['REQUEST_METHOD']
+    end
+
+    def post_body
+      body.string
+    end
   end
 
   class Headers
