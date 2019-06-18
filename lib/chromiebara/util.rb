@@ -54,5 +54,19 @@ module Chromiebara
       end
       message
     end
+
+    # @param {!Puppeteer.CDPSession} client
+    # @param {!Protocol.Runtime.RemoteObject} remote_object
+    #
+    def self.release_object(client, remote_object)
+      return if remote_object["objectId"].nil?
+
+      await client.command(Protocol::Runtime.release_object object_id: remote_object["objectId"]).catch do |error|
+        # Exceptions might happen in case of a page been navigated or closed.
+        # Swallow these since they are harmless and we don't leak anything in this case.
+        # TODO
+        # debugError(error);
+      end
+    end
   end
 end

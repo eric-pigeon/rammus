@@ -37,6 +37,7 @@ module MatchScreenshot
         end
       end
 
+      # TODO - path from current test
       @save_path = File.expand_path("../../", __FILE__) + "/" + "ugh.png"
       output.save @save_path unless @diff.empty?
 
