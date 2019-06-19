@@ -28,8 +28,8 @@ module Chromiebara
       # @context = nil
     end
 
-    #  * @return {boolean}
-    #  */
+    # @return {boolean}
+    #
     def has_context?
       @_context_resolve_callback.nil?
     end
@@ -49,9 +49,9 @@ module Chromiebara
       execution_context.evaluate_handle page_function, *args
     end
 
-    # * @param {Function|string} pageFunction
-    # * @param {!Array<*>} args
-    # * @return {!Promise<*>}
+    # @param {Function|string} pageFunction
+    # @param {!Array<*>} args
+    # @return {!Promise<*>}
     #
     def evaluate(function, *args)
       execution_context.evaluate function, *args
@@ -102,10 +102,10 @@ module Chromiebara
       document.query_selector_evaluate_function selector, page_function, *args
     end
 
-    #  @param {string} selector
-    #  @param {Function|string} pageFunction
-    #  @param {!Array<*>} args
-    #  @return {!Promise<(!Object|undefined)>}
+    # @param {string} selector
+    # @param {Function|string} pageFunction
+    # @param {!Array<*>} args
+    # @return {!Promise<(!Object|undefined)>}
     #
     def query_selector_all_evaluate_function(selector, page_function, *args)
       document.query_selector_all_evaluate_function selector, page_function, *args
@@ -118,7 +118,7 @@ module Chromiebara
       document.query_selector_all selector
     end
 
-    # * @return {!Promise<String>}
+    # @return {!Promise<String>}
     #
     def content
       function = <<~JAVASCRIPT
@@ -134,9 +134,9 @@ module Chromiebara
       evaluate_function function
     end
 
-    #  * @param {string} html
-    #  * @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
-    #  */
+    # @param {string} html
+    # @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
+    #
     def set_content(html, timeout: nil, wait_until: nil)
       wait_until = [:load]
       # timeout = this._timeoutSettings.navigationTimeout(),
@@ -232,72 +232,68 @@ module Chromiebara
       #}
     end
 
-    #  * @param {!{url?: string, path?: string, content?: string}} options
-    #  * @return {!Promise<!Puppeteer.ElementHandle>}
-    #  */
-    # async addStyleTag(options) {
-    #   const {
-    #     url = null,
-    #     path = null,
-    #     content = null
-    #   } = options;
-    #   if (url !== null) {
-    #     try {
-    #       const context = await this.executionContext();
-    #       return (await context.evaluateHandle(addStyleUrl, url)).asElement();
-    #     } catch (error) {
-    #       throw new Error(`Loading style from ${url} failed`);
-    #     }
-    #   }
+    # @param {!{url?: string, path?: string, content?: string}} options
+    # @return {!Promise<!Puppeteer.ElementHandle>}
+    #
+    def add_style_tag(url: nil, path: nil, content: nil)
+      # @param {string} url
+      # @return {!Promise<!HTMLElement>}
+      #
+      add_style_url = <<~JAVASCRIPT
+      async function addStyleUrl(url) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = url;
+        const promise = new Promise((res, rej) => {
+          link.onload = res;
+          link.onerror = rej;
+        });
+        document.head.appendChild(link);
+        await promise;
+        return link;
+      }
+      JAVASCRIPT
 
-    #   if (path !== null) {
-    #     let contents = await readFileAsync(path, 'utf8');
-    #     contents += '/*# sourceURL=' + path.replace(/\n/g, '') + '*/';
-    #     const context = await this.executionContext();
-    #     return (await context.evaluateHandle(addStyleContent, contents)).asElement();
-    #   }
+      # @param {string} content
+      # @return {!Promise<!HTMLElement>}
+      #
+      add_style_content = <<~JAVASCRIPT
+      async function addStyleContent(content) {
+        const style = document.createElement('style');
+        style.type = 'text/css';
+        style.appendChild(document.createTextNode(content));
+        const promise = new Promise((res, rej) => {
+          style.onload = res;
+          style.onerror = rej;
+        });
+        document.head.appendChild(style);
+        await promise;
+        return style;
+      }
+      JAVASCRIPT
 
-    #   if (content !== null) {
-    #     const context = await this.executionContext();
-    #     return (await context.evaluateHandle(addStyleContent, content)).asElement();
-    #   }
+      unless url.nil?
+        begin
+          return execution_context.evaluate_handle_function(add_style_url, url).as_element
+        rescue => _error
+          raise "Loading style from #{url} failed"
+        end
+      end
 
-    #   throw new Error('Provide an object with a `url`, `path` or `content` property');
+      unless path.nil?
+        # TODO
+        #let contents = await readFileAsync(path, 'utf8');
+        #contents += '/*# sourceURL=' + path.replace(/\n/g, '') + '*/';
+        #const context = await this.executionContext();
+        #return (await context.evaluateHandle(addStyleContent, contents)).asElement();
+      end
 
-    #   /**
-    #    * @param {string} url
-    #    * @return {!Promise<!HTMLElement>}
-    #    */
-    #   async function addStyleUrl(url) {
-    #     const link = document.createElement('link');
-    #     link.rel = 'stylesheet';
-    #     link.href = url;
-    #     const promise = new Promise((res, rej) => {
-    #       link.onload = res;
-    #       link.onerror = rej;
-    #     });
-    #     document.head.appendChild(link);
-    #     await promise;
-    #     return link;
-    #   }
+      unless content.nil?
+        return execution_context.evaluate_handle_function(add_style_content, content).as_element
+      end
 
-    #   /**
-    #    * @param {string} content
-    #    * @return {!Promise<!HTMLElement>}
-    #    */
-    #   async function addStyleContent(content) {
-    #     const style = document.createElement('style');
-    #     style.type = 'text/css';
-    #     style.appendChild(document.createTextNode(content));
-    #     const promise = new Promise((res, rej) => {
-    #       style.onload = res;
-    #       style.onerror = rej;
-    #     });
-    #     document.head.appendChild(style);
-    #     await promise;
-    #     return style;
-    #   }
-    # }
+      raise "Provide a `url`, `path` or `content`"
+    end
 
     # @param {string} selector
     # @param {!{delay?: number, button?: "left"|"right"|"middle", clickCount?: number}=} options
