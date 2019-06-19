@@ -160,19 +160,19 @@ module Chromiebara
       @_detached
     end
 
-    #  * @param {!{url?: string, path?: string, content?: string, type?: string}} options
-    #  * @return {!Promise<!Puppeteer.ElementHandle>}
-    #  */
+    # @param {!{url?: string, path?: string, content?: string, type?: string}} options
+    # @return {!Promise<!Puppeteer.ElementHandle>}
+    #
     def add_script_tag(url: nil, path: nil, content: nil, type: nil)
       main_world.add_script_tag url: url, path: path, content: content, type: type
     end
 
-    #  * @param {!{url?: string, path?: string, content?: string}} options
-    #  * @return {!Promise<!Puppeteer.ElementHandle>}
-    #  */
-    # async addStyleTag(options) {
-    #   return this._mainWorld.addStyleTag(options);
-    # }
+    # @param {!{url?: string, path?: string, content?: string}} options
+    # @return {!Promise<!Puppeteer.ElementHandle>}
+    #
+    def add_style_tag(url: nil, path: nil, content: nil)
+      main_world.add_style_tag url: url, path: path, content: content
+    end
 
     # @param {string} selector
     # @param {!{delay?: number, button?: "left"|"right"|"middle", clickCount?: number}=} options
@@ -198,10 +198,10 @@ module Chromiebara
       secondary_world.hover selector
     end
 
-    # * @param {string} selector
-    # * @param {!Array<string>} values
-    # * @return {!Promise<!Array<string>>}
-    # */
+    # @param {string} selector
+    # @param {!Array<string>} values
+    # @return {!Promise<!Array<string>>}
+    #
     # select(selector, ...values){
     #   return this._secondaryWorld.select(selector, ...values);
     # }

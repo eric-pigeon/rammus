@@ -7,6 +7,7 @@ require 'chromiebara/frame_manager'
 require 'chromiebara/console_message'
 require 'chromiebara/emulation_manager'
 require 'chromiebara/js_handle'
+require 'chromiebara/coverage'
 require 'chromiebara/timeout_settings'
 require 'chromiebara/worker'
 
@@ -17,7 +18,7 @@ module Chromiebara
     extend Promise::Await
     extend Forwardable
 
-    attr_reader :target, :frame_manager, :javascript_enabled, :keyboard, :mouse, :touchscreen, :accessibility
+    attr_reader :target, :frame_manager, :javascript_enabled, :keyboard, :mouse, :touchscreen, :accessibility, :coverage
     delegate [:url] => :main_frame
     delegate [:network_manager] => :frame_manager
 
@@ -49,7 +50,7 @@ module Chromiebara
       # this._tracing = new Tracing(client);
       # /** @type {!Map<string, Function>} */
       # this._pageBindings = new Map();
-      # this._coverage = new Coverage(client);
+      @coverage = Coverage.new client
       @javascript_enabled = true
       # @type {?Puppeteer.Viewport}
       @_viewport = nil
@@ -133,12 +134,6 @@ module Chromiebara
     def browser
       target.browser
     end
-
-    #  * @return {!Coverage}
-    #  */
-    # get coverage() {
-    #   return this._coverage;
-    # }
 
     #  * @return {!Tracing}
     #  */
@@ -235,16 +230,16 @@ module Chromiebara
       main_frame.query_selector_all_evaluate_function selector, page_function, *args
     end
 
-    #  @param {string} selector
-    #  @return {!Promise<!Array<!Puppeteer.ElementHandle>>}
+    # @param {string} selector
+    # @return {!Promise<!Array<!Puppeteer.ElementHandle>>}
     #
     def query_selector_all(selector)
       main_frame.query_selector_all selector
     end
 
-    #  * @param {string} expression
-    #  * @return {!Promise<!Array<!Puppeteer.ElementHandle>>}
-    #  */
+    # @param {string} expression
+    # @return {!Promise<!Array<!Puppeteer.ElementHandle>>}
+    #
     def xpath(expression)
       main_frame.xpath expression
     end
@@ -310,12 +305,11 @@ module Chromiebara
       main_frame.add_script_tag url: url, path: path, content: content, type: type
     end
 
-    #  * @param {!{url?: string, path?: string, content?: string}} options
-    #  * @return {!Promise<!Puppeteer.ElementHandle>}
-    #  */
-    # async addStyleTag(options) {
-    #   return this.mainFrame().addStyleTag(options);
-    # }
+    # @param {!{url?: string, path?: string, content?: string}} options
+    #
+    def add_style_tag(url: nil, path: nil, content: nil)
+      main_frame.add_style_tag url: url, path: path, content: content
+    end
 
     #  * @param {string} name
     #  * @param {Function} puppeteerFunction
