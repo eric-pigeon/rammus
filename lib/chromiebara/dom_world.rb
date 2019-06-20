@@ -1,31 +1,30 @@
+require 'chromiebara/wait_task'
+
 module Chromiebara
   class DOMWorld
     include Promise::Await
 
-    attr_reader :frame_manager, :frame
+    attr_reader :frame_manager, :frame, :timeout_settings, :wait_tasks
 
     # @param [Chromiebara::FrameManager] frame_manager
     # @param [Chromiebara::Frame] frame
-    #* @param {!Puppeteer.TimeoutSettings} timeoutSettings
+    # @param {!Puppeteer.TimeoutSettings} timeoutSettings
     #
-    def initialize(frame_manager, frame)
+    def initialize(frame_manager, frame, timeout_settings)
       @frame_manager = frame_manager
       @frame = frame
-      # this._timeoutSettings = timeoutSettings;
+      @timeout_settings = timeout_settings
 
-      # /** @type {?Promise<!Puppeteer.ElementHandle>} */
+      # @type {?Promise<!Puppeteer.ElementHandle>}
       # this._documentPromise = null;
-      # /** @type {!Promise<!Puppeteer.ExecutionContext>} */
+      # @type {!Promise<!Puppeteer.ExecutionContext>}
       @_context_promise = nil
-      # this._contextPromise;
-      # this._contextResolveCallback = null;
       @_context_resolve_callback = nil
       set_context nil
-      #
-      # /** @type {!Set<!WaitTask>} */
-      # this._waitTasks = new Set();
+
+      # @type {!Set<!WaitTask>}
+      @wait_tasks = Set.new
       @_detached = false
-      # @context = nil
     end
 
     # @return {boolean}
@@ -170,8 +169,6 @@ module Chromiebara
     # @return {!Promise<!Puppeteer.ElementHandle>}
     #
     def add_script_tag(url: nil, path: nil, content: nil, type: '')
-
-      #/**
       # * @param {string} url
       # * @param {string} type
       # * @return {!Promise<!HTMLElement>}
@@ -376,13 +373,13 @@ module Chromiebara
     #   return this._waitForSelectorOrXPath(selector, false, options);
     # }
 
-    #  * @param {string} xpath
-    #  * @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
-    #  * @return {!Promise<?Puppeteer.ElementHandle>}
-    #  */
-    # waitForXPath(xpath, options) {
-    #   return this._waitForSelectorOrXPath(xpath, true, options);
-    # }
+    # @param {string} xpath
+    # @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
+    # @return {!Promise<?Puppeteer.ElementHandle>}
+    #
+    def wait_for_xpath(xpath, visible: nil, hidden: nil, timeout: nil)
+      wait_for_selector_or_xpath(xpath, true, visible: visible, hidden: hidden, timeout: timeout)
+    end
 
     #  * @param {Function|string} pageFunction
     #  * @param {!{polling?: string|number, timeout?: number}=} options
@@ -401,59 +398,6 @@ module Chromiebara
     def title
       evaluate('document.title')
     end
-
-    # TODO
-    #  * @param {string} selectorOrXPath
-    #  * @param {boolean} isXPath
-    #  * @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
-    #  * @return {!Promise<?Puppeteer.ElementHandle>}
-    #  */
-    # async _waitForSelectorOrXPath(selectorOrXPath, isXPath, options = {}) {
-    #   const {
-    #     visible: waitForVisible = false,
-    #     hidden: waitForHidden = false,
-    #     timeout = this._timeoutSettings.timeout(),
-    #   } = options;
-    #   const polling = waitForVisible || waitForHidden ? 'raf' : 'mutation';
-    #   const title = `${isXPath ? 'XPath' : 'selector'} "${selectorOrXPath}"${waitForHidden ? ' to be hidden' : ''}`;
-    #   const waitTask = new WaitTask(this, predicate, title, polling, timeout, selectorOrXPath, isXPath, waitForVisible, waitForHidden);
-    #   const handle = await waitTask.promise;
-    #   if (!handle.asElement()) {
-    #     await handle.dispose();
-    #     return null;
-    #   }
-    #   return handle.asElement();
-
-    #    * @param {string} selectorOrXPath
-    #    * @param {boolean} isXPath
-    #    * @param {boolean} waitForVisible
-    #    * @param {boolean} waitForHidden
-    #    * @return {?Node|boolean}
-    #    */
-    #   function predicate(selectorOrXPath, isXPath, waitForVisible, waitForHidden) {
-    #     const node = isXPath
-    #       ? document.evaluate(selectorOrXPath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue
-    #       : document.querySelector(selectorOrXPath);
-    #     if (!node)
-    #       return waitForHidden;
-    #     if (!waitForVisible && !waitForHidden)
-    #       return node;
-    #     const element = /** @type {Element} */ (node.nodeType === Node.TEXT_NODE ? node.parentElement : node);
-
-    #     const style = window.getComputedStyle(element);
-    #     const isVisible = style && style.visibility !== 'hidden' && hasVisibleBoundingBox();
-    #     const success = (waitForVisible === isVisible || waitForHidden === !isVisible);
-    #     return success ? node : null;
-
-    #     /**
-    #      * @return {boolean}
-    #      */
-    #     function hasVisibleBoundingBox() {
-    #       const rect = element.getBoundingClientRect();
-    #       return !!(rect.top || rect.bottom || rect.width || rect.height);
-    #     }
-    #   }
-    # }
 
     def _detach
       @_detached = true
@@ -480,6 +424,62 @@ module Chromiebara
           #     this._contextPromise = new Promise(fulfill => {
           #       this._contextResolveCallback = fulfill;
           #     });
+        end
+      end
+
+
+      # @param {string} selectorOrXPath
+      # @param {boolean} isXPath
+      # @param {boolean} waitForVisible
+      # @param {boolean} waitForHidden
+      # @return {?Node|boolean}
+      PREDICATE = <<~JAVASCRIPT
+      function predicate(selectorOrXPath, isXPath, waitForVisible, waitForHidden) {
+        const node = isXPath
+          ? document.evaluate(selectorOrXPath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue
+          : document.querySelector(selectorOrXPath);
+        if (!node)
+          return waitForHidden;
+        if (!waitForVisible && !waitForHidden)
+          return node;
+        const element = /** @type {Element} */ (node.nodeType === Node.TEXT_NODE ? node.parentElement : node);
+
+        const style = window.getComputedStyle(element);
+        const isVisible = style && style.visibility !== 'hidden' && hasVisibleBoundingBox();
+        const success = (waitForVisible === isVisible || waitForHidden === !isVisible);
+        return success ? node : null;
+
+        /**
+         * @return {boolean}
+         */
+        function hasVisibleBoundingBox() {
+          const rect = element.getBoundingClientRect();
+          return !!(rect.top || rect.bottom || rect.width || rect.height);
+        }
+      }
+      JAVASCRIPT
+
+      # @param {string} selectorOrXPath
+      # @param {boolean} isXPath
+      # @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
+      # @return {!Promise<?Puppeteer.ElementHandle>}
+      #
+      def wait_for_selector_or_xpath(selector_or_xpath, is_xpath, visible: nil, hidden: nil, timeout: nil)
+        wait_for_hidden = false
+        wait_for_visible = false
+        timeout ||= timeout_settings.timeout
+        polling = wait_for_visible || wait_for_hidden ? 'raf' : 'mutation'
+        title = "#{is_xpath ? 'XPath' : 'selector'} \"#{selector_or_xpath}\"#{wait_for_hidden ? ' to be hidden' : ''}"
+        wait_task = WaitTask.new(self, PREDICATE, title, polling, timeout, selector_or_xpath, is_xpath, wait_for_visible, wait_for_hidden)
+
+        Promise.resolve(nil).then do
+          handle = await wait_task.promise
+
+          if !handle.as_element
+            handle.dispose
+            next nil
+          end
+          handle.as_element
         end
       end
   end

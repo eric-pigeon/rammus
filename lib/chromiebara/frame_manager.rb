@@ -12,7 +12,7 @@ module Chromiebara
       'FrameManager.LifecycleEvent'
     end
 
-    attr_reader :client, :page, :network_manager
+    attr_reader :client, :page, :network_manager, :timeout_settings
 
     # @param [Chromiebara::CDPSession] client
     # @param [Chromiebara::Page] page
@@ -23,7 +23,7 @@ module Chromiebara
       @page = page
 
       @network_manager = NetworkManager.new client, self, ignore_https_errors
-      @_timeout_settings = timeout_settings
+      @timeout_settings = timeout_settings
 
       # @type [Hash<String, Frame>]
       @_frames = {}

@@ -1,5 +1,5 @@
 module Chromiebara
-  RSpec.describe Page, browser: true do
+  RSpec.describe 'Evaluation', browser: true do
     before { @_context = browser.create_context }
     after { @_context.close }
     let(:context) { @_context }
