@@ -146,23 +146,16 @@ module Chromiebara
     #   return createJSHandle(this, response.objects);
     # }
 
-    # TODO
-    # /**
-    #  * @param {Puppeteer.ElementHandle} elementHandle
-    #  * @return {Promise<Puppeteer.ElementHandle>}
-    #  */
-    # async _adoptElementHandle(elementHandle) {
-    #   assert(elementHandle.executionContext() !== this, 'Cannot adopt handle that already belongs to this execution context');
-    #   assert(this._world, 'Cannot adopt handle without DOMWorld');
-    #   const nodeInfo = await this._client.send('DOM.describeNode', {
-    #     objectId: elementHandle._remoteObject.objectId,
-    #   });
-    #   const {object} = await this._client.send('DOM.resolveNode', {
-    #     backendNodeId: nodeInfo.node.backendNodeId,
-    #     executionContextId: this._contextId,
-    #   });
-    #   return /** @type {Puppeteer.ElementHandle}*/(createJSHandle(this, object));
-    # }
+    # @param {Puppeteer.ElementHandle} elementHandle
+    # @return {Promise<Puppeteer.ElementHandle>}
+    #
+    def _adopt_element_handle(element_handle)
+      'Cannot adopt handle that already belongs to this execution context' if element_handle.execution_context == self
+      'Cannot adopt handle without DOMWorld' if world.nil?
+      node_info = await client.command Protocol::DOM.describe_node object_id: element_handle.remote_object["objectId"]
+      object = await client.command Protocol::DOM.resolve_node backend_node_id: node_info["node"]["backendNodeId"], execution_context_id: context_id
+      JSHandle.create_js_handle self, object["object"]
+    end
 
     private
 

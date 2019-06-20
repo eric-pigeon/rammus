@@ -477,10 +477,10 @@ module Chromiebara
       frame_manager.main_frame.wait_for_navigation timeout: timeout, wait_until: wait_until
     end
 
-    #  * @param {(string|Function)} urlOrPredicate
-    #  * @param {!{timeout?: number}=} options
-    #  * @return {!Promise<!Puppeteer.Request>}
-    #  */
+    # @param {(string|Function)} urlOrPredicate
+    # @param {!{timeout?: number}=} options
+    # @return {!Promise<!Puppeteer.Request>}
+    #
     # async waitForRequest(urlOrPredicate, options = {}) {
     #   const {
     #     timeout = this._timeoutSettings.timeout(),
@@ -823,14 +823,14 @@ module Chromiebara
       main_frame.type selector, text, delay: delay
     end
 
-    #  * @param {(string|number|Function)} selectorOrFunctionOrTimeout
-    #  * @param {!Object=} options
-    #  * @param {!Array<*>} args
-    #  * @return {!Promise<!Puppeteer.JSHandle>}
-    #  */
-    # waitFor(selectorOrFunctionOrTimeout, options = {}, ...args) {
-    #   return this.mainFrame().waitFor(selectorOrFunctionOrTimeout, options, ...args);
-    # }
+    # @param {(string|number|Function)} selectorOrFunctionOrTimeout
+    # @param {!Object=} options
+    # @param {!Array<*>} args
+    # @return {!Promise<!Puppeteer.JSHandle>}
+    #
+    def wait_for(selector_or_function_or_timeout, options = {}, *args)
+      main_frame.wait_for selector_or_function_or_timeout, options, *args
+    end
 
     #  * @param {string} selector
     #  * @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
@@ -840,13 +840,13 @@ module Chromiebara
     #   return this.mainFrame().waitForSelector(selector, options);
     # }
 
-    #  * @param {string} xpath
-    #  * @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
-    #  * @return {!Promise<?Puppeteer.ElementHandle>}
-    #  */
-    # waitForXPath(xpath, options = {}) {
-    #   return this.mainFrame().waitForXPath(xpath, options);
-    # }
+    # @param {string} xpath
+    # @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
+    # @return {!Promise<?Puppeteer.ElementHandle>}
+    #
+    def wait_for_xpath(xpath, visible: nil, hidden: nil, timeout: nil)
+       main_frame.wait_for_xpath xpath, visible: visible, hidden: hidden, timeout: timeout
+    end
 
     #  * @param {Function} pageFunction
     #  * @param {!{polling?: string|number, timeout?: number}=} options

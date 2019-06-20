@@ -1,5 +1,6 @@
 module Chromiebara
   class Frame
+    include Promise::Await
     attr_reader :id, :frame_manager, :parent_frame, :loader_id, :main_world, :name
 
     # @param [Chromiebara::FrameManager] frame_manager
@@ -20,9 +21,9 @@ module Chromiebara
       # /** @type {!Set<string>} */
       @_lifecycle_events = Set.new
       # /** @type {!DOMWorld} */
-      @main_world =  DOMWorld.new frame_manager, self#, frameManager._timeoutSettings
+      @main_world =  DOMWorld.new frame_manager, self, frame_manager.timeout_settings
       # /** @type {!DOMWorld} */
-      @_secondary_world = DOMWorld.new frame_manager, self#, frameManager._timeoutSettings);
+      @_secondary_world = DOMWorld.new frame_manager, self, frame_manager.timeout_settings
 
       # /** @type {!Set<!Frame>} */
       @child_frames = Set.new
@@ -257,20 +258,23 @@ module Chromiebara
     #   return result;
     # }
 
-    # /**
-    #  * @param {string} xpath
-    #  * @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
-    #  * @return {!Promise<?Puppeteer.ElementHandle>}
-    #  */
-    # async waitForXPath(xpath, options) {
-    #   const handle = await this._secondaryWorld.waitForXPath(xpath, options);
-    #   if (!handle)
-    #     return null;
-    #   const mainExecutionContext = await this._mainWorld.executionContext();
-    #   const result = await mainExecutionContext._adoptElementHandle(handle);
-    #   await handle.dispose();
-    #   return result;
-    # }
+    # @param {string} xpath
+    # @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
+    # @return {!Promise<?Puppeteer.ElementHandle>}
+    #
+    def wait_for_xpath(xpath, visible: nil, hidden: nil, timeout: nil)
+      #handle = await secondary_world.wait_for_xpath xpath, visible: visible, hidden: hidden, timeout: timeout
+      #return if handle.nil?
+      #result = main_world.execution_context._adopt_element_handle handle
+      #handle.dispose
+      #result
+      secondary_world.wait_for_xpath(xpath, visible: visible, hidden: hidden, timeout: timeout).then do |handle|
+        next if handle.nil?
+        result = main_world.execution_context._adopt_element_handle handle
+        handle.dispose
+        result
+      end
+    end
 
     # /**
     #  * @param {Function|string} pageFunction
