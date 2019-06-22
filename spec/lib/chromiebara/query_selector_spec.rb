@@ -1,5 +1,6 @@
 module Chromiebara
   RSpec.describe "Query Selector", browser: true do
+    include Promise::Await
     before { @_context = browser.create_context }
     after { @_context.close }
     let(:context) { @_context }
@@ -8,26 +9,26 @@ module Chromiebara
     describe 'Page.query_selector_evaluate_function' do
       it 'should work' do
         page.set_content '<section id="testAttribute">43543</section>'
-        id_attribute = page.query_selector_evaluate_function 'section', 'e => e.id'
+        id_attribute = await page.query_selector_evaluate_function 'section', 'e => e.id'
         expect(id_attribute).to eq 'testAttribute'
       end
 
       it 'should accept arguments' do
         page.set_content '<section>hello</section>'
-        text = page.query_selector_evaluate_function 'section', '(e, suffix) => e.textContent + suffix', ' world!'
+        text = await page.query_selector_evaluate_function 'section', '(e, suffix) => e.textContent + suffix', ' world!'
         expect(text).to eq 'hello world!'
       end
 
       it 'should accept ElementHandles as arguments' do
         page.set_content '<section>hello</section><div> world</div>'
         div_handle = page.query_selector 'div'
-        text = page.query_selector_evaluate_function 'section', '(e, div) => e.textContent + div.textContent', div_handle
+        text = await page.query_selector_evaluate_function 'section', '(e, div) => e.textContent + div.textContent', div_handle
         expect(text).to eq 'hello world'
       end
 
       it 'should throw error if no element is found' do
         expect do
-          page.query_selector_evaluate_function 'section', 'e => e.id'
+          await page.query_selector_evaluate_function 'section', 'e => e.id'
         end.to raise_error(/failed to find element matching selector 'section'/)
       end
     end
@@ -58,7 +59,7 @@ module Chromiebara
         page.set_content '<div>A</div><br/><div>B</div>'
         elements = page.query_selector_all 'div'
         expect(elements.length).to eq 2
-        values = elements.map { |element| page.evaluate_function 'e => e.textContent', element }
+        values = elements.map { |element| await page.evaluate_function 'e => e.textContent', element }
         expect(values).to eq ['A', 'B']
       end
 
@@ -96,7 +97,7 @@ module Chromiebara
         html = page.query_selector 'html'
         second = html.query_selector '.second'
         inner = second.query_selector '.inner'
-        content = page.evaluate_function 'e => e.textContent', inner
+        content = await page.evaluate_function 'e => e.textContent', inner
         expect(content).to eq 'A'
       end
 
@@ -112,7 +113,7 @@ module Chromiebara
       it 'should work' do
         page.set_content '<html><body><div class="tweet"><div class="like">100</div><div class="retweets">10</div></div></body></html>'
         tweet = page.query_selector '.tweet'
-        content = tweet.query_selector_evaluate_function '.like', "node => node.innerText"
+        content = await tweet.query_selector_evaluate_function '.like', "node => node.innerText"
         expect(content).to eq '100'
       end
 
@@ -120,7 +121,7 @@ module Chromiebara
         html_content = '<div class="a">not-a-child-div</div><div id="myId"><div class="a">a-child-div</div></div>'
         page.set_content html_content
         element_handle = page.query_selector '#myId'
-        content = element_handle.query_selector_evaluate_function '.a', "node => node.innerText"
+        content = await element_handle.query_selector_evaluate_function '.a', "node => node.innerText"
         expect(content).to eq 'a-child-div'
       end
 
@@ -164,7 +165,7 @@ module Chromiebara
         html = page.query_selector 'html'
         elements = html.query_selector_all 'div'
         expect(elements.length).to eq 2
-        values = elements.map { |element| page.evaluate_function "e => e.textContent", element }
+        values = elements.map { |element| await page.evaluate_function "e => e.textContent", element }
         expect(values).to eq ['A', 'B']
       end
 
@@ -183,7 +184,7 @@ module Chromiebara
         html = page.query_selector 'html'
         second = html.xpath "./body/div[contains(@class, 'second')]"
         inner = second[0].xpath "./div[contains(@class, 'inner')]"
-        content = page.evaluate_function "e => e.textContent", inner[0]
+        content = await page.evaluate_function "e => e.textContent", inner[0]
         expect(content).to eq 'A'
       end
 

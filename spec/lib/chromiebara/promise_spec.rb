@@ -110,6 +110,16 @@ module Chromiebara
         expect(await promise_2, 0.01).to eq 4
         expect(await promise_3, 0.01).to eq 5
       end
+
+      it 'works after catch' do
+        result = Promise.resolve(3).catch { |err| 0 }.then { |num| num * 2 }
+
+        expect(await result).to eq 6
+
+        result = Promise.reject(3).catch { |err| 1 }.then { |num| num * 2 }
+
+        expect(await result).to eq 2
+      end
     end
 
     describe '#await' do

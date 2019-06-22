@@ -11,8 +11,8 @@ module Chromiebara
       file_path = File.expand_path("../../../fixtures", __FILE__) + '/file-to-upload.txt'
       input = page.query_selector 'input'
       input.upload_file file_path
-      expect(page.evaluate_function "e => e.files[0].name", input).to eq 'file-to-upload.txt'
-      expect(page.evaluate_function "e => {
+      expect(await page.evaluate_function "e => e.files[0].name", input).to eq 'file-to-upload.txt'
+      expect(await page.evaluate_function "e => {
         const reader = new FileReader();
         const promise = new Promise(fulfill => reader.onload = fulfill);
         reader.readAsText(e.files[0]);

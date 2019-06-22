@@ -241,7 +241,7 @@ module Chromiebara
           end
         end
         page.goto server.empty_page
-        result = page.evaluate_function("async() => {
+        result = await page.evaluate_function("async() => {
           try {
             await fetch('/non-existing.json');
           } catch (e) {
@@ -269,7 +269,7 @@ module Chromiebara
           spinner ? request.abort : request.continue
           spinner = !spinner
         end
-        results = page.evaluate_function("() => Promise.all([
+        results = await page.evaluate_function("() => Promise.all([
           fetch('/zzz').then(response => response.text()).catch(e => 'FAILED'),
           fetch('/zzz').then(response => response.text()).catch(e => 'FAILED'),
           fetch('/zzz').then(response => response.text()).catch(e => 'FAILED'),
@@ -300,7 +300,7 @@ module Chromiebara
           request.continue
         end
         data_url = 'data:text/html,<div>yo</div>'
-        text = page.evaluate_function "url => fetch(url).then(r => r.text())", data_url
+        text = await page.evaluate_function "url => fetch(url).then(r => r.text())", data_url
         expect(text).to eq '<div>yo</div>'
         expect(requests.length).to eq 1
         expect(requests[0].url).to eq data_url
@@ -475,7 +475,7 @@ module Chromiebara
         response = page.goto server.empty_page
         expect(response.status).to eq 201
         expect(response.headers["foo"]).to eq 'bar'
-        expect(page.evaluate_function("() => document.body.textContent")).to eq 'Yo, page!'
+        expect(await page.evaluate_function("() => document.body.textContent")).to eq 'Yo, page!'
       end
 
       it 'should work with status code 422' do
@@ -486,7 +486,7 @@ module Chromiebara
         response = page.goto server.empty_page
         expect(response.status).to eq 422
         expect(response.status_text).to eq 'Unprocessable Entity'
-        expect(page.evaluate_function("() => document.body.textContent")).to eq 'Yo, page!'
+        expect(await page.evaluate_function("() => document.body.textContent")).to eq 'Yo, page!'
       end
       it 'should redirect' do
         page.set_request_interception true
@@ -528,7 +528,7 @@ module Chromiebara
         expect(response.status).to eq 200
         headers = response.headers
         expect(headers['foo']).to eq 'true'
-        expect(page.evaluate_function("() => document.body.textContent")).to eq 'Yo, page!'
+        expect(await page.evaluate_function("() => document.body.textContent")).to eq 'Yo, page!'
       end
     end
 

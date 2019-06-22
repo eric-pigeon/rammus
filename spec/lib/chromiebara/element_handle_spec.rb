@@ -1,5 +1,6 @@
 module Chromiebara
   RSpec.describe ElementHandle, browser: true do
+    include Promise::Await
     before { @_context = browser.create_context }
     after { @_context.close }
     let(:context) { @_context }
@@ -33,7 +34,7 @@ module Chromiebara
         page.set_viewport width: 500, height: 500
         page.set_content '<div style="width: 100px; height: 100px">hello</div>'
         element_handle = page.query_selector 'div'
-        page.evaluate_function "element => element.style.height = '200px'", element_handle
+        await page.evaluate_function "element => element.style.height = '200px'", element_handle
         box = element_handle.bounding_box
         expect(box).to eq(x: 8, y: 8, width: 100, height: 200)
       end
@@ -54,7 +55,7 @@ module Chromiebara
           return {x: rect.x, y: rect.y, width: rect.width, height: rect.height};
         }
         JAVASCRIPT
-        web_bounding_box = page.evaluate_function function, element
+        web_bounding_box = await page.evaluate_function function, element
         expect(pptr_bounding_box).to eq web_bounding_box
       end
     end
@@ -75,7 +76,7 @@ module Chromiebara
           `;
         }
         JAVASCRIPT
-        page.evaluate_function function
+        await page.evaluate_function function
 
         # Step 2: Add div and position it absolutely inside frame.
         frame = page.frames[1]
@@ -97,7 +98,7 @@ module Chromiebara
           return div;
         }
         JAVASCRIPT
-        div_handle = frame.evaluate_handle_function(function).as_element
+        div_handle = (await frame.evaluate_handle_function(function)).as_element
 
         # Step 3: query div's boxModel and assert box values.
         box = div_handle.box_model
@@ -143,40 +144,40 @@ module Chromiebara
         page.goto server.domain + 'input/button.html'
         button = page.query_selector 'button'
         button.click
-        expect(page.evaluate_function "() => result").to eq 'Clicked'
+        expect(await page.evaluate_function "() => result").to eq 'Clicked'
       end
 
       it 'should work for Shadow DOM v1' do
         page.goto server.domain + 'shadow.html'
-        button_handle = page.evaluate_handle_function "() => button"
+        button_handle = await page.evaluate_handle_function "() => button"
         button_handle.click
-        expect(page.evaluate_function "() => clicked").to eq true
+        expect(await page.evaluate_function "() => clicked").to eq true
       end
 
       it 'should work for TextNodes' do
         page.goto server.domain + 'input/button.html'
-        button_text_node = page.evaluate_handle_function "() => document.querySelector('button').firstChild"
+        button_text_node = await page.evaluate_handle_function "() => document.querySelector('button').firstChild"
         expect { button_text_node.click }.to raise_error 'Node is not of type HTMLElement'
       end
 
       it 'should throw for detached nodes' do
         page.goto server.domain + 'input/button.html'
         button = page.query_selector 'button'
-        page.evaluate_function "button => button.remove()", button
+        await page.evaluate_function "button => button.remove()", button
         expect { button.click }. to raise_error 'Node is detached from document'
       end
 
       it 'should throw for hidden nodes' do
         page.goto server.domain + 'input/button.html'
         button = page.query_selector 'button'
-        page.evaluate_function "button => button.style.display = 'none'", button
+        await page.evaluate_function "button => button.style.display = 'none'", button
         expect { button.click }.to raise_error 'Node is either not visible or not an HTMLElement'
       end
 
       it 'should throw for recursively hidden nodes' do
         page.goto server.domain + 'input/button.html'
         button = page.query_selector 'button'
-        page.evaluate_function "button => button.parentElement.style.display = 'none'", button
+        await page.evaluate_function "button => button.parentElement.style.display = 'none'", button
         expect { button.click }.to raise_error 'Node is either not visible or not an HTMLElement'
       end
 
@@ -192,7 +193,7 @@ module Chromiebara
         page.goto server.domain + 'input/scrollable.html'
         button = page.query_selector '#button-6'
         button.hover
-        expect(page.evaluate_function "() => document.querySelector('button:hover').id").to eq 'button-6'
+        expect(await page.evaluate_function "() => document.querySelector('button:hover').id").to eq 'button-6'
       end
     end
 

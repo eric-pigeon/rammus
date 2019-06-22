@@ -114,14 +114,18 @@ class TestServer
     @_gzip_routes << path
   end
 
+  def set_content_security_policy(path, policy)
+    @_content_security_policy[path] = policy
+  end
+
   def reset
     @_routes.clear
     @_auths.clear
     @_gzip_routes.clear
     @_content_security_policy.clear
-    #const error = new Error('Static Server has been reset');
-    #for (const subscriber of this._requestSubscribers.values())
-    #  subscriber[rejectSymbol].call(null, error);
+    @_request_subscribers.each do |subscriber|
+      subscriber.reject.("Server has been reset")
+    end
     @_request_subscribers.clear
   end
 

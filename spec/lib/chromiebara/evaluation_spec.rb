@@ -1,223 +1,266 @@
 module Chromiebara
   RSpec.describe 'Evaluation', browser: true do
+    include Promise::Await
     before { @_context = browser.create_context }
     after { @_context.close }
     let(:context) { @_context }
     let!(:page) { context.new_page }
 
     describe 'Page#evaluate_function' do
-      #it('should work', async({page, server}) => {
-      #  const result = await page.evaluate(() => 7 * 3);
-      #  expect(result).toBe(21);
-      #});
-      #(bigint ? it : xit)('should transfer BigInt', async({page, server}) => {
-      #  const result = await page.evaluate(a => a, BigInt(42));
-      #  expect(result).toBe(BigInt(42));
-      #});
-      #it('should transfer NaN', async({page, server}) => {
-      #  const result = await page.evaluate(a => a, NaN);
-      #  expect(Object.is(result, NaN)).toBe(true);
-      #});
-      #it('should transfer -0', async({page, server}) => {
-      #  const result = await page.evaluate(a => a, -0);
-      #  expect(Object.is(result, -0)).toBe(true);
-      #});
-      #it('should transfer Infinity', async({page, server}) => {
-      #  const result = await page.evaluate(a => a, Infinity);
-      #  expect(Object.is(result, Infinity)).toBe(true);
-      #});
-      #it('should transfer -Infinity', async({page, server}) => {
-      #  const result = await page.evaluate(a => a, -Infinity);
-      #  expect(Object.is(result, -Infinity)).toBe(true);
-      #});
-      #it('should transfer arrays', async({page, server}) => {
-      #  const result = await page.evaluate(a => a, [1, 2, 3]);
-      #  expect(result).toEqual([1,2,3]);
-      #});
-      #it('should transfer arrays as arrays, not objects', async({page, server}) => {
-      #  const result = await page.evaluate(a => Array.isArray(a), [1, 2, 3]);
-      #  expect(result).toBe(true);
-      #});
-      #it('should modify global environment', async({page}) => {
-      #  await page.evaluate(() => window.globalVar = 123);
-      #  expect(await page.evaluate('globalVar')).toBe(123);
-      #});
-      #it('should evaluate in the page context', async({page, server}) => {
-      #  await page.goto(server.PREFIX + '/global-var.html');
-      #  expect(await page.evaluate('globalVar')).toBe(123);
-      #});
-      #it_fails_ffox('should return undefined for objects with symbols', async({page, server}) => {
-      #  expect(await page.evaluate(() => [Symbol('foo4')])).toBe(undefined);
-      #});
-      #(asyncawait ? it : xit)('should work with function shorthands', async({page, server}) => {
+      it 'should work' do
+        result = await page.evaluate_function '() => 7 * 3'
+        expect(result).to eq 21
+      end
+
+      # TODO
+      #(bigint ? it : xit)('should transfer BigInt' do
+      #  result = await page.evaluate_function(a => a, BigInt(42));
+      #  expect(result).to eq BigInt(42)
+      #end
+
+      it 'should transfer NAN' do
+        result = await page.evaluate_function "a => a", Float::NAN
+        expect(result).to be_a Float
+        expect(result).to be_nan
+      end
+
+      it 'should transfer -0' do
+        result = await page.evaluate_function 'a => a', -0
+        expect(result).to eq(-0)
+      end
+
+      it 'should transfer Float::INFINITY' do
+        result = await page.evaluate_function "a => a", Float::INFINITY
+        expect(result).to eq Float::INFINITY
+      end
+
+      it 'should transfer -Float::INFINITY' do
+        result = await page.evaluate_function "a => a", -Float::INFINITY
+        expect(result).to eq(-Float::INFINITY)
+      end
+
+      it 'should transfer arrays' do
+        result = await page.evaluate_function "a => a", [1, 2, 3]
+        expect(result).to eq [1,2,3]
+      end
+
+      it 'should transfer arrays as arrays, not objects' do
+        result = await page.evaluate_function "a => Array.isArray(a)", [1, 2, 3]
+        expect(result).to eq true
+      end
+
+      it 'should modify global environment' do
+        await page.evaluate_function "() => window.globalVar = 123"
+        expect(await page.evaluate('globalVar')).to eq 123
+      end
+
+      it 'should evaluate in the page context' do
+        page.goto server.domain + 'global-var.html'
+        expect(await page.evaluate('globalVar')).to eq 123
+      end
+
+      it 'should return undefined for objects with symbols' do
+        expect(await page.evaluate_function "() => [Symbol('foo4')]").to eq nil
+      end
+
+      # TODO
+      #(asyncawait ? it : xit)('should work with function shorthands' do
       #  // trick node6 transpiler to not touch our object.
       #  // TODO(lushnikov): remove eval once Node6 is dropped.
-      #  const a = eval(`({
+      #  a = eval(`({
       #    sum(a, b) { return a + b; },
 
       #    async mult(a, b) { return a * b; }
       #  })`);
-      #  expect(await page.evaluate(a.sum, 1, 2)).toBe(3);
-      #  expect(await page.evaluate(a.mult, 2, 4)).toBe(8);
-      #});
-      #it('should work with unicode chars', async({page, server}) => {
-      #  const result = await page.evaluate(a => a['中文字符'], {'中文字符': 42});
-      #  expect(result).toBe(42);
-      #});
-      #it('should throw when evaluation triggers reload', async({page, server}) => {
-      #  let error = null;
-      #  await page.evaluate(() => {
-      #    location.reload();
-      #    return new Promise(() => {});
-      #  }).catch(e => error = e);
-      #  expect(error.message).toContain('Protocol error');
-      #});
-      #it('should await promise', async({page, server}) => {
-      #  const result = await page.evaluate(() => Promise.resolve(8 * 7));
-      #  expect(result).toBe(56);
-      #});
-      #it('should work right after framenavigated', async({page, server}) => {
-      #  let frameEvaluation = null;
-      #  page.on('framenavigated', async frame => {
-      #    frameEvaluation = frame.evaluate(() => 6 * 7);
-      #  });
-      #  await page.goto(server.EMPTY_PAGE);
-      #  expect(await frameEvaluation).toBe(42);
-      #});
-      #it('should work from-inside an exposed function', async({page, server}) => {
-      #  // Setup inpage callback, which calls Page.evaluate
-      #  await page.exposeFunction('callController', async function(a, b) {
-      #    return await page.evaluate((a, b) => a * b, a, b);
-      #  });
-      #  const result = await page.evaluate(async function() {
-      #    return await callController(9, 3);
-      #  });
-      #  expect(result).toBe(27);
-      #});
-      #it('should reject promise with exception', async({page, server}) => {
-      #  let error = null;
-      #  await page.evaluate(() => not.existing.object.property).catch(e => error = e);
-      #  expect(error).toBeTruthy();
-      #  expect(error.message).toContain('not is not defined');
-      #});
-      #it('should support thrown strings as error messages', async({page, server}) => {
-      #  let error = null;
-      #  await page.evaluate(() => { throw 'qwerty'; }).catch(e => error = e);
-      #  expect(error).toBeTruthy();
-      #  expect(error.message).toContain('qwerty');
-      #});
-      #it('should support thrown numbers as error messages', async({page, server}) => {
-      #  let error = null;
-      #  await page.evaluate(() => { throw 100500; }).catch(e => error = e);
-      #  expect(error).toBeTruthy();
-      #  expect(error.message).toContain('100500');
-      #});
-      #it('should return complex objects', async({page, server}) => {
-      #  const object = {foo: 'bar!'};
-      #  const result = await page.evaluate(a => a, object);
-      #  expect(result).not.toBe(object);
-      #  expect(result).toEqual(object);
-      #});
-      #(bigint ? it : xit)('should return BigInt', async({page, server}) => {
-      #  const result = await page.evaluate(() => BigInt(42));
-      #  expect(result).toBe(BigInt(42));
-      #});
-      #it('should return NaN', async({page, server}) => {
-      #  const result = await page.evaluate(() => NaN);
-      #  expect(Object.is(result, NaN)).toBe(true);
-      #});
-      #it('should return -0', async({page, server}) => {
-      #  const result = await page.evaluate(() => -0);
-      #  expect(Object.is(result, -0)).toBe(true);
-      #});
-      #it('should return Infinity', async({page, server}) => {
-      #  const result = await page.evaluate(() => Infinity);
-      #  expect(Object.is(result, Infinity)).toBe(true);
-      #});
-      #it('should return -Infinity', async({page, server}) => {
-      #  const result = await page.evaluate(() => -Infinity);
-      #  expect(Object.is(result, -Infinity)).toBe(true);
-      #});
-      #it('should accept "undefined" as one of multiple parameters', async({page, server}) => {
-      #  const result = await page.evaluate((a, b) => Object.is(a, undefined) && Object.is(b, 'foo'), undefined, 'foo');
-      #  expect(result).toBe(true);
-      #});
-      #it('should properly serialize null fields', async({page}) => {
-      #  expect(await page.evaluate(() => ({a: undefined}))).toEqual({});
-      #});
-      #it('should return undefined for non-serializable objects', async({page, server}) => {
-      #  expect(await page.evaluate(() => window)).toBe(undefined);
-      #});
-      #it('should fail for circular object', async({page, server}) => {
-      #  const result = await page.evaluate(() => {
-      #    const a = {};
-      #    const b = {a};
-      #    a.b = b;
-      #    return a;
-      #  });
-      #  expect(result).toBe(undefined);
-      #});
-      #it_fails_ffox('should be able to throw a tricky error', async({page, server}) => {
-      #  const windowHandle = await page.evaluateHandle(() => window);
-      #  const errorText = await windowHandle.jsonValue().catch(e => e.message);
-      #  const error = await page.evaluate(errorText => {
-      #    throw new Error(errorText);
-      #  }, errorText).catch(e => e);
-      #  expect(error.message).toContain(errorText);
-      #});
-      #it('should accept a string', async({page, server}) => {
-      #  const result = await page.evaluate('1 + 2');
-      #  expect(result).toBe(3);
-      #});
-      #it('should accept a string with semi colons', async({page, server}) => {
-      #  const result = await page.evaluate('1 + 5;');
-      #  expect(result).toBe(6);
-      #});
-      #it('should accept a string with comments', async({page, server}) => {
-      #  const result = await page.evaluate('2 + 5;\n// do some math!');
-      #  expect(result).toBe(7);
-      #});
-      #it('should accept element handle as an argument', async({page, server}) => {
-      #  await page.setContent('<section>42</section>');
-      #  const element = await page.$('section');
-      #  const text = await page.evaluate(e => e.textContent, element);
-      #  expect(text).toBe('42');
-      #});
-      #it('should throw if underlying element was disposed', async({page, server}) => {
-      #  await page.setContent('<section>39</section>');
-      #  const element = await page.$('section');
-      #  expect(element).toBeTruthy();
-      #  await element.dispose();
-      #  let error = null;
-      #  await page.evaluate(e => e.textContent, element).catch(e => error = e);
-      #  expect(error.message).toContain('JSHandle is disposed');
-      #});
-      #it('should throw if elementHandles are from other frames', async({page, server}) => {
-      #  await utils.attachFrame(page, 'frame1', server.EMPTY_PAGE);
-      #  const bodyHandle = await page.frames()[1].$('body');
-      #  let error = null;
-      #  await page.evaluate(body => body.innerHTML, bodyHandle).catch(e => error = e);
-      #  expect(error).toBeTruthy();
-      #  expect(error.message).toContain('JSHandles can be evaluated only in the context they were created');
-      #});
-      #it('should simulate a user gesture', async({page, server}) => {
-      #  const result = await page.evaluate(() => document.execCommand('copy'));
-      #  expect(result).toBe(true);
-      #});
-      #it('should throw a nice error after a navigation', async({page, server}) => {
-      #  const executionContext = await page.mainFrame().executionContext();
+      #  expect(await page.evaluate_function(a.sum, 1, 2)).to eq 3
+      #  expect(await page.evaluate_function(a.mult, 2, 4)).to eq 8
+      #end
 
-      #  await Promise.all([
-      #    page.waitForNavigation(),
-      #    executionContext.evaluate(() => window.location.reload())
-      #  ]);
-      #  const error = await executionContext.evaluate(() => null).catch(e => e);
-      #  expect(error.message).toContain('navigation');
-      #});
+      it 'should work with unicode chars' do
+        result = await page.evaluate_function "a => a['中文字符']", { '中文字符' => 42 }
+        expect(result).to eq 42
+      end
+
+      it 'should throw when evaluation triggers reload' do
+        expect do
+          await page.evaluate_function("() => {
+            location.reload();
+            return new Promise(() => {});
+          }")
+        end.to raise_error(/Protocol error/)
+      end
+
+      it 'should await promise' do
+        result = await page.evaluate_function "() => Promise.resolve(8 * 7)"
+        expect(result).to eq 56
+      end
+
+      xit 'should work right after framenavigated' do
+        frame_evaluation = nil
+        page.on :frame_navigated, -> (frame) do
+          # need to make this async otherwise #evaluate_function will block the event loop waiting
+          # for the execution context to be created from
+          await Promise.resolve(nil).then { frame_evaluation = frame.evaluate_function "() => 6 * 7" }
+        end
+        page.goto server.empty_page
+        expect(await frame_evaluation).to eq 42
+      end
+
+      # TODO need page#expose_function
+      xit 'should work from-inside an exposed function' do
+        # Setup inpage callback, which calls Page.evaluate
+        #await page.exposeFunction('callController', async function(a, b) {
+        #  return await page.evaluate_function((a, b) => a * b, a, b);
+        #});
+        #result = await page.evaluate_function(async function() {
+        #  return await callController(9, 3);
+        #});
+        #expect(result).to eq 27
+      end
+
+      it 'should reject promise with exception' do
+        expect do
+          await page.evaluate_function("() => not.existing.object.property")
+        end.to raise_error(/not is not defined/)
+      end
+
+      it 'should support thrown strings as error messages' do
+        expect { await page.evaluate_function("() => { throw 'qwerty'; }") }.to raise_error(/qwerty/)
+      end
+
+      it 'should support thrown numbers as error messages' do
+        expect { await page.evaluate_function("() => { throw 100500 }") }.to raise_error(/100500/)
+      end
+
+      it 'should return complex objects' do
+        object = { "foo" => 'bar!' }
+        result = await page.evaluate_function("a => a", object)
+        expect(result).to eq(object)
+      end
+
+      it 'should return BigInt' do
+        result = await page.evaluate_function "() => BigInt(42)"
+        expect(result).to eq 42
+      end
+
+      it 'should return NaN' do
+        result = await page.evaluate_function "() => NaN"
+        expect(result).to be_nan
+      end
+
+      it 'should return -0' do
+        result = await page.evaluate_function "() => -0"
+        expect(result).to eq 0
+      end
+
+      it 'should return Infinity' do
+        result = await page.evaluate_function "() => Infinity"
+        expect(result).to eq Float::INFINITY
+      end
+
+      it 'should return -Infinity' do
+        result = await page.evaluate_function "() => -Infinity"
+        expect(result).to eq(-Float::INFINITY)
+      end
+
+      it 'should accept "undefined" as one of multiple parameters' do
+        pending 'no concept of undefined'
+        result = await page.evaluate_function "(a, b) => Object.is(a, undefined) && Object.is(b, 'foo')", nil, 'foo'
+        expect(result).to eq true
+      end
+
+      it 'should properly serialize null fields' do
+        expect(await page.evaluate_function("() => ({a: undefined})")).to eq({})
+      end
+
+      it 'should return nil for non-serializable objects' do
+        expect(await page.evaluate_function("() => window")).to eq nil
+      end
+
+      it 'should fail for circular object' do
+        result = await page.evaluate_function("() => {
+          a = {};
+          b = {a};
+          a.b = b;
+          return a;
+        }")
+        expect(result).to eq nil
+      end
+
+      it 'should be able to throw a tricky error' do
+        window_handle = await page.evaluate_handle_function "() => window"
+        error_text =
+          begin
+            window_handle.json_value
+          rescue => err
+            err.message
+          end
+        error = await page.evaluate_function("errorText => {
+          throw new Error(errorText);
+        }", error_text).catch { |e| e }
+        expect(error.message).to include error_text
+      end
+
+      it 'should accept a string' do
+        result = await page.evaluate '1 + 2'
+        expect(result).to eq 3
+      end
+
+      it 'should accept a string with semi colons' do
+        result = await page.evaluate '1 + 5;'
+        expect(result).to eq 6
+      end
+
+      it 'should accept a string with comments' do
+        result = await page.evaluate "2 + 5;\n// do some math!"
+        expect(result).to eq 7
+      end
+
+      it 'should accept element handle as an argument' do
+        page.set_content '<section>42</section>'
+        element = page.query_selector 'section'
+        text = await page.evaluate_function("e => e.textContent", element)
+        expect(text).to eq '42'
+      end
+
+      it 'should throw if underlying element was disposed' do
+        page.set_content '<section>39</section>'
+        element = page.query_selector 'section'
+        expect(element).not_to be_nil
+        element.dispose
+
+        expect do
+          await page.evaluate_function("e => e.textContent", element)
+        end.to raise_error(/JSHandle is disposed/)
+      end
+
+      it 'should throw if element_handles are from other frames' do
+        attach_frame page, 'frame1', server.empty_page
+        body_handle = page.frames[1].query_selector 'body'
+        expect do
+          await page.evaluate_function("body => body.innerHTML", body_handle)
+        end.to raise_error(/JSHandles can be evaluated only in the context they were created/)
+      end
+
+      it 'should simulate a user gesture' do
+        result = await page.evaluate_function("() => document.execCommand('copy')")
+        expect(result).to eq true
+      end
+
+      it 'should throw a nice error after a navigation' do
+        execution_context = page.main_frame.execution_context
+
+        await Promise.all(
+          page.wait_for_navigation,
+          execution_context.evaluate_function("() => window.location.reload()")
+        )
+        expect { await execution_context.evaluate_function("() => null") }
+          .to raise_error(/navigation/)
+      end
 
       it 'should not throw an error when evaluation does a navigation' do
         page.goto server.domain + 'one-style.html'
-        result = page.evaluate_function "() => {
+        result = await page.evaluate_function "() => {
           window.location = '/empty.html';
           return [42];
         }"
@@ -229,18 +272,18 @@ module Chromiebara
       it 'should evaluate before anything else on the page' do
         page.evaluate_on_new_document "function(){ window.injected = 123; }"
         page.goto server.domain + 'tamperable.html'
-        expect(page.evaluate_function "() => window.result").to eq 123
+        expect(await page.evaluate_function "() => window.result").to eq 123
       end
 
       it 'should work with CSP' do
         server.set_content_security_policy '/empty.html', 'script-src ' + server.domain
         page.evaluate_on_new_document "function() { window.injected = 123; }"
         page.goto server.domain + 'empty.html'
-        expect(page.evaluate_function "() => window.injected").to eq 123
+        expect(await page.evaluate_function "() => window.injected").to eq 123
 
         # Make sure CSP works.
         page.add_script_tag(content: 'window.e = 10;')
-        expect(page.evaluate_function '() => window.e').to be nil
+        expect(await page.evaluate_function '() => window.e').to be nil
       end
     end
 
@@ -249,25 +292,25 @@ module Chromiebara
         page.goto server.empty_page
         attach_frame page, 'frame1', server.empty_page
         expect(page.frames.length).to eq 2
-        page.frames[0].evaluate_function "() => window.FOO = 'foo'"
-        page.frames[1].evaluate_function "() => window.FOO = 'bar'"
-        expect(page.frames[0].evaluate_function "() => window.FOO").to eq 'foo'
-        expect(page.frames[1].evaluate_function "() => window.FOO").to eq 'bar'
+        await page.frames[0].evaluate_function "() => window.FOO = 'foo'"
+        await page.frames[1].evaluate_function "() => window.FOO = 'bar'"
+        expect(await page.frames[0].evaluate_function "() => window.FOO").to eq 'foo'
+        expect(await page.frames[1].evaluate_function "() => window.FOO").to eq 'bar'
       end
 
       it 'should have correct execution contexts' do
         page.goto server.domain + 'frames/one-frame.html'
         expect(page.frames.length).to eq 2
-        expect(page.frames[0].evaluate_function '() => document.body.textContent.trim()').to eq ''
-        expect(page.frames[1].evaluate_function '() => document.body.textContent.trim()').to eq "Hi, I'm frame"
+        expect(await page.frames[0].evaluate_function '() => document.body.textContent.trim()').to eq ''
+        expect(await page.frames[1].evaluate_function '() => document.body.textContent.trim()').to eq "Hi, I'm frame"
       end
 
       it 'should execute after cross-site navigation' do
         page.goto server.empty_page
         main_frame = page.main_frame
-        expect(main_frame.evaluate_function '() => window.location.href').to include 'localhost'
+        expect(await main_frame.evaluate_function '() => window.location.href').to include 'localhost'
         page.goto server.cross_process_domain + 'empty.html'
-        expect(main_frame.evaluate_function '() => window.location.href').to include '127'
+        expect(await main_frame.evaluate_function '() => window.location.href').to include '127'
       end
     end
   end

@@ -38,98 +38,27 @@ module Chromiebara
       world.nil? ? nil : world.frame
     end
 
-    # @param {Function|string} pageFunction
-    # @param {...*} args
+    # @param [String] javascript
     # @return {!Promise<(!Object|undefined)>}
     #
-    def evaluate(page_function, *args)
-      handle = evaluate_handle page_function, *args
-      result = handle.json_value
-      # const result = await handle.jsonValue().catch(error => {
-      #   if (error.message.includes('Object reference chain is too long'))
-      #     return;
-      #   if (error.message.includes('Object couldn\'t be returned by value'))
-      #     return;
-      #   throw error;
-      # });
-      handle.dispose
-      result
+    def evaluate(page_function)
+      evaluate_internal true, page_function
     end
 
     def evaluate_function(page_function, *args)
       evaluate_function_internal true, page_function, *args
     end
 
-    def evaluate_handle_function(page_function, *args)
-      suffix = "//# sourceURL=#{EVALUATION_SCRIPT_URL}"
-      function_text = page_function
-
-      response = await client.command(Protocol::Runtime.call_function_on(
-        function_declaration: function_text + "\n" + suffix + "\n",
-        execution_context_id: context_id,
-        arguments: args.map { |arg| convert_argument arg },
-        return_by_value: false,
-        await_promise: true,
-        user_gesture: true
-      )).catch do |error|
-        byebug
-        # TODO
-        # if (err instanceof TypeError && err.message === 'Converting circular structure to JSON')
-          # err.message += ' Are you passing a nested JSHandle?';
-        # end
-        raise error
-      end
-
-      if response["exceptionDetails"]
-        # TODO
-        raise 'FAILURE'
-      end
-
-      JSHandle.create_js_handle self, response["result"]
-
-      # let callFunctionOnPromise;
-      # try {
-      #   callFunctionOnPromise = this._client.send('Runtime.callFunctionOn', {
-      #     functionDeclaration: functionText + '\n' + suffix + '\n',
-      #     executionContextId: this._contextId,
-      #     arguments: args.map(convertArgument.bind(this)),
-      #     returnByValue: false,
-      #     awaitPromise: true,
-      #     userGesture: true
-      #   });
-      # } catch (err) {
-      #   if (err instanceof TypeError && err.message === 'Converting circular structure to JSON')
-      #     err.message += ' Are you passing a nested JSHandle?';
-      #   throw err;
-      # }
-      # const { exceptionDetails, result: remoteObject } = await callFunctionOnPromise.catch(rewriteError);
-      # if (exceptionDetails)
-      #   throw new Error('Evaluation failed: ' + helper.getExceptionMessage(exceptionDetails));
-      # return createJSHandle(this, remoteObject);
-    end
-
     # @param {Function|string} pageFunction
     # @param {...*} args
     # @return {!Promise<!JSHandle>}
     #
-    def evaluate_handle(page_function, *args)
-      suffix = "//# sourceURL=#{EVALUATION_SCRIPT_URL}"
+    def evaluate_handle(page_function)
+      evaluate_internal  false, page_function
+    end
 
-      expression_with_source_url = SOURCE_URL_REGEX.match?(page_function) ? page_function : page_function + "\n" + suffix;
-      response = await client.command(Protocol::Runtime.evaluate(
-        expression: expression_with_source_url,
-        context_id: context_id,
-        return_by_value: false,
-        await_promise: true,
-        user_gesture: true
-      )).catch { |error| raise 'TODO '}
-
-      if response["exceptionDetails"]
-        # TODO
-        raise 'FAILURE'
-      end
-
-      JSHandle.create_js_handle self, response["result"]
+    def evaluate_handle_function(page_function, *args)
+      evaluate_function_internal false, page_function, *args
     end
 
     # TODO
@@ -159,47 +88,82 @@ module Chromiebara
 
     private
 
+      def evaluate_internal(return_by_value, expression)
+        expression = SOURCE_URL_REGEX.match?(expression) ? expression : "#{expression}\n#{SUFFIX}"
+        evaluate_promise = client.command Protocol::Runtime.evaluate(
+          expression: expression,
+          context_id: context_id,
+          return_by_value: return_by_value,
+          await_promise: true,
+          user_gesture: true
+        )
+        # TODO catch and rewrite error
+        evaluate_promise.then do |response|
+          if response["exceptionDetails"]
+            #  throw new Error('Evaluation failed: ' + helper.getExceptionMessage(exceptionDetails));
+            raise "Evaluation failed: TODO"
+          end
+
+          if return_by_value
+            Util.value_from_remote_object response["result"]
+          else
+            JSHandle.create_js_handle self, response["result"]
+          end
+        end
+        #const {exceptionDetails, result: remoteObject} = await this._client.send('Runtime.evaluate', {
+        #  expression: expressionWithSourceUrl,
+        #  contextId,
+        #  returnByValue,
+        #  awaitPromise: true,
+        #  userGesture: true
+        #}).catch(rewriteError);
+        #if (exceptionDetails)
+        #  throw new Error('Evaluation failed: ' + helper.getExceptionMessage(exceptionDetails));
+        #return returnByValue ? helper.valueFromRemoteObject(remoteObject) : createJSHandle(this, remoteObject);
+      end
+
       def evaluate_function_internal(return_by_value, function_text, *args)
         call_function_on_promise =
           begin
-             client.command Protocol::Runtime.call_function_on(
+             client.command(Protocol::Runtime.call_function_on(
               function_declaration: function_text + "\n" + SUFFIX + "\n",
               execution_context_id: context_id,
               arguments: args.map { |arg| convert_argument arg },
               return_by_value: return_by_value,
               await_promise: true,
               user_gesture: true
-            )
+             )).catch(method(:rewrite_error))
           rescue => err
             #  if (err instanceof TypeError && err.message === 'Converting circular structure to JSON')
             #    err.message += ' Are you passing a nested JSHandle?';
             raise err
           end
 
-        response = await call_function_on_promise
+        call_function_on_promise.then do |response|
+          if response["exceptionDetails"]
+            raise "Evaluation failed: #{Util.get_exception_message response["exceptionDetails"]}"
+          end
 
-        if response["exceptionDetails"]
-          #throw new Error('Evaluation failed: ' + helper.getExceptionMessage(exceptionDetails));
-        end
-
-        if return_by_value
-          Util.value_from_remote_object response["result"]
-        else
-          JSHandle.create_js_handle self, response["result"]
+          if return_by_value
+            Util.value_from_remote_object response["result"]
+          else
+            JSHandle.create_js_handle self, response["result"]
+          end
         end
       end
 
       def convert_argument(arg)
         #if (typeof arg === 'bigint') // eslint-disable-line valid-typeof
         #  return { unserializableValue: `${arg.toString()}n` };
-        #if (Object.is(arg, -0))
-        #  return { unserializableValue: '-0' };
-        #if (Object.is(arg, Infinity))
-        #  return { unserializableValue: 'Infinity' };
-        #if (Object.is(arg, -Infinity))
-        #  return { unserializableValue: '-Infinity' };
-        #if (Object.is(arg, NaN))
-        #  return { unserializableValue: 'NaN' };
+        if arg == Float::INFINITY
+          return { unserializableValue: 'Infinity' }
+        end
+        if arg == -Float::INFINITY
+          return { unserializableValue: '-Infinity' }
+        end
+        if arg.is_a?(Float) && arg.nan?
+          return { unserializableValue: 'NaN' }
+        end
         object_handle = arg && arg.is_a?(JSHandle) ? arg : nil
         if object_handle
           if object_handle.context != self
@@ -219,14 +183,23 @@ module Chromiebara
         { value: arg }
       end
 
-      # TODO
       # @param {!Error} error
       # @return {!Protocol.Runtime.evaluateReturnValue}
       #
-      # function rewriteError(error) {
-      #   if (error.message.endsWith('Cannot find context with specified id'))
-      #     throw new Error('Execution context was destroyed, most likely because of a navigation.');
-      #   throw error;
-      # }
+      def rewrite_error(error)
+        if error.message.include? 'Object reference chain is too long'
+          return { "result" => { "type" => 'undefined' } }
+        end
+
+        if error.message.include? "Object couldn't be returned by value"
+          return { "result" => { "type" => 'undefined' } }
+        end
+
+        if error.message.end_with? 'Cannot find context with specified id'
+          raise 'Execution context was destroyed, most likely because of a navigation.'
+        end
+
+        throw error
+      end
   end
 end

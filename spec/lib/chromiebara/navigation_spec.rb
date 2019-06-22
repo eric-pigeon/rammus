@@ -61,7 +61,7 @@ module Chromiebara
 
       it 'should work when page calls history API in beforeunload' do
         page.goto server.empty_page
-        page.evaluate_function "() => {
+        await page.evaluate_function "() => {
           window.addEventListener('beforeunload', () => history.replaceState(null, 'initial', window.location.href), false);
         }"
         response = page.goto server.domain + 'grid.html'
@@ -452,7 +452,7 @@ module Chromiebara
 
       it 'should work with HistoryAPI' do
         page.goto server.empty_page
-        page.evaluate_function "() => {
+        await page.evaluate_function "() => {
           history.pushState({}, '', '/first.html');
           history.pushState({}, '', '/second.html');
         }"
@@ -569,9 +569,9 @@ module Chromiebara
     describe 'Page.reload' do
       it 'should work' do
         page.goto server.empty_page
-        page.evaluate_function'() => window._foo = 10'
+        await page.evaluate_function'() => window._foo = 10'
         page.reload
-        expect(page.evaluate_function '() => window._foo').to eq(nil)
+        expect(await page.evaluate_function '() => window._foo').to eq(nil)
       end
     end
   end

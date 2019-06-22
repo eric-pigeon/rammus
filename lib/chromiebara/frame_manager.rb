@@ -68,7 +68,7 @@ module Chromiebara
     def navigate_frame(frame, url, referer: nil, timeout: nil, wait_until: nil)
       referer ||= network_manager.extra_http_headers[:referer]
       wait_until ||= [:load]
-      timeout ||= @_timeout_settings.navigation_timeout
+      timeout ||= timeout_settings.navigation_timeout
       error_message = "Navigation Timeout Exceeded: #{timeout}s exceeded"
 
       watcher = LifecycleWatcher.new self, frame, wait_until, timeout
@@ -103,7 +103,7 @@ module Chromiebara
     #
     def wait_for_frame_navigation(frame, timeout: nil, wait_until: nil)
       wait_until ||= [:load]
-      timeout ||= @_timeout_settings.navigation_timeout
+      timeout ||= timeout_settings.navigation_timeout
       watcher = LifecycleWatcher.new self, frame, wait_until, timeout
       # const watcher = new LifecycleWatcher(this, frame, waitUntil, timeout);
       # const error = await Promise.race([

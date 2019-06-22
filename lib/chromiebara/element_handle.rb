@@ -176,7 +176,7 @@ module Chromiebara
     # @return {!Promise<?ElementHandle>}
     #
     def query_selector(selector)
-      handle = execution_context.evaluate_handle_function(
+      handle = await execution_context.evaluate_handle_function(
         '(element, selector) => element.querySelector(selector)',
         self,
         selector
@@ -195,7 +195,7 @@ module Chromiebara
     # @return {!Promise<!Array<!ElementHandle>>}
     #
     def query_selector_all(selector)
-      array_handle = execution_context.evaluate_handle_function(
+      array_handle = await execution_context.evaluate_handle_function(
         "(element, selector) => element.querySelectorAll(selector)",
         self,
         selector
@@ -233,13 +233,13 @@ module Chromiebara
     # @return {!Promise<(!Object|undefined)>}
     #
     def query_selector_all_evaluate_function(selector, page_function, *args)
-      array_handle = execution_context.evaluate_handle_function(
+      array_handle = await execution_context.evaluate_handle_function(
         "(element, selector) => Array.from(element.querySelectorAll(selector))",
         self,
         selector
       )
 
-      result = execution_context.evaluate_function page_function, array_handle, *args
+      result = await execution_context.evaluate_function page_function, array_handle, *args
       array_handle.dispose
       result
     end
@@ -259,7 +259,7 @@ module Chromiebara
         return array;
       }
       JAVASCRIPT
-      array_handle = execution_context.evaluate_handle_function function, self, expression
+      array_handle = await execution_context.evaluate_handle_function function, self, expression
 
       properties = array_handle.get_properties
       array_handle.dispose
@@ -288,7 +288,7 @@ module Chromiebara
         return visibleRatio > 0;
       }
       JAVASCRIPT
-      execution_context.evaluate_function function, self
+      await execution_context.evaluate_function function, self
     end
 
     private
@@ -317,7 +317,7 @@ module Chromiebara
             return false;
           }
         JAVASCRIPT
-        error = execution_context.evaluate_function function, self, page.javascript_enabled
+        error = await execution_context.evaluate_function function, self, page.javascript_enabled
         raise error if error
       end
 

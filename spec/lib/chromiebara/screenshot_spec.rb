@@ -1,5 +1,6 @@
 module Chromiebara
   RSpec.describe 'Screenshot', browser: true do
+    include Promise::Await
     before { @_context = browser.create_context }
     after { @_context.close }
     let(:context) { @_context }
@@ -102,7 +103,7 @@ module Chromiebara
       it 'should work' do
         page.set_viewport width: 500, height: 500
         page.goto server.domain + 'grid.html'
-        page.evaluate_function '() => window.scrollBy(50, 100)'
+        await page.evaluate_function '() => window.scrollBy(50, 100)'
         element_handle = page.query_selector '.box:nth-of-type(3)'
         screenshot = element_handle.screenshot
         expect(screenshot).to match_screenshot 'screenshot-element-bounding-box.png'
@@ -150,7 +151,7 @@ module Chromiebara
         screenshot = element_handle.screenshot
         expect(screenshot).to match_screenshot 'screenshot-element-larger-than-viewport.png'
 
-        expect(page.evaluate_function '() => ({ w: window.innerWidth, h: window.innerHeight })').to eq "w" => 500, "h" => 500
+        expect(await page.evaluate_function '() => ({ w: window.innerWidth, h: window.innerHeight })').to eq "w" => 500, "h" => 500
       end
 
       it 'should scroll element into view' do
@@ -192,7 +193,7 @@ module Chromiebara
       it 'should fail to screenshot a detached element' do
         page.set_content '<h1>remove this</h1>'
         element_handle = page.query_selector 'h1'
-        page.evaluate_function 'element => element.remove()', element_handle
+        await page.evaluate_function 'element => element.remove()', element_handle
         expect { element_handle.screenshot }.to raise_error 'Node is either not visible or not an HTMLElement'
       end
 
