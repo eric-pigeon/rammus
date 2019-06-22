@@ -29,4 +29,8 @@ module Chromiebara
   def self.devices
     DEVICE_DESCRIPTORS
   end
+
+  def self.launch(headless: true, args: [])
+    Launcher.launch headless: headless, args: args
+  end
 end

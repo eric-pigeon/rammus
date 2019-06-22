@@ -25,14 +25,14 @@ module Chromiebara
       end
 
       it 'should return nil for invisible elements' do
-        page.set_content '<div style="display:none">hi</div>'
+        await page.set_content '<div style="display:none">hi</div>'
         element = page.query_selector 'div'
         expect(element.bounding_box).to eq nil
       end
 
       it 'should force a layout' do
         page.set_viewport width: 500, height: 500
-        page.set_content '<div style="width: 100px; height: 100px">hello</div>'
+        await page.set_content '<div style="width: 100px; height: 100px">hello</div>'
         element_handle = page.query_selector 'div'
         await page.evaluate_function "element => element.style.height = '200px'", element_handle
         box = element_handle.bounding_box
@@ -46,7 +46,7 @@ module Chromiebara
           <rect id="theRect" x="30" y="50" width="200" height="300"></rect>
         </svg>
         HTML
-        page.set_content content
+        await page.set_content content
         element = page.query_selector '#therect'
         pptr_bounding_box = element.bounding_box
         function = <<~JAVASCRIPT
@@ -123,7 +123,7 @@ module Chromiebara
       end
 
       it 'should return null for invisible elements' do
-        page.set_content '<div style="display:none">hi</div>'
+        await page.set_content '<div style="display:none">hi</div>'
         element = page.query_selector 'div'
         expect(element.box_model).to eq nil
       end
@@ -182,7 +182,7 @@ module Chromiebara
       end
 
       it 'should throw for <br> elements' do
-        page.set_content 'hello<br>goodbye'
+        await page.set_content 'hello<br>goodbye'
         br = page.query_selector 'br'
         expect { br.click }.to raise_error 'Node is either not visible or not an HTMLElement'
       end

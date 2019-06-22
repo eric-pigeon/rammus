@@ -21,6 +21,7 @@ module Chromiebara
     attr_reader :target, :frame_manager, :javascript_enabled, :keyboard, :mouse, :touchscreen, :accessibility, :coverage
     delegate [:url] => :main_frame
     delegate [:network_manager] => :frame_manager
+    delegate [:add_script_tag, :add_style_tag] => :main_frame
 
     def self.create(target, default_viewport: nil, ignore_https_errors: false)
       new(target, ignore_https_errors: ignore_https_errors).tap do |page|
@@ -48,8 +49,8 @@ module Chromiebara
       @frame_manager = FrameManager.new(client, self, ignore_https_errors, @_timeout_settings)
       @_emulation_manager = EmulationManager.new client
       # this._tracing = new Tracing(client);
-      # /** @type {!Map<string, Function>} */
-      # this._pageBindings = new Map();
+      # @type {!Map<string, Function>}
+      @_page_bindings = {}
       @coverage = Coverage.new client
       @javascript_enabled = true
       # @type {?Puppeteer.Viewport}
@@ -85,19 +86,19 @@ module Chromiebara
       network_manager.on :request_failed, -> (event) { emit :request_failed, event }
       network_manager.on :request_finished, -> (event) { emit :request_finished, event }
 
-      # client.on('Page.domContentEventFired', event => this.emit(Events.Page.DOMContentLoaded));
+      client.on Protocol::Page.dom_content_event_fired, -> (event) { emit :dom_content_loaded }
       client.on Protocol::Page.load_event_fired, -> (_event) { emit :load }
       client.on Protocol::Runtime.console_api_called, method(:on_console_api)
-      # client.on('Runtime.bindingCalled', event => this._onBindingCalled(event));
+      client.on Protocol::Runtime.binding_called, method(:on_binding_called)
       client.on Protocol::Page.javascript_dialog_opening, method(:on_dialog)
       client.on Protocol::Runtime.exception_thrown, ->(exception) { handle_exception exception["exceptionDetails"] }
-      # client.on('Inspector.targetCrashed', event => this._onTargetCrashed());
-      # client.on('Performance.metrics', event => this._emitMetrics(event));
+      client.on Protocol::Inspector.target_crashed, method(:on_target_crashed)
+      client.on Protocol::Performance.metrics, method(:emit_metrics)
       client.on Protocol::Log.entry_added, method(:on_log_entry_added)
-      # this._target._isClosedPromise.then(() => {
-      #   this.emit(Events.Page.Close);
-      #   this._closed = true;
-      # });
+      target.is_closed_promise.then do
+        emit :close
+        @_closed = true
+      end
     end
 
     # @return {!Puppeteer.Browser}
@@ -118,16 +119,14 @@ module Chromiebara
       @frame_manager.main_frame
     end
 
-    # async setGeolocation(options) {
-    #   const { longitude, latitude, accuracy = 0} = options;
-    #   if (longitude < -180 || longitude > 180)
-    #     throw new Error(`Invalid longitude "${longitude}": precondition -180 <= LONGITUDE <= 180 failed.`);
-    #   if (latitude < -90 || latitude > 90)
-    #     throw new Error(`Invalid latitude "${latitude}": precondition -90 <= LATITUDE <= 90 failed.`);
-    #   if (accuracy < 0)
-    #     throw new Error(`Invalid accuracy "${accuracy}": precondition 0 <= ACCURACY failed.`);
-    #   await this._client.send('Emulation.setGeolocationOverride', {longitude, latitude, accuracy});
-    # }
+    # @param {!{longitude: number, latitude: number, accuracy: (number|undefined)}} options
+    def set_geolocation(longitude:, latitude:, accuracy: 0)
+      raise "Invalid longitude '#{longitude}': precondition -180 <= LONGITUDE <= 180 failed." if longitude < -180 || longitude > 180
+      raise "Invalid latitude '#{latitude}': precondition -90 <= LATITUDE <= 90 failed." if latitude < -90 || latitude > 90
+      raise "Invalid accuracy '#{accuracy}': precondition 0 <= ACCURACY failed." if accuracy < 0
+
+      await client.command Protocol::Emulation.set_geolocation_override longitude: longitude, latitude: latitude, accuracy: accuracy
+    end
 
     # @return [Chromiebara::Browser]
     #
@@ -158,14 +157,14 @@ module Chromiebara
     #  @param {boolean} value
     #
     def set_request_interception(value)
-      frame_manager.network_manager.set_request_interception value
+      network_manager.set_request_interception value
     end
 
-    #  * @param {boolean} enabled
-    #  */
-    # setOfflineMode(enabled) {
-    #   return this._frameManager.networkManager().setOfflineMode(enabled);
-    # }
+    # @param {boolean} enabled
+    #
+    def set_offline_mode(enabled)
+      network_manager.set_offline_mode enabled
+    end
 
     # @param {number} timeout
     #
@@ -204,13 +203,13 @@ module Chromiebara
       context.evaluate_handle_function page_function, *args
     end
 
-    #  * @param {!Puppeteer.JSHandle} prototypeHandle
-    #  * @return {!Promise<!Puppeteer.JSHandle>}
-    #  */
-    # async queryObjects(prototypeHandle) {
-    #   const context = await this.mainFrame().executionContext();
-    #   return context.queryObjects(prototypeHandle);
-    # }
+    # @param {!Puppeteer.JSHandle} prototypeHandle
+    # @return {!Promise<!Puppeteer.JSHandle>}
+    #
+    def query_objects(prototype_handle)
+      context = main_frame.execution_context
+      context.query_objects prototype_handle
+    end
 
     # @param {string} selector
     # @param {Function|string} pageFunction
@@ -299,145 +298,63 @@ module Chromiebara
       end
     end
 
-    # @return {!Promise<!Puppeteer.ElementHandle>}
+    # @param {string} name
+    # @param {Function} puppeteerFunction
     #
-    def add_script_tag(url: nil, path: nil, content: nil, type: nil)
-      main_frame.add_script_tag url: url, path: path, content: content, type: type
+    def expose_function(name, function = nil, &block)
+      function ||= block
+      raise "Failed to add page binding with name #{name}: window['#{name}'] already exists!" if @_page_bindings.has_key? name
+      @_page_bindings[name] = function
+
+      add_page_binding = <<~JAVASCRIPT
+      function addPageBinding(bindingName) {
+        const binding = window[bindingName];
+        window[bindingName] = (...args) => {
+          const me = window[bindingName];
+          let callbacks = me['callbacks'];
+          if (!callbacks) {
+            callbacks = new Map();
+            me['callbacks'] = callbacks;
+          }
+          const seq = (me['lastSeq'] || 0) + 1;
+          me['lastSeq'] = seq;
+          const promise = new Promise((resolve, reject) => callbacks.set(seq, {resolve, reject}));
+          binding(JSON.stringify({name: bindingName, seq, args}));
+          return promise;
+        };
+      }
+      JAVASCRIPT
+
+      expression = "(#{add_page_binding})(\"#{name}\")"
+      await client.command Protocol::Runtime.add_binding name: name
+      await client.command Protocol::Page.add_script_to_evaluate_on_new_document source: expression
+      Promise.all(frames.map { |frame| frame.evaluate(expression) }) # TODO.catch(debugError)));
     end
-
-    # @param {!{url?: string, path?: string, content?: string}} options
-    #
-    def add_style_tag(url: nil, path: nil, content: nil)
-      main_frame.add_style_tag url: url, path: path, content: content
-    end
-
-    #  * @param {string} name
-    #  * @param {Function} puppeteerFunction
-    #  */
-    # async exposeFunction(name, puppeteerFunction) {
-    #   if (this._pageBindings.has(name))
-    #     throw new Error(`Failed to add page binding with name ${name}: window['${name}'] already exists!`);
-    #   this._pageBindings.set(name, puppeteerFunction);
-
-    #   const expression = helper.evaluationString(addPageBinding, name);
-    #   await this._client.send('Runtime.addBinding', {name: name});
-    #   await this._client.send('Page.addScriptToEvaluateOnNewDocument', {source: expression});
-    #   await Promise.all(this.frames().map(frame => frame.evaluate(expression).catch(debugError)));
-
-    #   function addPageBinding(bindingName) {
-    #     const binding = window[bindingName];
-    #     window[bindingName] = (...args) => {
-    #       const me = window[bindingName];
-    #       let callbacks = me['callbacks'];
-    #       if (!callbacks) {
-    #         callbacks = new Map();
-    #         me['callbacks'] = callbacks;
-    #       }
-    #       const seq = (me['lastSeq'] || 0) + 1;
-    #       me['lastSeq'] = seq;
-    #       const promise = new Promise((resolve, reject) => callbacks.set(seq, {resolve, reject}));
-    #       binding(JSON.stringify({name: bindingName, seq, args}));
-    #       return promise;
-    #     };
-    #   }
-    # }
 
     # @param {?{username: string, password: string}} credentials
     #
     def authenticate(username: nil, password: nil)
-      frame_manager.network_manager.authenticate username: username, password: password
+      network_manager.authenticate username: username, password: password
     end
 
     # @param {!Object<string, string>} headers
     #
     def set_extra_http_headers(headers)
-      frame_manager.network_manager.set_extra_http_headers headers
+      network_manager.set_extra_http_headers headers
     end
 
     # @param [String] user_agent
     #
     def set_user_agent(user_agent)
-      frame_manager.network_manager.set_user_agent user_agent
+      network_manager.set_user_agent user_agent
     end
 
-    #  * @return {!Promise<!Metrics>}
-    #  */
-    # async metrics() {
-    #   const response = await this._client.send('Performance.getMetrics');
-    #   return this._buildMetricsObject(response.metrics);
-    # }
-
-    #  * @param {!Protocol.Performance.metricsPayload} event
-    #  */
-    # _emitMetrics(event) {
-    #   this.emit(Events.Page.Metrics, {
-    #     title: event.title,
-    #     metrics: this._buildMetricsObject(event.metrics)
-    #   });
-    # }
-
-    #  * @param {?Array<!Protocol.Performance.Metric>} metrics
-    #  * @return {!Metrics}
-    #  */
-    # _buildMetricsObject(metrics) {
-    #   const result = {};
-    #   for (const metric of metrics || []) {
-    #     if (supportedMetrics.has(metric.name))
-    #       result[metric.name] = metric.value;
-    #   }
-    #   return result;
-    # }
-
-    # /**
-    #  * @param {!Protocol.Runtime.bindingCalledPayload} event
-    #  */
-    # async _onBindingCalled(event) {
-    #   const {name, seq, args} = JSON.parse(event.payload);
-    #   let expression = null;
-    #   try {
-    #     const result = await this._pageBindings.get(name)(...args);
-    #     expression = helper.evaluationString(deliverResult, name, seq, result);
-    #   } catch (error) {
-    #     if (error instanceof Error)
-    #       expression = helper.evaluationString(deliverError, name, seq, error.message, error.stack);
-    #     else
-    #       expression = helper.evaluationString(deliverErrorValue, name, seq, error);
-    #   }
-    #   this._client.send('Runtime.evaluate', { expression, contextId: event.executionContextId }).catch(debugError);
-
-    #   /**
-    #    * @param {string} name
-    #    * @param {number} seq
-    #    * @param {*} result
-    #    */
-    #   function deliverResult(name, seq, result) {
-    #     window[name]['callbacks'].get(seq).resolve(result);
-    #     window[name]['callbacks'].delete(seq);
-    #   }
-
-    #   /**
-    #    * @param {string} name
-    #    * @param {number} seq
-    #    * @param {string} message
-    #    * @param {string} stack
-    #    */
-    #   function deliverError(name, seq, message, stack) {
-    #     const error = new Error(message);
-    #     error.stack = stack;
-    #     window[name]['callbacks'].get(seq).reject(error);
-    #     window[name]['callbacks'].delete(seq);
-    #   }
-
-    #   /**
-    #    * @param {string} name
-    #    * @param {number} seq
-    #    * @param {*} value
-    #    */
-    #   function deliverErrorValue(name, seq, value) {
-    #     window[name]['callbacks'].get(seq).reject(value);
-    #     window[name]['callbacks'].delete(seq);
-    #   }
-    # }
+    # @return {!Promise<!Metrics>}
+    #
+    def metrics
+      response = await client.command Protocol::Performance.get_metrics
+      build_metrics_object response["metrics"]
+    end
 
     # * @return {!Promise<string>}
     #
@@ -481,35 +398,37 @@ module Chromiebara
     # @param {!{timeout?: number}=} options
     # @return {!Promise<!Puppeteer.Request>}
     #
-    # async waitForRequest(urlOrPredicate, options = {}) {
-    #   const {
-    #     timeout = this._timeoutSettings.timeout(),
-    #   } = options;
-    #   return helper.waitForEvent(this._frameManager.networkManager(), Events.NetworkManager.Request, request => {
-    #     if (helper.isString(urlOrPredicate))
-    #       return (urlOrPredicate === request.url());
-    #     if (typeof urlOrPredicate === 'function')
-    #       return !!(urlOrPredicate(request));
-    #     return false;
-    #   }, timeout);
-    # }
+    def wait_for_request(url_or_predicate = nil, timeout: nil, &block)
+      timeout ||= @_timeout_settings.timeout
+      url_or_predicate ||= block
+      Util.wait_for_event(network_manager, :request, -> (request) do
+        if url_or_predicate.is_a? String
+          next url_or_predicate == request.url
+        end
+        if url_or_predicate.respond_to?(:call)
+          next !!url_or_predicate.call(request)
+        end
+        false
+      end)
+    end
 
-    #  * @param {(string|Function)} urlOrPredicate
-    #  * @param {!{timeout?: number}=} options
-    #  * @return {!Promise<!Puppeteer.Response>}
-    #  */
-    # async waitForResponse(urlOrPredicate, options = {}) {
-    #   const {
-    #     timeout = this._timeoutSettings.timeout(),
-    #   } = options;
-    #   return helper.waitForEvent(this._frameManager.networkManager(), Events.NetworkManager.Response, response => {
-    #     if (helper.isString(urlOrPredicate))
-    #       return (urlOrPredicate === response.url());
-    #     if (typeof urlOrPredicate === 'function')
-    #       return !!(urlOrPredicate(response));
-    #     return false;
-    #   }, timeout);
-    # }
+    # @param {(string|Function)} urlOrPredicate
+    # @param {!{timeout?: number}=} options
+    # @return {!Promise<!Puppeteer.Response>}
+    #
+    def wait_for_response(url_or_predicate = nil, timeout: nil, &block)
+      timeout ||= @_timeout_settings.timeout
+      url_or_predicate ||= block
+      Util.wait_for_event(network_manager, :response, -> (response) do
+        if url_or_predicate.is_a? String
+          next url_or_predicate == response.url
+        end
+        if url_or_predicate.respond_to?(:call)
+          next !!url_or_predicate.call(response)
+        end
+        false
+      end)
+    end
 
     # @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
     # @return {!Promise<?Puppeteer.Response>}
@@ -545,11 +464,11 @@ module Chromiebara
       client.command Protocol::Emulation.set_script_execution_disabled value: !javascript_enabled
     end
 
-    #  * @param {boolean} enabled
-    #  */
-    # async setBypassCSP(enabled) {
-    #   await this._client.send('Page.setBypassCSP', { enabled });
-    # }
+    # @param {boolean} enabled
+    #
+    def set_bypass_csp(enabled)
+      await client.command Protocol::Page.set_bypass_csp enabled: enabled
+    end
 
     # @param {?string} mediaType
     #
@@ -598,7 +517,7 @@ module Chromiebara
     # @param {boolean} enabled
     #
     def set_cache_enabled(enabled = true)
-      frame_manager.network_manager.set_cache_enabled enabled
+      network_manager.set_cache_enabled enabled
     end
 
     # @param {!ScreenshotOptions=} options
@@ -701,61 +620,52 @@ module Chromiebara
       buffer
     end
 
-    #  * @param {!PDFOptions=} options
-    #  * @return {!Promise<!Buffer>}
-    #  */
-    # async pdf(options = {}) {
-    #   const {
-    #     scale = 1,
-    #     displayHeaderFooter = false,
-    #     headerTemplate = '',
-    #     footerTemplate = '',
-    #     printBackground = false,
-    #     landscape = false,
-    #     pageRanges = '',
-    #     preferCSSPageSize = false,
-    #     margin = {},
-    #     path = null
-    #   } = options;
+    def pdf(path: nil, scale: 1, display_header_footer: false,
+            header_template: '', footer_template: '', print_background: false,
+            landscape: false, page_ranges: '', format: nil, width: nil, height: nil,
+            prefer_css_page_size: false, margin: {})
 
-    #   let paperWidth = 8.5;
-    #   let paperHeight = 11;
-    #   if (options.format) {
-    #     const format = Page.PaperFormats[options.format.toLowerCase()];
-    #     assert(format, 'Unknown paper format: ' + options.format);
-    #     paperWidth = format.width;
-    #     paperHeight = format.height;
-    #   } else {
-    #     paperWidth = convertPrintParameterToInches(options.width) || paperWidth;
-    #     paperHeight = convertPrintParameterToInches(options.height) || paperHeight;
-    #   }
+      paper_width = 8.5
+      paper_height = 11
 
-    #   const marginTop = convertPrintParameterToInches(margin.top) || 0;
-    #   const marginLeft = convertPrintParameterToInches(margin.left) || 0;
-    #   const marginBottom = convertPrintParameterToInches(margin.bottom) || 0;
-    #   const marginRight = convertPrintParameterToInches(margin.right) || 0;
+      if format
+        # TODO
+        #const format = Page.PaperFormats[options.format.toLowerCase()];
+        #assert(format, 'Unknown paper format: ' + options.format);
+        #paperWidth = format.width;
+        #paperHeight = format.height;
+      else
+        paper_width = Page.convert_print_parameter_to_inches(width || paper_width)
+        paper_height = Page.convert_print_parameter_to_inches(height || paper_height)
+      end
 
-    #   const result = await this._client.send('Page.printToPDF', {
-    #     landscape,
-    #     displayHeaderFooter,
-    #     headerTemplate,
-    #     footerTemplate,
-    #     printBackground,
-    #     scale,
-    #     paperWidth,
-    #     paperHeight,
-    #     marginTop,
-    #     marginBottom,
-    #     marginLeft,
-    #     marginRight,
-    #     pageRanges,
-    #     preferCSSPageSize
-    #   });
-    #   const buffer = Buffer.from(result.data, 'base64');
-    #   if (path !== null)
-    #     await writeFileAsync(path, buffer);
-    #   return buffer;
-    # }
+      margin_top = Page.convert_print_parameter_to_inches(margin[:top]) || 0
+      margin_left = Page.convert_print_parameter_to_inches(margin[:left]) || 0
+      margin_bottom = Page.convert_print_parameter_to_inches(margin[:bottom]) || 0
+      margin_right = Page.convert_print_parameter_to_inches(margin[:right]) || 0
+
+      result = await client.command Protocol::Page.print_to_pdf(
+        landscape: landscape,
+        display_header_footer: display_header_footer,
+        header_template: header_template,
+        footer_template: footer_template,
+        print_background: print_background,
+        scale: scale,
+        paper_width: paper_width,
+        paper_height: paper_height,
+        margin_top: margin_top,
+        margin_bottom: margin_bottom,
+        margin_left: margin_left,
+        margin_right: margin_right,
+        page_ranges: page_ranges,
+        prefer_css_page_size: prefer_css_page_size
+      )
+      buffer = Base64.decode64(result["data"])
+
+      File.open(path, 'wb') { |file| file.puts buffer } if path
+
+      buffer
+    end
 
     # Page Title
     #
@@ -769,7 +679,7 @@ module Chromiebara
     def close(run_before_unload: false)
       #  assert(!!this._client._connection, 'Protocol error: Connection closed. Most likely the page has been closed.');
       if run_before_unload
-        # await this._client.send('Page.close');
+        await client.command Protocol::Page.close
       else
         await client.client.command Protocol::Target.close_target target_id: target.target_id
         # await this._target._isClosedPromise;
@@ -779,7 +689,7 @@ module Chromiebara
     # @return {boolean}
     #
     def is_closed?
-       @_closed
+      @_closed
     end
 
     # @param {string} selector
@@ -801,13 +711,12 @@ module Chromiebara
       main_frame.hover selector
     end
 
-    #  * @param {string} selector
-    #  * @param {!Array<string>} values
-    #  * @return {!Promise<!Array<string>>}
-    #  */
-    # select(selector, ...values) {
-    #   return this.mainFrame().select(selector, ...values);
-    # }
+    # @param {string} selector
+    # @param {!Array<string>} values
+    #
+    def select(selector, *values)
+      main_frame.select selector, *values
+    end
 
     #  @param [String] selector
     #
@@ -848,14 +757,14 @@ module Chromiebara
        main_frame.wait_for_xpath xpath, visible: visible, hidden: hidden, timeout: timeout
     end
 
-    #  * @param {Function} pageFunction
-    #  * @param {!{polling?: string|number, timeout?: number}=} options
-    #  * @param {!Array<*>} args
-    #  * @return {!Promise<!Puppeteer.JSHandle>}
-    #  */
-    # waitForFunction(pageFunction, options = {}, ...args) {
-    #   return this.mainFrame().waitForFunction(pageFunction, options, ...args);
-    # }
+    # @param {Function} pageFunction
+    # @param {!{polling?: string|number, timeout?: number}=} options
+    # @param {!Array<*>} args
+    # @return {!Promise<!Puppeteer.JSHandle>}
+    #
+    def wait_for_function(page_function, *args, polling: nil, timeout: nil)
+      main_frame.wait_for_function page_function, *args, polling: polling, timeout: timeout
+    end
 
     private
 
@@ -863,9 +772,9 @@ module Chromiebara
         @client ||= target.session
       end
 
-      # _onTargetCrashed() {
-      #   this.emit('error', new Error('Page crashed!'));
-      # }
+      def on_target_crashed(_event)
+        emit :error, 'Page crashed!'
+      end
 
       #  @param {!Protocol.Log.entryAddedPayload} event
       #
@@ -875,9 +784,8 @@ module Chromiebara
         args = event["entry"]["args"]
         url = event["entry"]["url"]
         line_number = event["entry"]["line_number"]
-        if event.dig "entry", "args"
-          arts.map { |arg| Util.release_object client, args }
-        elsif event.dig "entry", "source" != 'worker'
+        args.map { |arg| Util.release_object client, arg } if event.dig "entry", "args"
+        if event.dig("entry", "source") != 'worker'
           emit :console, ConsoleMessage.new(level, text, [], url: url, line_number: line_number)
         end
       end
@@ -926,7 +834,7 @@ module Chromiebara
         end
         context = frame_manager.execution_context_by_id event["executionContextId"]
         values = event["args"].map { |arg| JSHandle.create_js_handle context, arg }
-        add_console_message event["type"], values, event["stack_trace"]
+        add_console_message event["type"], values, event["stackTrace"]
       end
 
       # @param {string} type
@@ -934,11 +842,10 @@ module Chromiebara
       # @param {Protocol.Runtime.StackTrace=} stackTrace
       #
       def add_console_message(type, args, stack_trace)
-        # TODO
-        #if (!this.listenerCount(Events.Page.Console)) {
-        #  args.forEach(arg => arg.dispose());
-        #  return;
-        #}
+        if listener_count(:console).zero?
+          args.each  { |arg| arg.dispose }
+          return
+        end
         text_tokens = args.map do |arg|
           remote_object = arg.remote_object
           if remote_object["objectId"]
@@ -972,6 +879,124 @@ module Chromiebara
          client.command(Protocol::Page.navigate_to_history_entry entry_id: entry["id"])
         )
         response
+      end
+
+      SUPPORTED_METRICS = [
+        'Timestamp',
+        'Documents',
+        'Frames',
+        'JSEventListeners',
+        'Nodes',
+        'LayoutCount',
+        'RecalcStyleCount',
+        'LayoutDuration',
+        'RecalcStyleDuration',
+        'ScriptDuration',
+        'TaskDuration',
+        'JSHeapUsedSize',
+        'JSHeapTotalSize',
+      ]
+
+      # @param {?Array<!Protocol.Performance.Metric>} metrics
+      # @return {!Metrics}
+      #
+      def build_metrics_object(metrics = [])
+        metrics.map do |metric|
+          next unless SUPPORTED_METRICS.include? metric["name"]
+          [metric["name"], metric["value"]]
+        end.compact.to_h
+      end
+
+      # @param {!Protocol.Performance.metricsPayload} event
+      #
+      def emit_metrics(event)
+        emit :metrics, {
+          "title" => event["title"],
+          "metrics" => build_metrics_object(event["metrics"])
+        }
+      end
+
+      # @param {!Protocol.Runtime.bindingCalledPayload} event
+      #
+      def on_binding_called(event)
+        payload = JSON.parse event["payload"]
+        name = payload["name"]
+        seq = payload["seq"]
+        args = payload["args"]
+
+        # @param {string} name
+        # @param {number} seq
+        # @param {*} result
+        #
+        deliver_result = <<~JAVASCRIPT
+        function deliverResult(name, seq, result) {
+          window[name]['callbacks'].get(seq).resolve(result);
+          window[name]['callbacks'].delete(seq);
+        }
+        JAVASCRIPT
+
+        expression =
+          begin
+            result = @_page_bindings[name].call(*args)
+            result = await result if result.is_a?(Promise)
+            Util.evaluation_string deliver_result, name, seq, result
+          rescue => error
+            # @param {string} name
+            # @param {number} seq
+            # @param {string} message
+            # @param {string} stack
+            #
+            deliver_error = <<~JAVASCRIPT
+            function deliverError(name, seq, message, stack) {
+              const error = new Error(message);
+              error.stack = stack;
+              window[name]['callbacks'].get(seq).reject(error);
+              window[name]['callbacks'].delete(seq);
+            }
+            JAVASCRIPT
+
+            Util.evaluation_string deliver_error, name, seq, error.message, error.backtrace
+          end
+        client.command Protocol::Runtime.evaluate expression: expression, context_id: event["executionContextId"]
+      end
+
+      UNIT_TO_PIXELS = {
+        'px' => 1,
+        'in' => 96,
+        'cm' => 37.8,
+        'mm' => 3.78
+      }
+
+      # @param {(string|number|undefined)} parameter
+      # @return {(number|undefined)}
+      #
+      def self.convert_print_parameter_to_inches(parameter)
+        return if parameter.nil?
+
+        pixels = nil
+        if parameter.is_a? Numeric
+          # Treat numbers as pixel values to be aligned with phantom's paperSize.
+          pixels = parameter
+        elsif parameter.is_a? String
+          text = parameter
+          unit = text[-2..-1]
+          value_text = ''
+          if UNIT_TO_PIXELS.has_key? unit
+            value_text = text[0..-3]
+          else
+            # In case of unknown unit try to parse the whole parameter as number of pixels.
+            # This is consistent with phantom's paperSize behavior.
+            unit = 'px'
+            value_text = text
+          end
+          value = value_text.to_i
+          "Failed to parse parameter value: #{text}" if value.zero?
+          pixels = value * UNIT_TO_PIXELS[unit]
+        else
+          raise "page.pdf() Cannot handle parameter type: #{parameter.class}"
+        end
+
+        pixels.to_f / 96
       end
   end
 end

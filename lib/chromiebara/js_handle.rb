@@ -112,6 +112,10 @@ module Chromiebara
       end
     end
 
+    def disposed?
+      @_disposed
+    end
+
     # @override
     # @return {string}
     #

@@ -39,7 +39,7 @@ module Chromiebara
             <input type="hidden" id="foo" name="foo" value="FOOBAR">
           </form>
         HTML
-        page.set_content content
+        await page.set_content content
         Promise.all(
           page.wait_for_navigation,
           page.query_selector_evaluate_function('form', 'form => form.submit()')
@@ -353,7 +353,7 @@ module Chromiebara
       end
 
       it 'should not throw "Invalid Interception Id" if the request was cancelled' do
-        page.set_content '<iframe></iframe>'
+        await page.set_content '<iframe></iframe>'
         page.set_request_interception true
         request = nil
         page.on :request, -> (r) { request = r }

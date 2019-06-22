@@ -1,7 +1,11 @@
 module Chromiebara
   class Target
+    extend Forwardable
     attr_reader :target_info, :browser_context, :target_id, :initialized,
-      :initialized_promise, :initialized_callback, :_closed_callback
+      :initialized_promise, :initialized_callback, :_closed_callback,
+      :is_closed_promise
+
+    delegate [:browser] => :browser_context
 
     # @param [Hash] target_info
     # @param [Chromiebara::BrowserContext] browser_context
@@ -18,18 +22,21 @@ module Chromiebara
       initialized_promise, @initialized_callback, _reject = Promise.create
       @initialized_promise = initialized_promise.then do |success|
         next false unless success
-        #const opener = this.opener();
+
+        next true if opener.nil? || type != "page"
         #if (!opener || !opener._pagePromise || this.type() !== 'page')
         #  return true;
+
         #const openerPage = await opener._pagePromise;
-        #if (!openerPage.listenerCount(Events.Page.Popup))
-        #  return true;
-        #const popupPage = await this.page();
-        #openerPage.emit(Events.Page.Popup, popupPage);
+        opener_page = opener.page
+
+        next true if opener_page.listener_count(:popup).zero?
+        popup_page = self.page
+        opener_page.emit :popup, popup_page
         true
       end
 
-      @_is_closed_promise, @_closed_callback, _ = Promise.create
+      @is_closed_promise, @_closed_callback, _ = Promise.create
       @initialized = target_info["type"] != 'page' || target_info["url"] != ""
       @initialized_callback.(true) if initialized
     end
@@ -83,6 +90,13 @@ module Chromiebara
       else
         "other"
       end
+    end
+
+    def opener
+      return unless opener_id = target_info["openerId"]
+
+      # TODO
+      browser.instance_variable_get(:@_targets)[opener_id]
     end
 
     private

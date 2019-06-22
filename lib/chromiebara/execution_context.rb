@@ -61,19 +61,15 @@ module Chromiebara
       evaluate_function_internal false, page_function, *args
     end
 
-    # TODO
-    # /**
-    #  * @param {!JSHandle} prototypeHandle
-    #  * @return {!Promise<!JSHandle>}
-    #  */
-    # async queryObjects(prototypeHandle) {
-    #   assert(!prototypeHandle._disposed, 'Prototype JSHandle is disposed!');
-    #   assert(prototypeHandle._remoteObject.objectId, 'Prototype JSHandle must not be referencing primitive value');
-    #   const response = await this._client.send('Runtime.queryObjects', {
-    #     prototypeObjectId: prototypeHandle._remoteObject.objectId
-    #   });
-    #   return createJSHandle(this, response.objects);
-    # }
+    # @param {!JSHandle} prototypeHandle
+    # @return {!Promise<!JSHandle>}
+    #
+    def query_objects(prototype_handle)
+      raise 'Prototype JSHandle is disposed!' if prototype_handle.disposed?
+      raise 'Prototype JSHandle must not be referencing primitive value' if prototype_handle.remote_object["objectId"].nil?
+      response = await client.command Protocol::Runtime.query_objects prototype_object_id: prototype_handle.remote_object["objectId"]
+      JSHandle.create_js_handle self, response["objects"]
+    end
 
     # @param {Puppeteer.ElementHandle} elementHandle
     # @return {Promise<Puppeteer.ElementHandle>}
@@ -100,8 +96,7 @@ module Chromiebara
         # TODO catch and rewrite error
         evaluate_promise.then do |response|
           if response["exceptionDetails"]
-            #  throw new Error('Evaluation failed: ' + helper.getExceptionMessage(exceptionDetails));
-            raise "Evaluation failed: TODO"
+            raise "Evaluation failed: #{Util.get_exception_message response["exceptionDetails"]}"
           end
 
           if return_by_value
@@ -110,16 +105,6 @@ module Chromiebara
             JSHandle.create_js_handle self, response["result"]
           end
         end
-        #const {exceptionDetails, result: remoteObject} = await this._client.send('Runtime.evaluate', {
-        #  expression: expressionWithSourceUrl,
-        #  contextId,
-        #  returnByValue,
-        #  awaitPromise: true,
-        #  userGesture: true
-        #}).catch(rewriteError);
-        #if (exceptionDetails)
-        #  throw new Error('Evaluation failed: ' + helper.getExceptionMessage(exceptionDetails));
-        #return returnByValue ? helper.valueFromRemoteObject(remoteObject) : createJSHandle(this, remoteObject);
       end
 
       def evaluate_function_internal(return_by_value, function_text, *args)

@@ -1,4 +1,7 @@
-$LOAD_PATH << "/Users/epigeon/Documents/Projects/Ruby/chromiebara/spec"
+$LOAD_PATH << File.expand_path("../spec", __FILE__)
+$LOAD_PATH << File.expand_path("../lib", __FILE__)
+require 'concurrent'
+require 'chromiebara/promise'
 require 'support/test_server'
 require 'byebug'
 TestServer.start!

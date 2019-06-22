@@ -51,6 +51,10 @@ module Chromiebara
       end
     end
 
+    def listener_count(event)
+      @_event_callbacks_mutex.synchronize { @_event_callbacks[event].size }
+    end
+
     # TODO
     # private
 

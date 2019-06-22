@@ -26,9 +26,6 @@ module Chromiebara
 
     # @param [Hash] command
     #
-    # TODO
-    # @return [Hash]
-    #
     def command(command)
       @command_mutex.synchronize do
         comamnd_id = next_command_id

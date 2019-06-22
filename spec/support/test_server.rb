@@ -2,6 +2,7 @@ require 'rack'
 require "zlib"
 
 class TestServer
+  include Chromiebara::Promise::Await
   HANDLER = Rack::Handler.get('puma')
   HANDLER_NAME = "puma"
   SERVER_SETTINGS = {:Port=>4567, :Host=>"localhost"}
@@ -99,6 +100,16 @@ class TestServer
     @_routes[path] = block
   end
 
+  def hang_route(path)
+    promise, resolve, _reject = Chromiebara::Promise.create
+
+    @_routes[path] = ->(req, res) do
+      await promise.then { |response| res.finish }, 0
+    end
+
+    resolve
+  end
+
   def set_redirect(from, to)
     set_route from do |req, res|
       res.redirect to
@@ -123,7 +134,7 @@ class TestServer
     @_auths.clear
     @_gzip_routes.clear
     @_content_security_policy.clear
-    @_request_subscribers.each do |subscriber|
+    @_request_subscribers.each do |_path, subscriber|
       subscriber.reject.("Server has been reset")
     end
     @_request_subscribers.clear

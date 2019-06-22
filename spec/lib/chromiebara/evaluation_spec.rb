@@ -106,16 +106,15 @@ module Chromiebara
         expect(await frame_evaluation).to eq 42
       end
 
-      # TODO need page#expose_function
-      xit 'should work from-inside an exposed function' do
+      it 'should work from-inside an exposed function' do
         # Setup inpage callback, which calls Page.evaluate
-        #await page.exposeFunction('callController', async function(a, b) {
-        #  return await page.evaluate_function((a, b) => a * b, a, b);
-        #});
-        #result = await page.evaluate_function(async function() {
-        #  return await callController(9, 3);
-        #});
-        #expect(result).to eq 27
+        page.expose_function 'callController' do |a, b|
+          await page.evaluate_function("(a, b) => a * b", a, b)
+        end
+        result = await page.evaluate_function("async function() {
+          return await callController(9, 3);
+        }")
+        expect(result).to eq 27
       end
 
       it 'should reject promise with exception' do
@@ -217,14 +216,14 @@ module Chromiebara
       end
 
       it 'should accept element handle as an argument' do
-        page.set_content '<section>42</section>'
+        await page.set_content '<section>42</section>'
         element = page.query_selector 'section'
         text = await page.evaluate_function("e => e.textContent", element)
         expect(text).to eq '42'
       end
 
       it 'should throw if underlying element was disposed' do
-        page.set_content '<section>39</section>'
+        await page.set_content '<section>39</section>'
         element = page.query_selector 'section'
         expect(element).not_to be_nil
         element.dispose

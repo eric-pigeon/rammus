@@ -24,7 +24,7 @@ module Chromiebara
       # @type {!Object<string, string>}
       @_extra_http_headers = {}
 
-      #this._offline = false;
+      @_offline = false
 
       # @type {?{username: string, password: string}}
       @_credentials = nil
@@ -75,20 +75,15 @@ module Chromiebara
       @_extra_http_headers.dup
     end
 
-    #  * @param {boolean} value
-    #  */
-    # async setOfflineMode(value) {
-    #   if (this._offline === value)
-    #     return;
-    #   this._offline = value;
-    #   await this._client.send('Network.emulateNetworkConditions', {
-    #     offline: this._offline,
-    #     // values of 0 remove any active throttling. crbug.com/456324#c9
-    #     latency: 0,
-    #     downloadThroughput: -1,
-    #     uploadThroughput: -1
-    #   });
-    # }
+    # @param {boolean} value
+    #
+    def set_offline_mode(value)
+      return if @_offline == value
+      @_offline = value
+
+      # values of 0 remove any active throttling. crbug.com/456324#c9
+      await client.command Protocol::Network.emulate_network_conditions offline: @_offline, latency: 0, download_throughput: -1, upload_throughput: -1
+    end
 
     # @param [String] user_agent
     #
