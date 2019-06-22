@@ -1,6 +1,10 @@
 module Chromiebara
   class Frame
+    extend Forwardable
     include Promise::Await
+
+    delegate [:add_script_tag, :add_style_tag] => :main_world
+
     attr_reader :id, :frame_manager, :parent_frame, :loader_id, :main_world, :name
 
     # @param [Chromiebara::FrameManager] frame_manager
@@ -161,20 +165,6 @@ module Chromiebara
       @_detached
     end
 
-    # @param {!{url?: string, path?: string, content?: string, type?: string}} options
-    # @return {!Promise<!Puppeteer.ElementHandle>}
-    #
-    def add_script_tag(url: nil, path: nil, content: nil, type: nil)
-      main_world.add_script_tag url: url, path: path, content: content, type: type
-    end
-
-    # @param {!{url?: string, path?: string, content?: string}} options
-    # @return {!Promise<!Puppeteer.ElementHandle>}
-    #
-    def add_style_tag(url: nil, path: nil, content: nil)
-      main_world.add_style_tag url: url, path: path, content: content
-    end
-
     # @param {string} selector
     # @param {!{delay?: number, button?: "left"|"right"|"middle", clickCount?: number}=} options
     #
@@ -203,9 +193,9 @@ module Chromiebara
     # @param {!Array<string>} values
     # @return {!Promise<!Array<string>>}
     #
-    # select(selector, ...values){
-    #   return this._secondaryWorld.select(selector, ...values);
-    # }
+    def select(selector, *values)
+      secondary_world.select selector, *values
+    end
 
     # @param [String] selector
     #
@@ -276,17 +266,14 @@ module Chromiebara
       end
     end
 
-    # /**
-    #  * @param {Function|string} pageFunction
-    #  * @param {!{polling?: string|number, timeout?: number}=} options
-    #  * @return {!Promise<!Puppeteer.JSHandle>}
-    #  */
-    # waitForFunction(pageFunction, options = {}, ...args) {
-    #   return this._mainWorld.waitForFunction(pageFunction, options, ...args);
-    # }
+    # @param {Function|string} pageFunction
+    # @param {!{polling?: string|number, timeout?: number}=} options
+    # @return {!Promise<!Puppeteer.JSHandle>}
+    #
+    def wait_for_function(page_function, *args, polling: nil, timeout: nil)
+      main_world.wait_for_function page_function, *args, polling: polling, timeout: timeout
+    end
 
-    #  * @return {!Promise<string>}
-    #  */
     def title
       secondary_world.title
     end

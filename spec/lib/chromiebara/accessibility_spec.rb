@@ -1,5 +1,6 @@
 module Chromiebara
   RSpec.describe Accessibility, browser: true do
+    include Promise::Await
     before { @_context = browser.create_context }
     after { @_context.close }
     let(:context) { @_context }
@@ -40,7 +41,7 @@ module Chromiebara
     end
 
     it 'should report uninteresting nodes' do
-      page.set_content "<textarea autofocus>hi</textarea>"
+      await page.set_content "<textarea autofocus>hi</textarea>"
 
       expected = {
         role: 'textbox',
@@ -60,31 +61,31 @@ module Chromiebara
     end
 
     it 'returns roledescription' do
-      page.set_content '<div tabIndex=-1 aria-roledescription="foo">Hi</div>'
+      await page.set_content '<div tabIndex=-1 aria-roledescription="foo">Hi</div>'
       snapshot = page.accessibility.snapshot
       expect(snapshot[:children][0][:roledescription]).to eq 'foo'
     end
 
     it ' returns orientation' do
-      page.set_content '<a href="" role="slider" aria-orientation="vertical">11</a>'
+      await page.set_content '<a href="" role="slider" aria-orientation="vertical">11</a>'
       snapshot = page.accessibility.snapshot
       expect(snapshot[:children][0][:orientation]).to eq 'vertical'
     end
 
     it 'returns autocomplete' do
-      page.set_content '<input type="number" aria-autocomplete="list" />'
+      await page.set_content '<input type="number" aria-autocomplete="list" />'
       snapshot = page.accessibility.snapshot
       expect(snapshot[:children][0][:autocomplete]).to eq 'list'
     end
 
     it 'returns multiselectable' do
-      page.set_content '<div role="grid" tabIndex=-1 aria-multiselectable=true>hey</div>'
+      await page.set_content '<div role="grid" tabIndex=-1 aria-multiselectable=true>hey</div>'
       snapshot = page.accessibility.snapshot
       expect(snapshot[:children][0][:multiselectable]).to eq true
     end
 
     it 'returns keyshortcuts' do
-      page.set_content '<div role="grid" tabIndex=-1 aria-keyshortcuts="foo">hey</div>'
+      await page.set_content '<div role="grid" tabIndex=-1 aria-keyshortcuts="foo">hey</div>'
       snapshot = page.accessibility.snapshot
       expect(snapshot[:children][0][:keyshortcuts]).to eq 'foo'
     end
@@ -97,7 +98,7 @@ module Chromiebara
           <div role="tab">Tab2</div>
         </div>
         HTML
-        page.set_content content
+        await page.set_content content
         expected = {
           role: 'WebArea',
           name: '',
@@ -116,7 +117,7 @@ module Chromiebara
           Edit this image: <img src="fakeimage.png" alt="my fake image">
         </div>
         HTML
-        page.set_content content
+        await page.set_content content
 
         expected = {
           role: 'GenericContainer',
@@ -138,7 +139,7 @@ module Chromiebara
           Edit this image: <img src="fakeimage.png" alt="my fake image">
         </div>
         HTML
-        page.set_content content
+        await page.set_content content
         expected = {
           role: 'textbox',
           name: '',
@@ -192,7 +193,7 @@ module Chromiebara
           <img alt="yo" src="fakeimg.png">
         </div>
         HTML
-        page.set_content content
+        await page.set_content content
         expected = {
           role: 'textbox',
           name: 'my favorite textbox',
@@ -209,7 +210,7 @@ module Chromiebara
           <img alt="yo" src="fakeimg.png">
         </div>
         HTML
-        page.set_content content
+        await page.set_content content
         expected = {
           role: 'checkbox',
           name: 'my favorite checkbox',
@@ -227,7 +228,7 @@ module Chromiebara
           <img alt="yo" src="fakeimg.png">
         </div>
         HTML
-        page.set_content content
+        await page.set_content content
         expected = {
           role: 'checkbox',
           name: 'this is the inner content yo',
@@ -239,14 +240,14 @@ module Chromiebara
 
       describe 'root option' do
         it 'should work a button' do
-          page.set_content "<button>My Button</button>"
+          await page.set_content "<button>My Button</button>"
 
           button = page.query_selector 'button'
           expect(page.accessibility.snapshot root: button).to eq(role: 'button', name: 'My Button')
         end
 
         it 'should work an input' do
-          page.set_content '<input title="My Input" value="My Value">'
+          await page.set_content '<input title="My Input" value="My Value">'
 
           input = page.query_selector 'input'
           expect(page.accessibility.snapshot(root: input)).to eq(role: 'textbox', name: 'My Input', value: 'My Value')
@@ -260,7 +261,7 @@ module Chromiebara
             <div role="menuitem">Third Item</div>
           </div>
           HTML
-          page.set_content content
+          await page.set_content content
 
           menu = page.query_selector 'div[role="menu"]'
           expect(page.accessibility.snapshot(root: menu)).to eq({
@@ -275,14 +276,14 @@ module Chromiebara
         end
 
         it 'should return null when the element is no longer in DOM' do
-          page.set_content "<button>My Button</button>"
+          await page.set_content "<button>My Button</button>"
           button = page.query_selector 'button'
           page.query_selector_evaluate_function 'button', 'button => button.remove()'
           expect(page.accessibility.snapshot(root: button)).to eq nil
         end
 
         it 'should support the interesting_only option' do
-          page.set_content "<div><button>My Button</button></div>"
+          await page.set_content "<div><button>My Button</button></div>"
           div = page.query_selector 'div'
           expect(page.accessibility.snapshot(root: div)).to eq nil
           expect(page.accessibility.snapshot(root: div, interesting_only: false)).to eq({

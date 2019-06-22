@@ -130,11 +130,10 @@ module Chromiebara
         return retVal;
       }
       JAVASCRIPT
-      evaluate_function function
+      await evaluate_function function
     end
 
-    # @param {string} html
-    # @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
+    # @param [String] html
     #
     def set_content(html, timeout: nil, wait_until: nil)
       wait_until = [:load]
@@ -142,7 +141,6 @@ module Chromiebara
       # We rely upon the fact that document.open() will reset frame lifecycle with "init"
       # lifecycle event. @see https://crrev.com/608658
 
-      watcher = LifecycleWatcher.new frame_manager, frame, wait_until, timeout
       function = <<~JAVASCRIPT
       html => {
         document.open();
@@ -151,28 +149,27 @@ module Chromiebara
       }
       JAVASCRIPT
       await evaluate_function function, html
-      watcher.await_complete
-    ensure
-      watcher.dispose
-      # const watcher = new LifecycleWatcher(this._frameManager, this._frame, waitUntil, timeout);
-      # const error = await Promise.race([
-      #   watcher.timeoutOrTerminationPromise(),
-      #   watcher.lifecyclePromise(),
-      # ]);
-      # watcher.dispose();
-      # if (error)
-      #   throw error;
+      watcher = LifecycleWatcher.new frame_manager, frame, wait_until, timeout
 
+      Promise.resolve(nil).then do
+        begin
+          await watcher.lifecycle_promise
+          nil
+        ensure
+          watcher.dispose
+        end
+      end
     end
 
     # @param {!{url?: string, path?: string, content?: string, type?: string}} options
     # @return {!Promise<!Puppeteer.ElementHandle>}
     #
     def add_script_tag(url: nil, path: nil, content: nil, type: '')
-      # * @param {string} url
-      # * @param {string} type
-      # * @return {!Promise<!HTMLElement>}
-      # */
+      type ||= ''
+      # @param {string} url
+      # @param {string} type
+      # @return {!Promise<!HTMLElement>}
+      #
       add_script_url = <<~JAVASCRIPT
       async function addScriptUrl(url, type) {
         const script = document.createElement('script');
@@ -191,42 +188,41 @@ module Chromiebara
 
       if url != nil
         begin
-          (await execution_context.evaluate_handle_function(add_script_url, url, type)).as_element
+          return (await execution_context.evaluate_handle_function(add_script_url, url, type)).as_element
         rescue => _error
           raise "Loading script from #{url} failed"
         end
       end
 
-      #if (path !== null) {
-      #  let contents = await readFileAsync(path, 'utf8');
-      #  contents += '//# sourceURL=' + path.replace(/\n/g, '');
-      #  const context = await this.executionContext();
-      #  return (await context.evaluateHandle(addScriptContent, contents, type)).asElement();
-      #}
+      # @param {string} content
+      # @param {string} type
+      # @return {!HTMLElement}
+      #
+      add_script_content = <<~JAVASCRIPT
+      function addScriptContent(content, type = 'text/javascript') {
+        const script = document.createElement('script');
+        script.type = type;
+        script.text = content;
+        let error = null;
+        script.onerror = e => error = e;
+        document.head.appendChild(script);
+        if (error)
+          throw error;
+        return script;
+      }
+      JAVASCRIPT
 
-      #if (content !== null) {
-      #  const context = await this.executionContext();
-      #  return (await context.evaluateHandle(addScriptContent, content, type)).asElement();
-      #}
+      if path != nil
+        contents = File.read path
+        contents += '//# sourceURL=' + path.gsub(/\n/, '')
+        return (await execution_context.evaluate_handle_function(add_script_content, contents, type)).as_element
+      end
 
-      #throw new Error('Provide an object with a `url`, `path` or `content` property');
+      if content != nil
+        return (await execution_context.evaluate_handle_function(add_script_content, content, type)).as_element
+      end
 
-      #/**
-      # * @param {string} content
-      # * @param {string} type
-      # * @return {!HTMLElement}
-      # */
-      #function addScriptContent(content, type = 'text/javascript') {
-      #  const script = document.createElement('script');
-      #  script.type = type;
-      #  script.text = content;
-      #  let error = null;
-      #  script.onerror = e => error = e;
-      #  document.head.appendChild(script);
-      #  if (error)
-      #    throw error;
-      #  return script;
-      #}
+      raise 'Provide an object with a `url`, `path` or `content` property'
     end
 
     # @param {!{url?: string, path?: string, content?: string}} options
@@ -278,11 +274,9 @@ module Chromiebara
       end
 
       unless path.nil?
-        # TODO
-        #let contents = await readFileAsync(path, 'utf8');
-        #contents += '/*# sourceURL=' + path.replace(/\n/g, '') + '*/';
-        #const context = await this.executionContext();
-        #return (await context.evaluateHandle(addStyleContent, contents)).asElement();
+        contents = File.read path
+        contents += '//# sourceURL=' + path.gsub(/\n/, '')
+        return (await execution_context.evaluate_handle_function(add_style_content, contents)).as_element
       end
 
       unless content.nil?
@@ -320,29 +314,33 @@ module Chromiebara
       handle.dispose
     end
 
-    # * @param {string} selector
-    # * @param {!Array<string>} values
-    # * @return {!Promise<!Array<string>>}
-    # */
-    # select(selector, ...values){
-    #   for (const value of values)
-    #     assert(helper.isString(value), 'Values must be strings. Found value "' + value + '" of type "' + (typeof value) + '"');
-    #   return this.$eval(selector, (element, values) => {
-    #     if (element.nodeName.toLowerCase() !== 'select')
-    #       throw new Error('Element is not a <select> element.');
+    # @param {string} selector
+    # @param {!Array<string>} values
+    # @return {!Promise<!Array<string>>}
+    #
+    def select(selector, *values)
+      values.each { |value| raise "Values must be strings. Found value '#{value}' of type '#{value.class}'" unless value.is_a? String }
 
-    #     const options = Array.from(element.options);
-    #     element.value = undefined;
-    #     for (const option of options) {
-    #       option.selected = values.includes(option.value);
-    #       if (option.selected && !element.multiple)
-    #         break;
-    #     }
-    #     element.dispatchEvent(new Event('input', { 'bubbles': true }));
-    #     element.dispatchEvent(new Event('change', { 'bubbles': true }));
-    #     return options.filter(option => option.selected).map(option => option.value);
-    #   }, values);
-    # }
+      select_values = <<~JAVASCRIPT
+      (element, values) => {
+        if (element.nodeName.toLowerCase() !== 'select')
+          throw new Error('Element is not a <select> element.');
+
+        const options = Array.from(element.options);
+        element.value = undefined;
+        for (const option of options) {
+          option.selected = values.includes(option.value);
+          if (option.selected && !element.multiple)
+            break;
+        }
+        element.dispatchEvent(new Event('input', { 'bubbles': true }));
+        element.dispatchEvent(new Event('change', { 'bubbles': true }));
+        return options.filter(option => option.selected).map(option => option.value);
+      }
+      JAVASCRIPT
+
+      await query_selector_evaluate_function selector, select_values, values
+    end
 
     # @param [String] selector
     #
@@ -365,10 +363,10 @@ module Chromiebara
     end
 
     # TODO
-    #  * @param {string} selector
-    #  * @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
-    #  * @return {!Promise<?Puppeteer.ElementHandle>}
-    #  */
+    # @param {string} selector
+    # @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
+    # @return {!Promise<?Puppeteer.ElementHandle>}
+    #
     # waitForSelector(selector, options) {
     #   return this._waitForSelectorOrXPath(selector, false, options);
     # }
@@ -381,22 +379,20 @@ module Chromiebara
       wait_for_selector_or_xpath(xpath, true, visible: visible, hidden: hidden, timeout: timeout)
     end
 
-    #  * @param {Function|string} pageFunction
-    #  * @param {!{polling?: string|number, timeout?: number}=} options
-    #  * @return {!Promise<!Puppeteer.JSHandle>}
-    #  */
-    # waitForFunction(pageFunction, options = {}, ...args) {
-    #   const {
-    #     polling = 'raf',
-    #     timeout = this._timeoutSettings.timeout(),
-    #   } = options;
-    #   return new WaitTask(this, pageFunction, 'function', polling, timeout, ...args).promise;
-    # }
+    # @param {Function|string} pageFunction
+    # @param {!{polling?: string|number, timeout?: number}=} options
+    # @return {!Promise<!Puppeteer.JSHandle>}
+    #
+    def wait_for_function(page_function, *args, polling: 'raf', timeout: nil)
+      timeout ||= timeout_settings.timeout
+      polling ||= 'raf'
+      WaitTask.new(self, page_function, 'function', polling, timeout, *args).promise
+    end
 
-    #  * @return {!Promise<string>}
-    #  */
+    # @return {!Promise<string>}
+    #
     def title
-      evaluate('document.title')
+      await evaluate('document.title')
     end
 
     def _detach

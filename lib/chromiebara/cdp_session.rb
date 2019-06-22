@@ -54,13 +54,12 @@ module Chromiebara
       def on_close
         @_command_mutex.synchronize do
           @_command_callbacks.values.each do |callback|
-            # callback.reject(rewriteError(callback.error, `Protocol error (${callback.method}): Target closed.`));
-            callback.reject.('TODO')
+            callback.reject.("Protocol error (#{callback.method}): Target closed.")
           end
           @_command_callbacks.clear
         end
         @client = nil
-        # this.emit(Events.CDPSession.Disconnected);
+        emit :cdp_session_disconnected
       end
 
       # @param [String] method

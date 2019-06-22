@@ -32,6 +32,10 @@ class Server
     TestServer.instance.set_route path, &block
   end
 
+  def hang_route(path)
+    TestServer.instance.hang_route path
+  end
+
   def set_redirect(from, to)
     TestServer.instance.set_redirect from, to
   end

@@ -1,5 +1,6 @@
 module Chromiebara
   class BrowserContext
+    include Promise::Await
     include EventEmitter
     class UncloseableContext < StandardError; end
 
@@ -49,15 +50,48 @@ module Chromiebara
       browser.targets.select { |target| target.browser_context == self }
     end
 
+    def override_permissions(origin, permissions)
+      permissions = permissions.map do |permission|
+        protocol_permission = WEB_PERMISSION_TO_PROTOCOL[permission]
+        raise "Unknown permission: #{permission}" if protocol_permission.nil?
+        protocol_permission
+      end
+      await client.command Protocol::Browser.grant_permissions origin: origin, browser_context_id: id || nil, permissions: permissions
+    end
+
+    def clear_permission_overrides
+      await client.command Protocol::Browser.reset_permissions browser_context_id: id || nil
+    end
+
+
     def wait_for_target(timeout: 2, predicate: nil, &block)
       predicate ||= block
       browser.wait_for_target(timeout: timeout) { |target| target.browser_context == self && predicate.(target) }
     end
 
+    private
 
-    # browserContext.clearPermissionOverrides()
+      WEB_PERMISSION_TO_PROTOCOL = {
+        'geolocation' => 'geolocation',
+        'midi' => 'midi',
+        'notifications' => 'notifications',
+        'push' => 'push',
+        'camera' => 'videoCapture',
+        'microphone' => 'audioCapture',
+        'background-sync' => 'backgroundSync',
+        'ambient-light-sensor' => 'sensors',
+        'accelerometer' => 'sensors',
+        'gyroscope' => 'sensors',
+        'magnetometer' => 'sensors',
+        'accessibility-events' => 'accessibilityEvents',
+        'clipboard-read' => 'clipboardRead',
+        'clipboard-write' => 'clipboardWrite',
+        'payment-handler' => 'paymentHandler',
+        # chrome-specific permissions we have.
+        'midi-sysex' => 'midiSysex'
+      }
+
     # browserContext.isIncognito()
-    # browserContext.overridePermissions(origin, permissions)
     # browserContext.waitForTarget(predicate[, options])
   end
 end

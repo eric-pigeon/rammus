@@ -77,12 +77,6 @@ module Chromiebara
       raise "#{response["errorText"]} at #{url}" if response["errorText"]
       ensure_new_document_navigation = !!response["loaderId"]
 
-      #if ensure_new_document_navigation
-      #  await watcher.new_document_navigation_promise, timeout, error: error_message
-      #else
-      #  await watcher.same_document_navigation_promise, timeout, error: error_message
-      #end
-
       navigation_promise = if ensure_new_document_navigation
         watcher.new_document_navigation_promise
       else
@@ -105,6 +99,7 @@ module Chromiebara
       wait_until ||= [:load]
       timeout ||= timeout_settings.navigation_timeout
       watcher = LifecycleWatcher.new self, frame, wait_until, timeout
+      # TODO
       # const watcher = new LifecycleWatcher(this, frame, waitUntil, timeout);
       # const error = await Promise.race([
       #   watcher.timeoutOrTerminationPromise(),
@@ -142,40 +137,6 @@ module Chromiebara
     def frame(frame_id)
       @_frames[frame_id]
     end
-
-    # /**
-    #  * @param {!Protocol.Page.Frame} framePayload
-    #  */
-    # _onFrameNavigated(framePayload) {
-    #   const isMainFrame = !framePayload.parentId;
-    #   let frame = isMainFrame ? this._mainFrame : this._frames.get(framePayload.id);
-    #   assert(isMainFrame || frame, 'We either navigate top level or have old version of the navigated frame');
-
-    #   // Detach all child frames first.
-    #   if (frame) {
-    #     for (const child of frame.childFrames())
-    #       this._removeFramesRecursively(child);
-    #   }
-
-    #   // Update or create main frame.
-    #   if (isMainFrame) {
-    #     if (frame) {
-    #       // Update frame id to retain frame identity on cross-process navigation.
-    #       this._frames.delete(frame._id);
-    #       frame._id = framePayload.id;
-    #     } else {
-    #       // Initial main frame navigation.
-    #       frame = new Frame(this, this._client, null, framePayload.id);
-    #     }
-    #     this._frames.set(framePayload.id, frame);
-    #     this._mainFrame = frame;
-    #   }
-
-    #   // Update frame payload.
-    #   frame._navigated(framePayload);
-
-    #   this.emit(Events.FrameManager.FrameNavigated, frame);
-    # }
 
     # @param {number} contextId
     # @return {!ExecutionContext}

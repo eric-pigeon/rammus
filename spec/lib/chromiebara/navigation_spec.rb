@@ -348,7 +348,7 @@ module Chromiebara
 
       it 'should work with clicking on anchor links' do
         page.goto server.empty_page
-        page.set_content "<a href='#foobar'>foobar</a>"
+        await page.set_content "<a href='#foobar'>foobar</a>"
         response, _ = await Promise.all(
           page.wait_for_navigation,
           page.click('a')
@@ -359,7 +359,7 @@ module Chromiebara
 
       it 'should work with history.pushState()' do
         page.goto server.empty_page
-        page.set_content("
+        await page.set_content("
           <a onclick='javascript:pushState()'>SPA</a>
           <script>
             function pushState() { history.pushState({}, '', 'wow.html') }
@@ -375,7 +375,7 @@ module Chromiebara
 
       it 'should work with history.replaceState()' do
         page.goto server.empty_page
-         page.set_content("
+        await page.set_content("
           <a onclick='javascript:replaceState()'>SPA</a>
           <script>
             function replaceState() { history.replaceState({}, '', '/replaced.html') }
@@ -391,7 +391,7 @@ module Chromiebara
 
       it 'should work with DOM history.back()/history.forward()' do
         page.goto server.empty_page
-        page.set_content("
+        await page.set_content("
           <a id=back onclick='javascript:goBack()'>back</a>
           <a id=forward onclick='javascript:goForward()'>forward</a>
           <script>
@@ -417,11 +417,8 @@ module Chromiebara
       end
 
       it 'should work when subframe issues window.stop()' do
-        finish_response = nil
-        server.set_route '/frames/style.css' do |req, res|
-          await(Promise.new { |resolve, _reject| finish_response = resolve }
-            .then { res.finish }, 0)
-        end
+        finish_response = server.hang_route '/frames/style.css'
+
         await Promise.all(
           wait_event(page, :frame_attached).then do |frame|
             await(wait_event(page, :frame_navigated) { |f| f == frame })

@@ -358,7 +358,7 @@ module Chromiebara
 
       # @param {!Array<number>} quad
       # @return {!Array<{x: number, y: number}>}
-      #/
+      #
       def from_protocol_quad(quad)
         [
           { x: quad[0], y: quad[1] },

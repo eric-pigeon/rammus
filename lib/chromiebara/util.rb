@@ -1,5 +1,11 @@
 module Chromiebara
   module Util
+    extend Promise::Await
+
+    def self.evaluation_string(function_string, *args)
+      "(#{function_string})(#{args.map(&:to_json).join(',')})"
+    end
+
     # [Protocol.Runtime.RemoteObject] remote_object
     #
     def self.value_from_remote_object(remote_object)
@@ -68,6 +74,36 @@ module Chromiebara
         # TODO
         # debugError(error);
       end
+    end
+
+    # @param {!NodeJS.EventEmitter} emitter
+    # @param {(string|symbol)} eventName
+    # @param {function} predicate
+    # @return {!Promise}
+    #
+    def self.wait_for_event(emitter, event_name, predicate, timeout = nil)
+      _event_timeout = nil
+      promise, resolve_callback, _reject_callback = Promise.create
+
+      listener = Util.add_event_listener(emitter, event_name, -> (event) do
+        next unless predicate.(event)
+        Util.remove_event_listeners [listener]
+        #cleanup();
+        resolve_callback.(event)
+      end)
+
+      # TODO
+      #if (timeout) {
+      #  eventTimeout = setTimeout(() => {
+      #    cleanup();
+      #    rejectCallback(new TimeoutError('Timeout exceeded while waiting for event'));
+      #  }, timeout);
+      #}
+      #function cleanup() {
+      #  Helper.removeEventListeners([listener]);
+      #  clearTimeout(eventTimeout);
+      #}
+      promise
     end
   end
 end

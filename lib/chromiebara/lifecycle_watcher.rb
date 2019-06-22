@@ -3,12 +3,19 @@ module Chromiebara
   class LifecycleWatcher
     include Promise::Await
 
-    attr_reader :frame_manager, :frame, :same_document_navigation_promise, :new_document_navigation_promise
+    attr_reader :frame_manager, :frame,
+      # Fulfulls when the frame and all children frames have all of the expected
+      # lifecycle events
+      :lifecycle_promise,
+      # Fulfulls when the CDP Session is disconnected
+      :termination_promise,
+      :same_document_navigation_promise,
+      :new_document_navigation_promise
 
     # @param [Chromiebara::FrameManager] frame_manager
     # @param [Chromiebara::Frame] frame
     # @param [Symbol] wait_until
-    # @param [Integer] timeout
+    # @param [Integer] timeout # TODO remove
     #
     def initialize(frame_manager, frame, wait_until, timeout)
       @frame_manager = frame_manager
@@ -22,7 +29,7 @@ module Chromiebara
       # @type {?Puppeteer.Request}
       @_navigation_request = nil
       @_event_listeners = [
-        #helper.addEventListener(frameManager._client, Events.CDPSession.Disconnected, () => this._terminate(new Error('Navigation failed because browser has disconnected!'))),
+        Util.add_event_listener(frame_manager.client, :cdp_session_disconnected, ->(_event) { terminate(StandardError.new('Navigation failed because browser has disconnected!')) }),
         Util.add_event_listener(frame_manager, FrameManager.LifecycleEvent, method(:check_lifecycle_complete)),
         Util.add_event_listener(frame_manager, :frame_navigated_within_document, method(:navigated_within_document)),
         Util.add_event_listener(frame_manager, :frame_detached, method(:on_frame_detached)),
@@ -31,58 +38,19 @@ module Chromiebara
 
       @same_document_navigation_promise, @_same_document_navigation_complete_callback, _ = Promise.create
 
-      @_lifecycle_promise, @_lifecycle_callback, _ = Promise.create
+      @lifecycle_promise, @_lifecycle_callback, _ = Promise.create
 
       @new_document_navigation_promise, @_new_document_navigation_complete_callback, _ = Promise.create
 
-      #this._timeoutPromise = this._createTimeoutPromise();
-      @_terminal_promise, @_termination_callback, _ = Promise.create
+      @termination_promise, @_termination_callback, _ = Promise.create
       check_lifecycle_complete(nil)
     end
 
-    # TODO
-    def await_complete
-      await lifecycle_promise, @timeout
-    end
-
-    # @return {?Puppeteer.Response}
+    # @return [Chromiebara::Response]
     #
     def navigation_response
       @_navigation_request ? @_navigation_request.response : nil
     end
-
-    #   * @param {!Error} error
-    #   */
-    #  _terminate(error) {
-    #    this._terminationCallback.call(null, error);
-    #  }
-
-    # @return [Chromiebara::Promise]
-    #
-    def lifecycle_promise
-      @_lifecycle_promise
-    end
-
-    def termination_promise
-      @_terminal_promise
-    end
-
-    #   * @return {!Promise<?Error>}
-    #   */
-    #  timeoutOrTerminationPromise() {
-    #    return Promise.race([this._timeoutPromise, this._terminationPromise]);
-    #  }
-    #
-    #  /**
-    #   * @return {!Promise<?Error>}
-    #   */
-    #  _createTimeoutPromise() {
-    #    if (!this._timeout)
-    #      return new Promise(() => {});
-    #    const errorMessage = 'Navigation Timeout Exceeded: ' + this._timeout + 'ms exceeded';
-    #    return new Promise(fulfill => this._maximumTimer = setTimeout(fulfill, this._timeout))
-    #        .then(() => new TimeoutError(errorMessage));
-    #  }
 
     def dispose
       Util.remove_event_listeners @_event_listeners
@@ -141,10 +109,16 @@ module Chromiebara
 
       # @return [Boolean]
       #
-      def self.check_lifecycle(frame, expected_lifecycle, indentation = '')
+      def self.check_lifecycle(frame, expected_lifecycle)
         expected_lifecycle.subset?(frame.lifecycle_events) && frame.child_frames.all? do |child|
-          LifecycleWatcher.check_lifecycle child, expected_lifecycle, indentation + "  "
+          LifecycleWatcher.check_lifecycle child, expected_lifecycle
         end
+      end
+
+      # @param [StandardError] error
+      #
+      def terminate(error)
+        @_termination_callback.call error
       end
   end
 end

@@ -19,7 +19,7 @@ module Chromiebara
         </svg>
       SVG
       page
-      page.set_content content
+      await page.set_content content
       page.click 'circle'
       expect(await page.evaluate 'window.__CLICKED').to eq 42
     end
@@ -40,7 +40,7 @@ module Chromiebara
         </style>
         <span onclick='javascript:window.CLICKED=42'></span>
       HTML
-      page.set_content content
+      await page.set_content content
       page.click 'span'
       expect(await page.evaluate 'window.CLICKED').to eq 42
     end
@@ -73,7 +73,7 @@ module Chromiebara
         </style>
         <span onclick='javascript:window.CLICKED = 42;'><i>woof</i><b>doggo</b></span>
       HTML
-      page.set_content content
+      await page.set_content content
       page.click 'span'
       expect(await page.evaluate 'window.CLICKED').to eq 42
     end
@@ -228,14 +228,14 @@ module Chromiebara
 
     # @see https://github.com/GoogleChrome/puppeteer/issues/206
     it 'should click links which cause navigation' do
-      page.set_content("<a href='#{server.domain}'>empty.html</a>");
+      await page.set_content("<a href='#{server.domain}'>empty.html</a>");
       # This await should not hang.
       page.click 'a'
     end
 
     it 'should click the button inside an iframe' do
       page.goto server.domain
-      page.set_content '<div style="width:100px;height:100px">spacer</div>'
+      await page.set_content '<div style="width:100px;height:100px">spacer</div>'
       attach_frame page, 'button-test', server.domain + 'input/button.html'
       frame = page.frames[1]
       button = frame.query_selector 'button'
@@ -259,7 +259,7 @@ module Chromiebara
     it 'should click the button with device_scale_factor set' do
       page.set_viewport width: 400, height: 400, device_scale_factor: 5
       expect(await page.evaluate 'window.devicePixelRatio').to eq 5
-      page.set_content '<div style="width:100px;height:100px">spacer</div>'
+      await page.set_content '<div style="width:100px;height:100px">spacer</div>'
       attach_frame page, 'button-test', server.domain + 'input/button.html'
       frame = page.frames[1]
       button = frame.query_selector 'button'

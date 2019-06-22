@@ -122,7 +122,7 @@ module Chromiebara
           </style>
           <div></div>
         HTML
-        page.set_content content
+        await page.set_content content
         element_handle = page.query_selector 'div'
         screenshot = element_handle.screenshot
         expect(screenshot).to match_screenshot 'screenshot-element-padding-border.png'
@@ -146,7 +146,7 @@ module Chromiebara
           </style>
           <div class="to-screenshot"></div>
         HTML
-        page.set_content content
+        await page.set_content content
         element_handle = page.query_selector 'div.to-screenshot'
         screenshot = element_handle.screenshot
         expect(screenshot).to match_screenshot 'screenshot-element-larger-than-viewport.png'
@@ -173,7 +173,7 @@ module Chromiebara
           <div class="above"></div>
           <div class="to-screenshot"></div>
         HTML
-        page.set_content content
+        await page.set_content content
         element_handle = page.query_selector 'div.to-screenshot'
         screenshot = element_handle.screenshot
         expect(screenshot).to match_screenshot 'screenshot-element-scrolled-into-view.png'
@@ -184,34 +184,34 @@ module Chromiebara
         content = <<~HTML
           <div style="position:absolute; top: 100px; left: 100px; width: 100px; height: 100px; background: green; transform: rotateZ(200deg);">&nbsp;</div>
         HTML
-        page.set_content content
+        await page.set_content content
         element_handle = page.query_selector 'div'
         screenshot = element_handle.screenshot
         expect(screenshot).to match_screenshot 'screenshot-element-rotate.png'
       end
 
       it 'should fail to screenshot a detached element' do
-        page.set_content '<h1>remove this</h1>'
+        await page.set_content '<h1>remove this</h1>'
         element_handle = page.query_selector 'h1'
         await page.evaluate_function 'element => element.remove()', element_handle
         expect { element_handle.screenshot }.to raise_error 'Node is either not visible or not an HTMLElement'
       end
 
       it 'should not hang with zero width/height element' do
-        page.set_content '<div style="width: 50px; height: 0"></div>'
+        await page.set_content '<div style="width: 50px; height: 0"></div>'
         div = page.query_selector 'div'
         expect { div.screenshot }.to raise_error 'Node has 0 height.'
       end
 
       it 'should work for an element with fractional dimensions' do
-        page.set_content '<div style="width:48.51px;height:19.8px;border:1px solid black;"></div>'
+        await page.set_content '<div style="width:48.51px;height:19.8px;border:1px solid black;"></div>'
         element_handle = page.query_selector 'div'
         screenshot = element_handle.screenshot
         expect(screenshot).to match_screenshot 'screenshot-element-fractional.png'
       end
 
       it 'should work for an element with an offset' do
-        page.set_content '<div style="position:absolute; top: 10.3px; left: 20.4px;width:50.3px;height:20.2px;border:1px solid black;"></div>'
+        await page.set_content '<div style="position:absolute; top: 10.3px; left: 20.4px;width:50.3px;height:20.2px;border:1px solid black;"></div>'
         element_handle = page.query_selector 'div'
         screenshot = element_handle.screenshot
         expect(screenshot).to match_screenshot 'screenshot-element-fractional-offset.png'

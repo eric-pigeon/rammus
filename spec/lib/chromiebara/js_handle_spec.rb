@@ -124,7 +124,7 @@ module Chromiebara
       end
 
       it 'should return ElementHandle for TextNodes' do
-        page.set_content '<div>ee!</div>'
+        await page.set_content '<div>ee!</div>'
         a_handle = await page.evaluate_handle_function "() => document.querySelector('div').firstChild"
         element = a_handle.as_element
         expect(element).to be_a ElementHandle
@@ -132,7 +132,7 @@ module Chromiebara
       end
 
       it 'should work with nullified Node' do
-        page.set_content '<section>test</section>'
+        await page.set_content '<section>test</section>'
         await page.evaluate_function '() => delete Node'
         handle = await page.evaluate_handle_function "() => document.querySelector('section')"
         element = handle.as_element
