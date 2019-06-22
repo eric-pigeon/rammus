@@ -1,5 +1,6 @@
 module Chromiebara
   RSpec.describe 'Dialog', browser: true do
+    include Promise::Await
     before { @_context = browser.create_context }
     after { @_context.close }
     let(:context) { @_context }
@@ -12,7 +13,7 @@ module Chromiebara
         expect(dialog.message).to eq 'yo'
         dialog.accept
       end
-      page.evaluate "alert('yo')"
+      await page.evaluate "alert('yo')"
     end
 
     it 'should allow accepting prompts' do
@@ -22,7 +23,7 @@ module Chromiebara
         expect(dialog.message) .to eq 'question?'
         dialog.accept 'answer!'
       end
-      result = page.evaluate_function "() => prompt('question?', 'yes.')"
+      result = await page.evaluate_function "() => prompt('question?', 'yes.')"
       expect(result).to eq 'answer!'
     end
 
@@ -30,7 +31,7 @@ module Chromiebara
       page.on :dialog do |dialog|
         dialog.dismiss
       end
-      result = page.evaluate_function "() => prompt('question?')"
+      result = await page.evaluate_function "() => prompt('question?')"
       expect(result).to eq nil
     end
   end

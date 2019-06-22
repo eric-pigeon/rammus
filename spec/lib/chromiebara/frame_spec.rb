@@ -20,10 +20,10 @@ module Chromiebara
         expect(context1.frame).to eq frame1
         expect(context2.frame).to eq frame2
 
-        context1.evaluate_function '() => window.a = 1'
-        context2.evaluate_function '() => window.a = 2'
-        a1 = context1.evaluate_function '() => window.a'
-        a2 = context2.evaluate_function '() => window.a'
+        await context1.evaluate_function '() => window.a = 1'
+        await context2.evaluate_function '() => window.a = 2'
+        a1 = await context1.evaluate_function '() => window.a'
+        a2 = await context2.evaluate_function '() => window.a'
         expect(a1).to eq  1
         expect(a2).to eq 2
       end
@@ -159,7 +159,7 @@ module Chromiebara
           await new Promise(x => frame.onload = x);
         }
         JAVASCRIPT
-        page.evaluate_function function, server.empty_page
+        await page.evaluate_function function, server.empty_page
         expect(page.frames.length).to eq 2
         expect(page.frames[1].url).to eq server.empty_page
       end
@@ -175,7 +175,7 @@ module Chromiebara
           return new Promise(x => frame.onload = x);
         }
         JAVASCRIPT
-        page.evaluate_function function, server.empty_page
+        await page.evaluate_function function, server.empty_page
         expect(page.frames[0].name).to eq ''
         expect(page.frames[1].name).to eq 'theFrameId'
         expect(page.frames[2].name).to eq 'theFrameName'
@@ -191,7 +191,7 @@ module Chromiebara
 
       it 'should report different frame instance when frame re-attaches' do
         frame1 = attach_frame page, 'frame1', server.empty_page
-        page.evaluate_function "() => {
+        await page.evaluate_function "() => {
           window.frame = document.querySelector('#frame1');
           window.frame.remove();
         }"
@@ -220,7 +220,7 @@ module Chromiebara
           return new Promise(x => frame.onload = x);
         }
         JAVASCRIPT
-        page.evaluate_function function, frame_id, url
+        await page.evaluate_function function, frame_id, url
       end
     end
   end

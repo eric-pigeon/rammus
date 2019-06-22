@@ -58,7 +58,7 @@ module Chromiebara
         return result;
       }
       JAVASCRIPT
-      object_handle = execution_context.evaluate_handle_function function, self, property_name
+      object_handle = await execution_context.evaluate_handle_function function, self, property_name
       properties = object_handle.get_properties
       result = properties[property_name]
       object_handle.dispose

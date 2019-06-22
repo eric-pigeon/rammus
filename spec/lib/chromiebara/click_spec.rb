@@ -1,5 +1,6 @@
 module Chromiebara
   RSpec.describe 'Click', browser: true do
+    include Promise::Await
     before { @_context = browser.create_context }
     after { @_context.close }
     let(:context) { @_context }
@@ -8,7 +9,7 @@ module Chromiebara
     it 'can click buttons' do
       page.goto server.domain + 'input/button.html'
       page.click 'button'
-      expect(page.evaluate 'result').to eq 'Clicked'
+      expect(await page.evaluate 'result').to eq 'Clicked'
     end
 
     it 'should click svg' do
@@ -20,14 +21,14 @@ module Chromiebara
       page
       page.set_content content
       page.click 'circle'
-      expect(page.evaluate 'window.__CLICKED').to eq 42
+      expect(await page.evaluate 'window.__CLICKED').to eq 42
     end
 
     it 'should click the button if window.Node is removed' do
       page.goto server.domain + 'input/button.html'
-      page.evaluate 'delete window.Node'
+      await page.evaluate 'delete window.Node'
       page.click 'button'
-      expect(page.evaluate 'result').to eq 'Clicked'
+      expect(await page.evaluate 'result').to eq 'Clicked'
     end
 
     it 'should click on a span with an inline element inside' do
@@ -41,7 +42,7 @@ module Chromiebara
       HTML
       page.set_content content
       page.click 'span'
-      expect(page.evaluate 'window.CLICKED').to eq 42
+      expect(await page.evaluate 'window.CLICKED').to eq 42
     end
 
     it 'should click the button after navigation ' do
@@ -49,15 +50,16 @@ module Chromiebara
       page.click 'button'
       page.goto server.domain + 'input/button.html'
       page.click 'button'
-      expect(page.evaluate 'result').to eq 'Clicked'
+      expect(await page.evaluate 'result').to eq 'Clicked'
     end
 
-    xit 'should click with disabled javascript' do
-      # TODO
+    it 'should click with disabled javascript' do
       page.set_javascript_enabled false
       page.goto server.domain + 'wrappedlink.html'
-      page.click 'a'
-      page.wait_for_navigation
+      await Promise.all(
+        page.wait_for_navigation,
+        page.click('a')
+      )
       expect(page.url).to eq server.domain + 'wrappedlink.html#clicked'
     end
 
@@ -73,7 +75,7 @@ module Chromiebara
       HTML
       page.set_content content
       page.click 'span'
-      expect(page.evaluate 'window.CLICKED').to eq 42
+      expect(await page.evaluate 'window.CLICKED').to eq 42
     end
 
     it 'should select the text by triple clicking' do
@@ -90,7 +92,7 @@ module Chromiebara
         return textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
       }
       JAVASCRIPT
-      expect(page.evaluate_function function).to eq text
+      expect(await page.evaluate_function function).to eq text
     end
 
     xit 'should click offscreen buttons' do
@@ -100,7 +102,7 @@ module Chromiebara
       # page.on('console', msg => messages.push(msg.text()));
       # for (let i = 0; i < 11; ++i) {
       #   // We might've scrolled to click a button - reset to (0, 0).
-      #   await page.evaluate(() => window.scrollTo(0, 0));
+      #   await await page.evaluate(() => window.scrollTo(0, 0));
       #   await page.click(`#btn${i}`);
       # }
       # expect(messages).toEqual([
@@ -121,15 +123,15 @@ module Chromiebara
     it 'should click wrapped links' do
       page.goto server.domain + 'wrappedlink.html'
       page.click 'a'
-      expect(page.evaluate 'window.__clicked').to eq true
+      expect(await page.evaluate 'window.__clicked').to eq true
     end
 
     it 'should click on checkbox input and toggle' do
       page.goto server.domain + 'input/checkbox.html'
-      expect(page.evaluate 'result.check').to eq nil
+      expect(await page.evaluate 'result.check').to eq nil
       page.click 'input#agree'
-      expect(page.evaluate 'result.check').to eq true
-      expect(page.evaluate 'result.events').to eq [
+      expect(await page.evaluate 'result.check').to eq true
+      expect(await page.evaluate 'result.events').to eq [
         'mouseover',
         'mouseenter',
         'mousemove',
@@ -140,21 +142,21 @@ module Chromiebara
         'change',
       ]
       page.click 'input#agree'
-      expect(page.evaluate 'result.check').to eq false
+      expect(await page.evaluate 'result.check').to eq false
     end
 
     it 'should click on checkbox label and toggle' do
       page.goto server.domain + 'input/checkbox.html'
-      expect(page.evaluate 'result.check').to eq nil
+      expect(await page.evaluate 'result.check').to eq nil
       page.click 'label[for="agree"]'
-      expect(page.evaluate 'result.check').to eq true
-      expect(page.evaluate 'result.events').to eq [
+      expect(await page.evaluate 'result.check').to eq true
+      expect(await page.evaluate 'result.events').to eq [
         'click',
         'input',
         'change',
       ]
       page.click 'label[for="agree"]'
-      expect(page.evaluate 'result.check').to eq false
+      expect(await page.evaluate 'result.check').to eq false
     end
 
     it 'should fail to click a missing button' do
@@ -174,9 +176,9 @@ module Chromiebara
     it 'should scroll and click the button' do
       page.goto server.domain + 'input/scrollable.html'
       page.click '#button-5'
-      expect(page.evaluate "document.querySelector('#button-5').textContent").to eq 'clicked'
+      expect(await page.evaluate "document.querySelector('#button-5').textContent").to eq 'clicked'
       page.click '#button-80'
-      expect(page.evaluate "document.querySelector('#button-80').textContent").to eq 'clicked'
+      expect(await page.evaluate "document.querySelector('#button-80').textContent").to eq 'clicked'
     end
 
     it 'should double click the button' do
@@ -190,11 +192,11 @@ module Chromiebara
         });
       }
       JAVASCRIPT
-      page.evaluate_function function
+      await page.evaluate_function function
       button = page.query_selector 'button'
       button.click click_count: 2
-      expect(page.evaluate 'double').to eq true
-      expect(page.evaluate 'result').to eq 'Clicked'
+      expect(await page.evaluate 'double').to eq true
+      expect(await page.evaluate 'result').to eq 'Clicked'
     end
 
     it 'should click a partially obscured button' do
@@ -207,21 +209,21 @@ module Chromiebara
         button.style.left = '368px';
       }
       JAVASCRIPT
-      page.evaluate_function function
+      await page.evaluate_function function
       page.click 'button'
-      expect(page.evaluate 'window.result').to eq 'Clicked'
+      expect(await page.evaluate 'window.result').to eq 'Clicked'
     end
 
     it 'should click a rotated button' do
       page.goto server.domain + 'input/rotatedButton.html'
       page.click 'button'
-      expect(page.evaluate 'window.result').to eq 'Clicked'
+      expect(await page.evaluate 'window.result').to eq 'Clicked'
     end
 
     it 'should fire contextmenu event on right click' do
       page.goto server.domain + 'input/scrollable.html'
       page.click '#button-8', button: 'right'
-      expect(page.evaluate "document.querySelector('#button-8').textContent").to eq 'context menu'
+      expect(await page.evaluate "document.querySelector('#button-8').textContent").to eq 'context menu'
     end
 
     # @see https://github.com/GoogleChrome/puppeteer/issues/206
@@ -238,7 +240,7 @@ module Chromiebara
       frame = page.frames[1]
       button = frame.query_selector 'button'
       button.click
-      expect(frame.evaluate 'window.result').to eq 'Clicked'
+      expect(await frame.evaluate 'window.result').to eq 'Clicked'
     end
 
     # TODO
@@ -256,13 +258,13 @@ module Chromiebara
 
     it 'should click the button with device_scale_factor set' do
       page.set_viewport width: 400, height: 400, device_scale_factor: 5
-      expect(page.evaluate 'window.devicePixelRatio').to eq 5
+      expect(await page.evaluate 'window.devicePixelRatio').to eq 5
       page.set_content '<div style="width:100px;height:100px">spacer</div>'
       attach_frame page, 'button-test', server.domain + 'input/button.html'
       frame = page.frames[1]
       button = frame.query_selector 'button'
       button.click
-      expect(frame.evaluate 'window.result').to eq 'Clicked'
+      expect(await frame.evaluate 'window.result').to eq 'Clicked'
     end
   end
 end

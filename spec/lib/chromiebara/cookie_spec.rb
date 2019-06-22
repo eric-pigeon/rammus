@@ -1,5 +1,6 @@
 module Chromiebara
   RSpec.describe 'Cookies', browser: true do
+    include Promise::Await
     before { @_context = browser.create_context }
     after { @_context.close }
     let(:context) { @_context }
@@ -13,7 +14,7 @@ module Chromiebara
 
       it 'should get a cookie' do
         page.goto(server.empty_page)
-        page.evaluate("document.cookie = 'username=John Doe';")
+        await page.evaluate("document.cookie = 'username=John Doe';")
         expect(page.cookies).to eq([
           {
             "name" => 'username',
@@ -64,7 +65,7 @@ module Chromiebara
       it 'should get multiple cookies' do
         page.goto server.empty_page
 
-        page.evaluate("document.cookie = 'username=John Doe'; document.cookie = 'password=1234';")
+        await page.evaluate("document.cookie = 'username=John Doe'; document.cookie = 'password=1234';")
         cookies = page.cookies.sort { |a, b| a["name"] <=> b["name"] }
         expect(cookies).to eq([
           {
@@ -132,7 +133,7 @@ module Chromiebara
         page.goto server.empty_page
 
         page.set_cookie name: 'password', value: '123456'
-        expect(page.evaluate 'document.cookie').to eq 'password=123456'
+        expect(await page.evaluate 'document.cookie').to eq 'password=123456'
       end
 
       it 'should isolate cookies in browser contexts' do
@@ -165,7 +166,7 @@ module Chromiebara
           { name: 'password', value: '123456' },
           { name: 'foo', value: 'bar' }
         )
-        cookies = page.evaluate "document.cookie.split(';').map(cookie => cookie.trim()).sort();"
+        cookies = await page.evaluate "document.cookie.split(';').map(cookie => cookie.trim()).sort();"
         expect(cookies).to eq ["foo=bar", "password=123456"]
       end
 
@@ -207,12 +208,12 @@ module Chromiebara
           "secure" => false,
           "session" => true
         ])
-        expect(page.evaluate('document.cookie')).to eq 'gridcookie=GRID'
+        expect(await page.evaluate('document.cookie')).to eq 'gridcookie=GRID'
         page.goto server.empty_page
-        expect(page.cookies()).to eq []
-        expect(page.evaluate 'document.cookie').to eq ''
+        expect(page.cookies).to eq []
+        expect(await page.evaluate 'document.cookie').to eq ''
         page.goto server.domain + 'grid.html'
-        expect(page.evaluate 'document.cookie').to eq 'gridcookie=GRID'
+        expect(await page.evaluate 'document.cookie').to eq 'gridcookie=GRID'
       end
 
       it 'should not set a cookie on a blank page' do
@@ -258,7 +259,7 @@ module Chromiebara
       it 'should set a cookie on a different domain' do
         page.goto server.empty_page
         page.set_cookie url: 'https://www.example.com', name: 'example-cookie', value: 'best'
-        expect(page.evaluate 'document.cookie').to eq ''
+        expect(await page.evaluate 'document.cookie').to eq ''
         expect(page.cookies).to eq []
         expect(page.cookies 'https://www.example.com').to eq [{
           "name" => 'example-cookie',
@@ -273,10 +274,11 @@ module Chromiebara
         }]
       end
 
-      xit 'should set cookies from a frame' do
+      it 'should set cookies from a frame' do
+        pending 'broken'
         page.goto server.domain + "/grid.html"
         page.set_cookie name: 'localhost-cookie', value: 'best'
-        _function = <<~JAVASCRIPT
+        function = <<~JAVASCRIPT
           src => {
              let fulfill;
              const promise = new Promise(x => fulfill = x);
@@ -287,43 +289,34 @@ module Chromiebara
              return promise;
           }
         JAVASCRIPT
-        # TODO
-        # await page.evaluate(src => {
-        #   let fulfill;
-        #   const promise = new Promise(x => fulfill = x);
-        #   const iframe = document.createElement('iframe');
-        #   document.body.appendChild(iframe);
-        #   iframe.onload = fulfill;
-        #   iframe.src = src;
-        #   return promise;
-        # }, server.CROSS_PROCESS_PREFIX);
-        # await page.setCookie({name: '127-cookie', value: 'worst', url: server.CROSS_PROCESS_PREFIX});
-        # expect(await page.evaluate('document.cookie')).toBe('localhost-cookie=best');
-        # expect(await page.frames()[1].evaluate('document.cookie')).toBe('127-cookie=worst');
-        #
-        # expect(await page.cookies()).toEqual([{
-        #   name: 'localhost-cookie',
-        #   value: 'best',
-        #   domain: 'localhost',
-        #   path: '/',
-        #   expires: -1,
-        #   size: 20,
-        #   httpOnly: false,
-        #   secure: false,
-        #   session: true
-        # }]);
-        #
-        # expect(await page.cookies(server.CROSS_PROCESS_PREFIX)).toEqual([{
-        #   name: '127-cookie',
-        #   value: 'worst',
-        #   domain: '127.0.0.1',
-        #   path: '/',
-        #   expires: -1,
-        #   size: 15,
-        #   httpOnly: false,
-        #   secure: false,
-        #   session: true
-        # }]);
+        await page.evaluate_function function, server.cross_process_domain
+        page.set_cookie name: '127-cookie', value: 'worst', url: server.cross_process_domain
+        expect(await page.evaluate('document.cookie')).to eq 'localhost-cookie=best'
+        expect(await page.frames[1].evaluate('document.cookie')).to eq '127-cookie=worst'
+
+        expect(page.cookies).to eq([{
+          "name" => 'localhost-cookie',
+          "value" => 'best',
+          "domain" => 'localhost',
+          "path" => '/',
+          "expires" => -1,
+          "size" => 20,
+          "httpOnly" => false,
+          "secure" => false,
+          "session" => true
+        }])
+
+        expect(page.cookies(server.cross_process_domain)).to eq([{
+          "name" => '127-cookie',
+          "value" => 'worst',
+          "domain" => '127.0.0.1',
+          "path" => '/',
+          "expires" => -1,
+          "size" => 15,
+          "httpOnly" => false,
+          "secure" => false,
+          "session" => true
+        }])
       end
     end
 
@@ -335,9 +328,9 @@ module Chromiebara
           { name: 'cookie2', value: '2' },
           { name: 'cookie3', value: '3' }
         )
-        expect(page.evaluate 'document.cookie').to eq 'cookie1=1; cookie2=2; cookie3=3'
+        expect(await page.evaluate 'document.cookie').to eq 'cookie1=1; cookie2=2; cookie3=3'
         page.delete_cookie(name: 'cookie2')
-        expect(page.evaluate 'document.cookie').to eq 'cookie1=1; cookie3=3'
+        expect(await page.evaluate 'document.cookie').to eq 'cookie1=1; cookie3=3'
       end
     end
   end

@@ -25,7 +25,7 @@ class Server
   end
 
   def set_content_security_policy(path, policy)
-    raise 'what'
+    TestServer.instance.set_content_security_policy path, policy
   end
 
   def set_route(path, &block)
@@ -69,7 +69,7 @@ module SeverHelper
       return frame;
     }
     JAVASCRIPT
-    handle = page.evaluate_handle_function function, frame_id, url
+    handle = await page.evaluate_handle_function function, frame_id, url
     handle.as_element.content_frame
   end
 
@@ -80,7 +80,7 @@ module SeverHelper
         frame.remove();
       }
     JAVASCRIPT
-    page.evaluate_function function, frame_id
+    await page.evaluate_function function, frame_id
   end
 
   def is_favicon(request)

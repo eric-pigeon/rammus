@@ -35,7 +35,7 @@ module Chromiebara
           requests << request
         end
         page.goto server.empty_page
-        page.evaluate_function "() => fetch('/empty.html')"
+        await page.evaluate_function "() => fetch('/empty.html')"
         expect(requests.length).to eq 2
       end
     end
@@ -71,7 +71,7 @@ module Chromiebara
           next if is_favicon request
           requests << request
         end
-        page.evaluate_function "() => fetch('/digits/1.png')"
+        await page.evaluate_function "() => fetch('/digits/1.png')"
         expect(requests.length).to eq 1
         expect(requests[0].frame).to eq page.main_frame
       end
@@ -135,7 +135,7 @@ module Chromiebara
 
         # Load and re-load to make sure serviceworker is installed and running.
         page.goto server.domain + 'serviceworkers/fetch/sw.html',  wait_until: :networkidle2
-        page.evaluate_function 'async() => await window.activationPromise'
+        await page.evaluate_function 'async() => await window.activationPromise'
         page.reload
 
         expect(responses.size).to eq 2
@@ -151,7 +151,7 @@ module Chromiebara
         page.goto server.empty_page
         request = nil
         page.on :request, -> (r) { request = r }
-        page.evaluate_function "() => fetch('./post', { method: 'POST', body: JSON.stringify({foo: 'bar'})})"
+        await page.evaluate_function "() => fetch('./post', { method: 'POST', body: JSON.stringify({foo: 'bar'})})"
         expect(request).not_to be_nil
         expect(request.post_data).to eq '{"foo":"bar"}'
       end
@@ -205,7 +205,7 @@ module Chromiebara
         #// send request and wait for server response
         #const [pageResponse] = await Promise.all([
         #  page.waitForResponse(r => !utils.isFavicon(r.request())),
-        #  page.evaluate(() => fetch('./get', { method: 'GET'})),
+        #  await page.evaluate(() => fetch('./get', { method: 'GET'})),
         #  server.waitForRequest('/get'),
         #]);
 

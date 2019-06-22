@@ -5,13 +5,14 @@ module Chromiebara
     def self.value_from_remote_object(remote_object)
       raise "Cannot extract value when objectId is given" if remote_object["objectId"]
       if remote_object["unserializableValue"]
-        # if (remoteObject.type === 'bigint' && typeof BigInt !== 'undefined')
-        #   return BigInt(remoteObject.unserializableValue.replace('n', ''));
+        if remote_object["type"] == 'bigint'
+          return remote_object["unserializableValue"].gsub("n", "").to_i
+        end
         case remote_object["unserializableValue"]
         when '-0'
-          raise 'TODO'
+          return -0
         when 'NaN'
-          raise 'TODO'
+          return Float::NAN
         when 'Infinity'
           return Float::INFINITY
         when '-Infinity'
@@ -42,7 +43,7 @@ module Chromiebara
     #
     def self.get_exception_message(exception_details)
       if exception_details["exception"]
-        return exception_details.dig("exception", "description") || exception.dig("exception", "value")
+        return exception_details.dig("exception", "description") || exception_details.dig("exception", "value")
       end
       message = exception_details["text"]
       if exception_details["stackTrace"]

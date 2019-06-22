@@ -33,7 +33,7 @@ module Chromiebara
         # The pages will be the testing page and the original newtab page
         all_pages = browser.pages
         original_page = all_pages.detect { |p| p != page }
-        expect(original_page.evaluate_function "() => ['Hello', 'world'].join(' ')").to eq 'Hello world'
+        expect(await original_page.evaluate_function "() => ['Hello', 'world'].join(' ')").to eq 'Hello world'
         expect(original_page.query_selector 'body').not_to be_nil
       end
 
@@ -44,7 +44,7 @@ module Chromiebara
         )
         expect(other_page.url).to include server.cross_process_domain
 
-        expect(other_page.evaluate_function "() => ['Hello', 'world'].join(' ')").to eq 'Hello world'
+        expect(await other_page.evaluate_function "() => ['Hello', 'world'].join(' ')").to eq 'Hello world'
         expect(other_page.query_selector 'body').not_to be_nil
 
         all_pages = context.pages
@@ -76,7 +76,7 @@ module Chromiebara
         destroyed_target = Promise.new do |resolve, _reject|
           context.once :target_destroyed, -> (target) { resolve.(target) }
         end
-        page.evaluate_function '() => window.registrationPromise.then(registration => registration.unregister())'
+        await page.evaluate_function '() => window.registrationPromise.then(registration => registration.unregister())'
         expect(await destroyed_target).to eq(await created_target)
       end
 
@@ -86,15 +86,15 @@ module Chromiebara
 
         target = await context.wait_for_target { |t| t.type == 'service_worker' }
         worker = target.worker
-        expect(worker.evaluate_function '() => self.toString()').to eq '[object ServiceWorkerGlobalScope]'
+        expect(await worker.evaluate_function '() => self.toString()').to eq '[object ServiceWorkerGlobalScope]'
       end
 
       xit 'should create a worker from a shared worker' do
         page.goto server.empty_page
-        page.evaluate_function "() => { new SharedWorker('data:text/javascript,console.log(\"hi\")'); }"
+        await page.evaluate_function "() => { new SharedWorker('data:text/javascript,console.log(\"hi\")'); }"
         target = await context.wait_for_target { |t| t.type == 'shared_worker' }
         worker = await target.worker
-        expect(worker.evaluate_function('() => self.toString()')).to eq '[object SharedWorkerGlobalScope]'
+        expect(await worker.evaluate_function('() => self.toString()')).to eq '[object SharedWorkerGlobalScope]'
       end
 
       it 'should report when a target url changes' do
@@ -128,7 +128,7 @@ module Chromiebara
         target_promise_2 = Promise.new do |resolve, _reject|
           context.once :target_created, -> (t) { resolve.(t) }
         end
-        new_page.evaluate_function "() => { window.open('about:blank') }"
+        await new_page.evaluate_function "() => { window.open('about:blank') }"
 
         target_2 = await target_promise_2
         expect(target_2.url).to eq 'about:blank'

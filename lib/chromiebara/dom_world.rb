@@ -75,7 +75,7 @@ module Chromiebara
     # @return {!Promise<!Puppeteer.ElementHandle>}
     #
     def document
-      execution_context.evaluate_handle('document').as_element
+      (await execution_context.evaluate_handle('document')).as_element
       # if (this._documentPromise)
       #   return this._documentPromise;
       # this._documentPromise = this.executionContext().then(async context => {
@@ -138,7 +138,7 @@ module Chromiebara
     #
     def set_content(html, timeout: nil, wait_until: nil)
       wait_until = [:load]
-      # timeout = this._timeoutSettings.navigationTimeout(),
+      timeout ||= timeout_settings.navigation_timeout
       # We rely upon the fact that document.open() will reset frame lifecycle with "init"
       # lifecycle event. @see https://crrev.com/608658
 
@@ -150,7 +150,7 @@ module Chromiebara
         document.close();
       }
       JAVASCRIPT
-      evaluate_function function, html
+      await evaluate_function function, html
       watcher.await_complete
     ensure
       watcher.dispose
@@ -191,7 +191,7 @@ module Chromiebara
 
       if url != nil
         begin
-          execution_context.evaluate_handle_function(add_script_url, url, type).as_element
+          (await execution_context.evaluate_handle_function(add_script_url, url, type)).as_element
         rescue => _error
           raise "Loading script from #{url} failed"
         end
@@ -271,7 +271,7 @@ module Chromiebara
 
       unless url.nil?
         begin
-          return execution_context.evaluate_handle_function(add_style_url, url).as_element
+          return (await execution_context.evaluate_handle_function(add_style_url, url)).as_element
         rescue => _error
           raise "Loading style from #{url} failed"
         end
@@ -286,7 +286,7 @@ module Chromiebara
       end
 
       unless content.nil?
-        return execution_context.evaluate_handle_function(add_style_content, content).as_element
+        return (await execution_context.evaluate_handle_function(add_style_content, content)).as_element
       end
 
       raise "Provide a `url`, `path` or `content`"

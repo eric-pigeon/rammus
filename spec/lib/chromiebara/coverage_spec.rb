@@ -1,5 +1,6 @@
 module Chromiebara
   RSpec.describe 'Coverage', browser: true do
+    include Promise::Await
     before { @_context = browser.create_context }
     after { @_context.close }
     let(:context) { @_context }
@@ -44,8 +45,8 @@ module Chromiebara
       it 'should ignore pptr internal scripts if reportAnonymousScripts is true' do
         page.coverage.start_js_coverage report_anonymous_scripts: true
         page.goto server.empty_page
-        page.evaluate 'console.log("foo")'
-        page.evaluate_function "() => console.log('bar')"
+        await page.evaluate 'console.log("foo")'
+        await page.evaluate_function "() => console.log('bar')"
         coverage = page.coverage.stop_js_coverage
         expect(coverage.length).to eq 0
       end
@@ -239,7 +240,7 @@ module Chromiebara
         page.coverage.start_css_coverage
         page.add_style_tag content: 'body { margin: 10px;}'
         # trigger style recalc
-        margin = page.evaluate_function("() => window.getComputedStyle(document.body).margin")
+        margin = await page.evaluate_function("() => window.getComputedStyle(document.body).margin")
         expect(margin).to eq '10px'
         coverage = page.coverage.stop_css_coverage
         expect(coverage.length).to eq 0
@@ -265,7 +266,7 @@ module Chromiebara
 
       it 'should work with a recently loaded stylesheet' do
         page.coverage.start_css_coverage
-        page.evaluate_function("async url => {
+        await page.evaluate_function("async url => {
           document.body.textContent = 'hello, world';
 
           const link = document.createElement('link');
