@@ -22,7 +22,8 @@ module Chromiebara
     attr_reader :target, :frame_manager, :javascript_enabled, :keyboard, :mouse,
       :touchscreen, :accessibility, :coverage, :tracing
 
-    delegate [:main_frame, :network_manager] => :frame_manager
+    delegate [:browser, :browser_context] => :target
+    delegate [:frames, :main_frame, :network_manager] => :frame_manager
     delegate [
       :authenticate,
       :set_extra_http_headers,
@@ -45,13 +46,20 @@ module Chromiebara
       :query_selector_all,
       :query_selector_all_evaluate_function,
       :select,
+      :set_content,
       :title,
       :touchscreen_tap,
       :type,
       :url,
+      :wait_for,
+      :wait_for_function,
+      :wait_for_navigation,
+      :wait_for_selector,
+      :wait_for_xpath,
       :xpath
     ] => :main_frame
 
+    # @!visibility private
     def self.create(target, default_viewport: nil, ignore_https_errors: false)
       new(target, ignore_https_errors: ignore_https_errors).tap do |page|
         await Promise.all(
@@ -65,6 +73,7 @@ module Chromiebara
     end
 
     private_class_method :new
+    # @!visibility private
     def initialize(target, ignore_https_errors:)
       super()
       @_closed = false
@@ -130,19 +139,12 @@ module Chromiebara
       end
     end
 
-    # @return {!Puppeteer.Browser}
+    # Sets the page's geolocation.
     #
-    def browser
-      target.browser
-    end
-
-    # @return {!Puppeteer.BrowserContext}
+    # @param [Numberic] longitude
+    # @param [Numberic] latitude
+    # @param [Numberic, nil] accuracy
     #
-    def browser_context
-      target.browser_context
-    end
-
-    # @param {!{longitude: number, latitude: number, accuracy: (number|undefined)}} options
     def set_geolocation(longitude:, latitude:, accuracy: 0)
       raise "Invalid longitude '#{longitude}': precondition -180 <= LONGITUDE <= 180 failed." if longitude < -180 || longitude > 180
       raise "Invalid latitude '#{latitude}': precondition -90 <= LATITUDE <= 90 failed." if latitude < -90 || latitude > 90
@@ -151,27 +153,19 @@ module Chromiebara
       await client.command Protocol::Emulation.set_geolocation_override longitude: longitude, latitude: latitude, accuracy: accuracy
     end
 
-    # An array of all frames attached to the page
-    #
-    # @return [<Chromiebara::Frame>]
-    #
-    def frames
-      frame_manager.frames
-    end
-
-    # @return {!Array<!Worker>}
+    # @return [Array<Chromiebara::Worker>]
     #
     def workers
       @_workers.values
     end
 
-    # @param {number} timeout
+    # @param [Numberic] timeout
     #
     def set_default_navigation_timeout(timeout)
       @_timeout_settings.set_default_navigation_timeout timeout
     end
 
-    # @param {number} timeout
+    # @param [Numeric] timeout
     #
     def set_default_timeout(timeout)
       @_timeout_settings.timeout = timeout
@@ -216,7 +210,7 @@ module Chromiebara
       response["cookies"]
     end
 
-    #* @param {Array<Protocol.Network.deleteCookiesParameters>} cookies
+    # @param {Array<Protocol.Network.deleteCookiesParameters>} cookies
     #
     def delete_cookie(*cookies)
       page_url = url
@@ -235,7 +229,7 @@ module Chromiebara
       end
     end
 
-    #  @param {Array<Network.CookieParam>} cookies
+    # @param {Array<Network.CookieParam>} cookies
     #
     def set_cookie(*cookies)
       page_url = url
@@ -298,13 +292,6 @@ module Chromiebara
       build_metrics_object response["metrics"]
     end
 
-    # @param {string} html
-    # @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
-    #
-    def set_content(html, timeout: nil, wait_until: nil)
-      frame_manager.main_frame.set_content html, timeout: timeout, wait_until: wait_until
-    end
-
     # @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
     # @return {!Promise<?Puppeteer.Response>}
     #
@@ -314,13 +301,6 @@ module Chromiebara
         client.command(Protocol::Page.reload)
       )
       response
-    end
-
-    # @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
-    # @return {!Promise<?Puppeteer.Response>}
-    #
-    def wait_for_navigation(timeout: nil, wait_until: nil)
-      frame_manager.main_frame.wait_for_navigation timeout: timeout, wait_until: wait_until
     end
 
     # @param {(string|Function)} urlOrPredicate
@@ -393,7 +373,7 @@ module Chromiebara
       client.command Protocol::Emulation.set_script_execution_disabled value: !javascript_enabled
     end
 
-    # @param {boolean} enabled
+    # @param [Boolean] enabled
     #
     def set_bypass_csp(enabled)
       await client.command Protocol::Page.set_bypass_csp enabled: enabled
@@ -594,44 +574,10 @@ module Chromiebara
       end
     end
 
-    # @return {boolean}
+    # @return [Boolean]
     #
     def is_closed?
       @_closed
-    end
-
-    # @param {(string|number|Function)} selectorOrFunctionOrTimeout
-    # @param {!Object=} options
-    # @param {!Array<*>} args
-    # @return {!Promise<!Puppeteer.JSHandle>}
-    #
-    def wait_for(selector_or_function_or_timeout, options = {}, *args)
-      main_frame.wait_for selector_or_function_or_timeout, options, *args
-    end
-
-    #  * @param {string} selector
-    #  * @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
-    #  * @return {!Promise<?Puppeteer.ElementHandle>}
-    #  */
-    # waitForSelector(selector, options = {}) {
-    #   return this.mainFrame().waitForSelector(selector, options);
-    # }
-
-    # @param {string} xpath
-    # @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
-    # @return {!Promise<?Puppeteer.ElementHandle>}
-    #
-    def wait_for_xpath(xpath, visible: nil, hidden: nil, timeout: nil)
-       main_frame.wait_for_xpath xpath, visible: visible, hidden: hidden, timeout: timeout
-    end
-
-    # @param {Function} pageFunction
-    # @param {!{polling?: string|number, timeout?: number}=} options
-    # @param {!Array<*>} args
-    # @return {!Promise<!Puppeteer.JSHandle>}
-    #
-    def wait_for_function(page_function, *args, polling: nil, timeout: nil)
-      main_frame.wait_for_function page_function, *args, polling: polling, timeout: timeout
     end
 
     private
@@ -793,7 +739,7 @@ module Chromiebara
         args = payload["args"]
 
         # @param {string} name
-        # @param {number} seq
+        # @param [Numeric] seq
         # @param {*} result
         #
         deliver_result = <<~JAVASCRIPT
@@ -810,7 +756,7 @@ module Chromiebara
             Util.evaluation_string deliver_result, name, seq, result
           rescue => error
             # @param {string} name
-            # @param {number} seq
+            # @param [Numeric] seq
             # @param {string} message
             # @param {string} stack
             #

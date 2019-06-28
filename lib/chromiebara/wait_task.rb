@@ -21,28 +21,32 @@ module Chromiebara
       @dom_world = dom_world
       @_polling = polling
       @_timeout = timeout
-      @_predicate_body = "return (#{predicate_body})(...args)";
-      #this._predicateBody = helper.isString(predicateBody) ? 'return (' + predicateBody + ')' : 'return (' + predicateBody + ')(...args)';
+      @_predicate_body = if args.empty?
+                           "return (#{predicate_body})"
+                         else
+                           "return (#{predicate_body})(...args)";
+                         end
       @_args = args
       @_run_count = 0
       dom_world.wait_tasks << self
       @promise, @_resolve, @_reject = Promise.create
+      @_terminated = false
       # Since page navigation requires us to re-install the pageScript, we should track
       # timeout on our end.
       #if (timeout) {
       #  const timeoutError = new TimeoutError(`waiting for ${title} failed: timeout ${timeout}ms exceeded`);
       #  this._timeoutTimer = setTimeout(() => this.terminate(timeoutError), timeout);
       #}
-      rerun
+      Concurrent.global_io_executor.post { rerun }
     end
 
     # @param {!Error} error
     #
-    #terminate(error) {
-    #  this._terminated = true;
-    #  this._reject(error);
-    #  this._cleanup();
-    #}
+    def terminate(error)
+      @_terminated = true
+      @_reject.(error)
+      cleanup
+    end
 
     def rerun
       @_run_count += 1
@@ -50,22 +54,23 @@ module Chromiebara
       success = nil
       error = nil
       begin
-        success = dom_world.execution_context.evaluate_handle_function(
+        success = await dom_world.execution_context.evaluate_handle_function(
           WAIT_FOR_PREDICATE_PAGE_FUNCTION,
           @_predicate_body,
           @_polling,
           @_timeout,
           *@_args
-        )
+        ), 0
       rescue => err
         error = err
       end
 
       #if (this._terminated || runCount !== this._runCount) {
-      #  if (success)
-      #    await success.dispose();
-      #  return;
-      #}
+      if @_terminated
+        await success.dispose if success
+
+        return
+      end
 
       # Ignore timeouts in pageScript - we track timeouts ourselves.
       # If the frame's execution context has already changed, `frame.evaluate` will
@@ -75,15 +80,13 @@ module Chromiebara
       #  return;
       #}
 
-      #// When the page is navigated, the promise is rejected.
-      #// We will try again in the new execution context.
-      #if (error && error.message.includes('Execution context was destroyed'))
-      #  return;
+      # When the page is navigated, the promise is rejected.
+      # We will try again in the new execution context.
+      return if error&.message&.include? 'Execution context was destroyed'
 
-      #// We could have tried to evaluate in a context which was already
-      #// destroyed.
-      #if (error && error.message.includes('Cannot find context with specified id'))
-      #  return;
+      # We could have tried to evaluate in a context which was already
+      # destroyed.
+      return if error&.message&.include? 'Cannot find context with specified id'
 
       if error
         @_reject.(error)
@@ -193,7 +196,7 @@ module Chromiebara
 
       def cleanup
         #clearTimeout(this._timeoutTimer);
-        #this._dom_world._waitTasks.delete(this);
+        dom_world.wait_tasks.delete self
         #this._runningTask = null;
       end
   end
