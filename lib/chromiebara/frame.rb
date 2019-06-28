@@ -3,9 +3,31 @@ module Chromiebara
     extend Forwardable
     include Promise::Await
 
-    delegate [:add_script_tag, :add_style_tag] => :main_world
+    attr_reader :id, :frame_manager, :parent_frame, :loader_id, :main_world, :secondary_world
 
-    attr_reader :id, :frame_manager, :parent_frame, :loader_id, :main_world, :name
+    delegate [
+      :add_script_tag,
+      :add_style_tag,
+      :evaluate,
+      :evaluate_function,
+      :evaluate_handle,
+      :evaluate_handle_function,
+      :execution_context,
+      :query_selector,
+      :query_selector_all,
+      :query_selector_all_evaluate_function,
+      :query_selector_evaluate_function,
+      :xpath
+    ] => :main_world
+
+    delegate [
+      :focus,
+      :hover,
+      :select,
+      :touchscreen_tap,
+      :title,
+      :type
+    ] => :secondary_world
 
     # @param [Chromiebara::FrameManager] frame_manager
     # @param [Chromiebara::CPDSession] client
@@ -22,14 +44,14 @@ module Chromiebara
       @_name = nil
 
       @loader_id = ''
-      # /** @type {!Set<string>} */
+      # @type {!Set<string>}
       @_lifecycle_events = Set.new
-      # /** @type {!DOMWorld} */
+      # @type {!DOMWorld}
       @main_world =  DOMWorld.new frame_manager, self, frame_manager.timeout_settings
-      # /** @type {!DOMWorld} */
-      @_secondary_world = DOMWorld.new frame_manager, self, frame_manager.timeout_settings
+      # @type {!DOMWorld}
+      @secondary_world = DOMWorld.new frame_manager, self, frame_manager.timeout_settings
 
-      # /** @type {!Set<!Frame>} */
+      # @type {!Set<!Frame>}
       @child_frames = Set.new
       if parent_frame
         # TODO
@@ -57,88 +79,17 @@ module Chromiebara
       frame_manager.wait_for_frame_navigation self, timeout: timeout, wait_until: wait_until
     end
 
-    # @return {!Promise<!ExecutionContext>}
-    #
-    def execution_context
-      main_world.execution_context
-    end
-
-    # @param {Function|string} pageFunction
-    # @param {!Array<*>} args
-    # @return {!Promise<!Puppeteer.JSHandle>}
-    #
-    def evaluate_handle(page_function, *args)
-      main_world.evaluate_handle page_function, *args
-    end
-
-    # TODO
-    def evaluate_handle_function(page_function, *args)
-      main_world.evaluate_handle_function page_function, *args
-    end
-
-    # TODO
-    #  * @param {Function|string} pageFunction
-    #  * @param {!Array<*>} args
-    #  * @return {!Promise<*>}
-    #
-    def evaluate(function, *args)
-      @main_world.evaluate function, *args
-    end
-
-    def evaluate_function(function, *args)
-      main_world.evaluate_function function, *args
-    end
-
-    # @param {string} selector
-    # @return {!Promise<?Puppeteer.ElementHandle>}
-    #
-    def query_selector(selector)
-      main_world.query_selector selector
-    end
-
-    # @param {string} expression
-    # @return {!Promise<!Array<!Puppeteer.ElementHandle>>}
-    #
-    def xpath(expression)
-      main_world.xpath expression
-    end
-
-    # @param {string} selector
-    # @param {Function|string} pageFunction
-    # @param {!Array<*>} args
-    # @return {!Promise<(!Object|undefined)>}
-    #
-    def query_selector_evaluate_function(selector, function, *args)
-      main_world.query_selector_evaluate_function selector, function, *args
-    end
-
-    # @param {string} selector
-    # @param {Function|string} pageFunction
-    # @param {!Array<*>} args
-    # @return {!Promise<(!Object|undefined)>}
-    #
-    def query_selector_all_evaluate_function(selector, page_function, *args)
-      main_world.query_selector_all_evaluate_function selector, page_function, *args
-    end
-
-    # @param {string} selector
-    # @return {!Promise<!Array<!Puppeteer.ElementHandle>>}
-    #
-    def query_selector_all(selector)
-       main_world.query_selector_all selector
-    end
-
     #  @return {!Promise<String>}
     #
     def content
-      return @_secondary_world.content
+      return secondary_world.content
     end
 
     # @param {string} html
     # @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
     #
     def set_content(html, timeout: nil, wait_until: nil)
-      @_secondary_world.set_content html, timeout: timeout, wait_until: wait_until
+      secondary_world.set_content html, timeout: timeout, wait_until: wait_until
     end
 
     def name
@@ -169,95 +120,64 @@ module Chromiebara
     # @param {!{delay?: number, button?: "left"|"right"|"middle", clickCount?: number}=} options
     #
     def click(selector, options = {})
-      @_secondary_world.click selector, options
+      secondary_world.click selector, options
     end
 
-    # TODO make attr_reader
-    def secondary_world
-      @_secondary_world
-    end
-
-    # @param {string} selector
+    # @param {(string|number|Function)} selectorOrFunctionOrTimeout
+    # @param {!Object=} options
+    # @param {!Array<*>} args
+    # @return {!Promise<?Puppeteer.JSHandle>}
     #
-    def focus(selector)
-      secondary_world.focus selector
+    def wait_for(selector_or_function_or_timeout, options = {}, *args)
+      # const xPathPattern = '//';
+
+      # if (helper.isString(selectorOrFunctionOrTimeout)) {
+      #   const string = /** @type {string} */ (selectorOrFunctionOrTimeout);
+      #   if (string.startsWith(xPathPattern))
+      #     return this.waitForXPath(string, options);
+      #   return this.waitForSelector(string, options);
+      # }
+      # if (helper.isNumber(selectorOrFunctionOrTimeout))
+      #   return new Promise(fulfill => setTimeout(fulfill, /** @type {number} */ (selectorOrFunctionOrTimeout)));
+      # if (typeof selectorOrFunctionOrTimeout === 'function')
+      #   return this.waitForFunction(selectorOrFunctionOrTimeout, options, ...args);
+      # return Promise.reject(new Error('Unsupported target type: ' + (typeof selectorOrFunctionOrTimeout)));
+      #
+
+      #* @param {string} selector
+      #* @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
+      #* @return {!Promise<?Puppeteer.ElementHandle>}
+      #*/
+      #sync waitForSelector(selector, options) {
+      # const handle = await this._secondaryWorld.waitForSelector(selector, options);
+      # if (!handle)
+      #   return null;
+      # const mainExecutionContext = await this._mainWorld.executionContext();
+      # const result = await mainExecutionContext._adoptElementHandle(handle);
+      # await handle.dispose();
+      # return result;
     end
 
-    # @param {string} selector
+    #  @param {string} selector
+    #  @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
+    #  @return {!Promise<?Puppeteer.ElementHandle>}
     #
-    def hover(selector)
-      secondary_world.hover selector
+    def wait_for_selector(selector, visible: nil, hidden: nil, timeout: nil)
+      secondary_world.wait_for_selector(selector, visible: visible, hidden: hidden, timeout: nil).then do |handle|
+        next nil if handle.nil?
+
+        main_execution_context = main_world.execution_context
+        result = main_execution_context._adopt_element_handle handle
+        handle.dispose
+        result
+      end
     end
-
-    # @param {string} selector
-    # @param {!Array<string>} values
-    # @return {!Promise<!Array<string>>}
-    #
-    def select(selector, *values)
-      secondary_world.select selector, *values
-    end
-
-    # @param [String] selector
-    #
-    def touchscreen_tap(selector)
-      secondary_world.touchscreen_tap selector
-    end
-
-    # @param {string} selector
-    # @param {string} text
-    # @param {{delay: (number|undefined)}=} options
-    #
-    def type(selector, text, delay: nil)
-      main_world.type selector, text, delay: delay
-    end
-
-    # /**
-    #  * @param {(string|number|Function)} selectorOrFunctionOrTimeout
-    #  * @param {!Object=} options
-    #  * @param {!Array<*>} args
-    #  * @return {!Promise<?Puppeteer.JSHandle>}
-    #  */
-    # waitFor(selectorOrFunctionOrTimeout, options = {}, ...args) {
-    #   const xPathPattern = '//';
-
-    #   if (helper.isString(selectorOrFunctionOrTimeout)) {
-    #     const string = /** @type {string} */ (selectorOrFunctionOrTimeout);
-    #     if (string.startsWith(xPathPattern))
-    #       return this.waitForXPath(string, options);
-    #     return this.waitForSelector(string, options);
-    #   }
-    #   if (helper.isNumber(selectorOrFunctionOrTimeout))
-    #     return new Promise(fulfill => setTimeout(fulfill, /** @type {number} */ (selectorOrFunctionOrTimeout)));
-    #   if (typeof selectorOrFunctionOrTimeout === 'function')
-    #     return this.waitForFunction(selectorOrFunctionOrTimeout, options, ...args);
-    #   return Promise.reject(new Error('Unsupported target type: ' + (typeof selectorOrFunctionOrTimeout)));
-    # }
-
-    # /**
-    #  * @param {string} selector
-    #  * @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
-    #  * @return {!Promise<?Puppeteer.ElementHandle>}
-    #  */
-    # async waitForSelector(selector, options) {
-    #   const handle = await this._secondaryWorld.waitForSelector(selector, options);
-    #   if (!handle)
-    #     return null;
-    #   const mainExecutionContext = await this._mainWorld.executionContext();
-    #   const result = await mainExecutionContext._adoptElementHandle(handle);
-    #   await handle.dispose();
-    #   return result;
-    # }
 
     # @param {string} xpath
     # @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
     # @return {!Promise<?Puppeteer.ElementHandle>}
     #
     def wait_for_xpath(xpath, visible: nil, hidden: nil, timeout: nil)
-      #handle = await secondary_world.wait_for_xpath xpath, visible: visible, hidden: hidden, timeout: timeout
-      #return if handle.nil?
-      #result = main_world.execution_context._adopt_element_handle handle
-      #handle.dispose
-      #result
       secondary_world.wait_for_xpath(xpath, visible: visible, hidden: hidden, timeout: timeout).then do |handle|
         next if handle.nil?
         result = main_world.execution_context._adopt_element_handle handle
@@ -272,10 +192,6 @@ module Chromiebara
     #
     def wait_for_function(page_function, *args, polling: nil, timeout: nil)
       main_world.wait_for_function page_function, *args, polling: polling, timeout: timeout
-    end
-
-    def title
-      secondary_world.title
     end
 
     def _detach

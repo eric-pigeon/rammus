@@ -2,6 +2,7 @@ require 'chromiebara/wait_task'
 
 module Chromiebara
   class DOMWorld
+    extend Forwardable
     include Promise::Await
 
     attr_reader :frame_manager, :frame, :timeout_settings, :wait_tasks
@@ -165,7 +166,6 @@ module Chromiebara
     # @return {!Promise<!Puppeteer.ElementHandle>}
     #
     def add_script_tag(url: nil, path: nil, content: nil, type: '')
-      type ||= ''
       # @param {string} url
       # @param {string} type
       # @return {!Promise<!HTMLElement>}
@@ -362,21 +362,20 @@ module Chromiebara
       handle.dispose
     end
 
-    # TODO
     # @param {string} selector
     # @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
     # @return {!Promise<?Puppeteer.ElementHandle>}
     #
-    # waitForSelector(selector, options) {
-    #   return this._waitForSelectorOrXPath(selector, false, options);
-    # }
+    def wait_for_selector(selector, visible: nil, hidden: nil, timeout: nil)
+      wait_for_selector_or_xpath selector, false, visible: visible, hidden: hidden, timeout: timeout
+    end
 
     # @param {string} xpath
     # @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
     # @return {!Promise<?Puppeteer.ElementHandle>}
     #
     def wait_for_xpath(xpath, visible: nil, hidden: nil, timeout: nil)
-      wait_for_selector_or_xpath(xpath, true, visible: visible, hidden: hidden, timeout: timeout)
+      wait_for_selector_or_xpath xpath, true, visible: visible, hidden: hidden, timeout: timeout
     end
 
     # @param {Function|string} pageFunction
@@ -397,9 +396,10 @@ module Chromiebara
 
     def _detach
       @_detached = true
-      # TODO
-      #   for (const waitTask of this._waitTasks)
-      #     waitTask.terminate(new Error('waitForFunction failed: frame got detached.'));
+
+      wait_tasks.each do |wait_task|
+        wait_task.terminate StandardError.new('wait_for_function failed: frame got detached.')
+      end
     end
 
     private
@@ -410,19 +410,12 @@ module Chromiebara
         if context
           @_context_resolve_callback.(context)
           @_context_resolve_callback = nil
-          #     this._contextResolveCallback.call(null, context);
-          #     this._contextResolveCallback = null;
-          #     for (const waitTask of this._waitTasks)
-          #       waitTask.rerun();
+          wait_tasks.each { |wait_task| Concurrent.global_io_executor.post { wait_task.rerun } }
         else
           @_context_promise, @_context_resolve_callback, _reject = Promise.create
-          #     this._documentPromise = null;
-          #     this._contextPromise = new Promise(fulfill => {
-          #       this._contextResolveCallback = fulfill;
-          #     });
+          # this._documentPromise = null;
         end
       end
-
 
       # @param {string} selectorOrXPath
       # @param {boolean} isXPath
@@ -460,11 +453,11 @@ module Chromiebara
       # @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
       # @return {!Promise<?Puppeteer.ElementHandle>}
       #
-      def wait_for_selector_or_xpath(selector_or_xpath, is_xpath, visible: nil, hidden: nil, timeout: nil)
-        wait_for_hidden = false
-        wait_for_visible = false
+      def wait_for_selector_or_xpath(selector_or_xpath, is_xpath, visible: false, hidden: false, timeout: nil)
+        wait_for_hidden = hidden == true
+        wait_for_visible = visible == true
         timeout ||= timeout_settings.timeout
-        polling = wait_for_visible || wait_for_hidden ? 'raf' : 'mutation'
+        polling = (wait_for_visible || wait_for_hidden) ? 'raf' : 'mutation'
         title = "#{is_xpath ? 'XPath' : 'selector'} \"#{selector_or_xpath}\"#{wait_for_hidden ? ' to be hidden' : ''}"
         wait_task = WaitTask.new(self, PREDICATE, title, polling, timeout, selector_or_xpath, is_xpath, wait_for_visible, wait_for_hidden)
 
