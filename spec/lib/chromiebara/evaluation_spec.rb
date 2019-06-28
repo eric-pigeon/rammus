@@ -281,7 +281,10 @@ module Chromiebara
         expect(await page.evaluate_function "() => window.injected").to eq 123
 
         # Make sure CSP works.
-        page.add_script_tag(content: 'window.e = 10;')
+        begin
+          page.add_script_tag(content: 'window.e = 10;')
+        rescue => _err
+        end
         expect(await page.evaluate_function '() => window.e').to be nil
       end
     end

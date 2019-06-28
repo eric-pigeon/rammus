@@ -9,6 +9,7 @@ require 'chromiebara/emulation_manager'
 require 'chromiebara/js_handle'
 require 'chromiebara/coverage'
 require 'chromiebara/timeout_settings'
+require 'chromiebara/tracing'
 require 'chromiebara/worker'
 
 module Chromiebara
@@ -18,10 +19,38 @@ module Chromiebara
     extend Promise::Await
     extend Forwardable
 
-    attr_reader :target, :frame_manager, :javascript_enabled, :keyboard, :mouse, :touchscreen, :accessibility, :coverage
-    delegate [:url] => :main_frame
-    delegate [:network_manager] => :frame_manager
-    delegate [:add_script_tag, :add_style_tag] => :main_frame
+    attr_reader :target, :frame_manager, :javascript_enabled, :keyboard, :mouse,
+      :touchscreen, :accessibility, :coverage, :tracing
+
+    delegate [:main_frame, :network_manager] => :frame_manager
+    delegate [
+      :authenticate,
+      :set_extra_http_headers,
+      :set_offline_mode,
+      :set_request_interception,
+      :set_user_agent
+    ] => :network_manager
+    delegate [
+      :add_script_tag,
+      :add_style_tag,
+      :click,
+      :content,
+      :evaluate,
+      :evaluate_function,
+      :focus,
+      :goto,
+      :hover,
+      :query_selector,
+      :query_selector_evaluate_function,
+      :query_selector_all,
+      :query_selector_all_evaluate_function,
+      :select,
+      :title,
+      :touchscreen_tap,
+      :type,
+      :url,
+      :xpath
+    ] => :main_frame
 
     def self.create(target, default_viewport: nil, ignore_https_errors: false)
       new(target, ignore_https_errors: ignore_https_errors).tap do |page|
@@ -48,7 +77,7 @@ module Chromiebara
       @_ignore_https_errors = ignore_https_errors
       @frame_manager = FrameManager.new(client, self, ignore_https_errors, @_timeout_settings)
       @_emulation_manager = EmulationManager.new client
-      # this._tracing = new Tracing(client);
+      @tracing = Tracing.new client
       # @type {!Map<string, Function>}
       @_page_bindings = {}
       @coverage = Coverage.new client
@@ -113,12 +142,6 @@ module Chromiebara
       target.browser_context
     end
 
-    # @return [Chromiebara::Frame]
-    #
-    def main_frame
-      @frame_manager.main_frame
-    end
-
     # @param {!{longitude: number, latitude: number, accuracy: (number|undefined)}} options
     def set_geolocation(longitude:, latitude:, accuracy: 0)
       raise "Invalid longitude '#{longitude}': precondition -180 <= LONGITUDE <= 180 failed." if longitude < -180 || longitude > 180
@@ -128,42 +151,18 @@ module Chromiebara
       await client.command Protocol::Emulation.set_geolocation_override longitude: longitude, latitude: latitude, accuracy: accuracy
     end
 
-    # @return [Chromiebara::Browser]
-    #
-    def browser
-      target.browser
-    end
-
-    #  * @return {!Tracing}
-    #  */
-    # get tracing() {
-    #   return this._tracing;
-    # }
-
     # An array of all frames attached to the page
     #
     # @return [<Chromiebara::Frame>]
     #
     def frames
-      @frame_manager.frames
+      frame_manager.frames
     end
 
     # @return {!Array<!Worker>}
     #
     def workers
       @_workers.values
-    end
-
-    #  @param {boolean} value
-    #
-    def set_request_interception(value)
-      network_manager.set_request_interception value
-    end
-
-    # @param {boolean} enabled
-    #
-    def set_offline_mode(enabled)
-      network_manager.set_offline_mode enabled
     end
 
     # @param {number} timeout
@@ -176,13 +175,6 @@ module Chromiebara
     #
     def set_default_timeout(timeout)
       @_timeout_settings.timeout = timeout
-    end
-
-    # @param {string} selector
-    # @return {!Promise<?Puppeteer.ElementHandle>}
-    #
-    def query_selector(selector)
-      main_frame.query_selector selector
     end
 
     # @param {Function|string} pageFunction
@@ -209,38 +201,6 @@ module Chromiebara
     def query_objects(prototype_handle)
       context = main_frame.execution_context
       context.query_objects prototype_handle
-    end
-
-    # @param {string} selector
-    # @param {Function|string} pageFunction
-    # @param {!Array<*>} args
-    # @return {!Promise<(!Object|undefined)>}
-    #
-    def query_selector_evaluate_function(selector, page_function, *args)
-      main_frame.query_selector_evaluate_function selector, page_function, *args
-    end
-
-    # @param {string} selector
-    # @param {Function|string} pageFunction
-    # @param {!Array<*>} args
-    # @return {!Promise<(!Object|undefined)>}
-    #
-    def query_selector_all_evaluate_function(selector, page_function, *args)
-      main_frame.query_selector_all_evaluate_function selector, page_function, *args
-    end
-
-    # @param {string} selector
-    # @return {!Promise<!Array<!Puppeteer.ElementHandle>>}
-    #
-    def query_selector_all(selector)
-      main_frame.query_selector_all selector
-    end
-
-    # @param {string} expression
-    # @return {!Promise<!Array<!Puppeteer.ElementHandle>>}
-    #
-    def xpath(expression)
-      main_frame.xpath expression
     end
 
     # If no URLs are specified, this method returns cookies for the current page
@@ -331,24 +291,6 @@ module Chromiebara
       Promise.all(frames.map { |frame| frame.evaluate(expression) }) # TODO.catch(debugError)));
     end
 
-    # @param {?{username: string, password: string}} credentials
-    #
-    def authenticate(username: nil, password: nil)
-      network_manager.authenticate username: username, password: password
-    end
-
-    # @param {!Object<string, string>} headers
-    #
-    def set_extra_http_headers(headers)
-      network_manager.set_extra_http_headers headers
-    end
-
-    # @param [String] user_agent
-    #
-    def set_user_agent(user_agent)
-      network_manager.set_user_agent user_agent
-    end
-
     # @return {!Promise<!Metrics>}
     #
     def metrics
@@ -356,24 +298,11 @@ module Chromiebara
       build_metrics_object response["metrics"]
     end
 
-    # * @return {!Promise<string>}
-    #
-    def content
-      frame_manager.main_frame.content
-    end
-
     # @param {string} html
     # @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
     #
     def set_content(html, timeout: nil, wait_until: nil)
       frame_manager.main_frame.set_content html, timeout: timeout, wait_until: wait_until
-    end
-
-    # @param [String] url
-    # TODO
-    #
-    def goto(url, referer: nil, timeout: nil, wait_until: nil)
-      main_frame.goto url, referer: referer, timeout: timeout, wait_until: wait_until
     end
 
     # @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
@@ -444,9 +373,9 @@ module Chromiebara
       go(1, timeout: timeout, wait_until: wait_until)
     end
 
-    # async bringToFront() {
-    #   await this._client.send('Page.bringToFront');
-    # }
+    def bring_to_front
+      await client.command Protocol::Page.bring_to_front
+    end
 
     # @param {!{viewport: !Puppeteer.Viewport, userAgent: string}} options
     #
@@ -493,24 +422,11 @@ module Chromiebara
       @_viewport
     end
 
-    # TODO
-    #  * @param {Function|string} pageFunction
-    #  * @param {!Array<*>} args
-    #  * @return {!Promise<*>}
-    #
-    def evaluate(function, *args)
-      main_frame.evaluate function, *args
-    end
-
-    def evaluate_function(function, *args)
-      main_frame.evaluate_function function, *args
-    end
-
     # @param {Function|string} pageFunction
     # @param {!Array<*>} args
     #
     def evaluate_on_new_document(page_function, *args)
-      source =  "(#{page_function})(#{args.map(&:to_json).join(',')})"
+      source = "(#{page_function})(#{args.map(&:to_json).join(',')})"
       await client.command Protocol::Page.add_script_to_evaluate_on_new_document source: source
     end
 
@@ -667,14 +583,6 @@ module Chromiebara
       buffer
     end
 
-    # Page Title
-    #
-    # @return [String]
-    #
-    def title
-      main_frame.title
-    end
-
     # TODO DOCUMENT
     def close(run_before_unload: false)
       #  assert(!!this._client._connection, 'Protocol error: Connection closed. Most likely the page has been closed.');
@@ -690,46 +598,6 @@ module Chromiebara
     #
     def is_closed?
       @_closed
-    end
-
-    # @param {string} selector
-    # @param {!{delay?: number, button?: "left"|"right"|"middle", clickCount?: number}=} options
-    #
-    def click(selector, options = {})
-      main_frame.click selector, options
-    end
-
-    # @param {string} selector
-    #
-    def focus(selector)
-      main_frame.focus selector
-    end
-
-    # @param {string} selector
-    #
-    def hover(selector)
-      main_frame.hover selector
-    end
-
-    # @param {string} selector
-    # @param {!Array<string>} values
-    #
-    def select(selector, *values)
-      main_frame.select selector, *values
-    end
-
-    #  @param [String] selector
-    #
-    def touchscreen_tap(selector)
-      main_frame.touchscreen_tap selector
-    end
-
-    # @param {string} selector
-    # @param {string} text
-    # @param {{delay: (number|undefined)}=} options
-    #
-    def type(selector, text, delay: nil)
-      main_frame.type selector, text, delay: delay
     end
 
     # @param {(string|number|Function)} selectorOrFunctionOrTimeout

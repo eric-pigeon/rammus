@@ -168,7 +168,7 @@ module Chromiebara
     # @param {string} selector
     # @param {!{delay?: number, button?: "left"|"right"|"middle", clickCount?: number}=} options
     #
-    def click(selector, options)
+    def click(selector, options = {})
       @_secondary_world.click selector, options
     end
 
