@@ -66,8 +66,35 @@ module Chromiebara
       ]
 
       def self.executable_path
+        case RbConfig::CONFIG['host_os']
+        when /mswin|msys|mingw|cygwin|bccwin|wince|emc/
+          raise 'todo'
+        when /darwin|mac os/
+          macosx_path
+        when /linux|solaris|bsd/
+          linux_path
+        end
         # "/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome"
-        "/Users/epigeon/Documents/Projects/Node/puppeteer_test/node_modules/puppeteer/.local-chromium/mac-662092/chrome-mac/Chromium.app/Contents/MacOS/Chromium"
+        # "/Users/epigeon/Documents/Projects/Node/puppeteer_test/node_modules/puppeteer/.local-chromium/mac-662092/chrome-mac/Chromium.app/Contents/MacOS/Chromium"
+      end
+
+      def self.macosx_path
+        directories = ['', File.expand_path('~')]
+        files = [
+          '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+          '/Applications/Chromium.app/Contents/MacOS/Chromium'
+        ]
+        directories.product(files).map(&:join).detect { |path| File.exist? path }
+      end
+
+      def self.linux_path
+        directories = %w[/usr/local/sbin /usr/local/bin /usr/sbin /usr/bin /sbin /bin /opt/google/chrome]
+        files = %w[google-chrome chrome chromium chromium-browser]
+
+        directories
+          .product(files)
+          .map { |path| path.join('/') }
+          .detect { |path| File.exist?(path) }
       end
 
       # Returns a proc, that when called will attempt to kill the given process.
