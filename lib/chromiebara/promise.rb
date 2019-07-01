@@ -138,7 +138,7 @@ module Chromiebara
                 when REJECTED
                   if rejected.nil?
                     promise.send(:reject, value)
-                    return
+                    next
                   else
                     rejected.(value)
                   end
