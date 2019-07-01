@@ -240,11 +240,9 @@ module Chromiebara
       # @param [String] frame_id
       #
       def on_frame_stopped_loading(frame_id)
-        frame = @_frames.fetch frame_id
-        # if (!frame)
-        #   return;
+        return unless frame = @_frames[frame_id]
         frame.send(:on_loading_stopped)
-        #   this.emit(Events.FrameManager.LifecycleEvent, frame);
+        emit :lifecycle_event, frame
       end
 
       def on_execution_context_created(context_payload)
