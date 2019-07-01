@@ -33,7 +33,8 @@ module Chromiebara
         Util.add_event_listener(frame_manager, FrameManager.LifecycleEvent, method(:check_lifecycle_complete)),
         Util.add_event_listener(frame_manager, :frame_navigated_within_document, method(:navigated_within_document)),
         Util.add_event_listener(frame_manager, :frame_detached, method(:on_frame_detached)),
-        Util.add_event_listener(frame_manager.network_manager, :request, method(:on_request))
+        Util.add_event_listener(frame_manager.network_manager, :request, method(:on_request)),
+        Util.add_event_listener(frame_manager.client, Protocol::Inspector.target_crashed, ->(_event) { terminate(PageCrashed.new("Navigation failed because page crashed")) })
       ]
 
       @same_document_navigation_promise, @_same_document_navigation_complete_callback, _ = Promise.create

@@ -587,7 +587,7 @@ module Chromiebara
       end
 
       def on_target_crashed(_event)
-        emit :error, 'Page crashed!'
+        emit :error, PageCrashed.new('Page crashed!')
       end
 
       #  @param {!Protocol.Log.entryAddedPayload} event
