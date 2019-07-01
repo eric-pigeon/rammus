@@ -18,9 +18,9 @@ module Chromiebara
       @default_context = BrowserContext.new(client: client, browser: self)
       @_close_callback = close_callback
       @_targets = {}
-      client.on('Target.targetCreated', method(:target_created))
-      client.on('Target.targetDestroyed', method(:target_destroyed))
-      client.on('Target.targetInfoChanged', method(:target_info_changed))
+      client.on Protocol::Target.target_created, method(:target_created)
+      client.on Protocol::Target.target_destroyed, method(:target_destroyed)
+      client.on Protocol::Target.target_info_changed, method(:target_info_changed)
       await client.command Protocol::Target.set_discover_targets discover: true
     end
 
