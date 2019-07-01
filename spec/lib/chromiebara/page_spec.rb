@@ -11,7 +11,7 @@ module Chromiebara
         new_page = context.new_page
         error = nil
         await Promise.all(
-          new_page.evaluate_function("() => new Promise(r => {}").catch { |e| error = e },
+          new_page.evaluate_function("() => new Promise(r => {})").catch { |e| error = e },
           new_page.close
         )
         expect(error.message).to include 'Protocol error'
