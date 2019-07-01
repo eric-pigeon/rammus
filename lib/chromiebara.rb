@@ -4,8 +4,10 @@ require 'set'
 require 'concurrent'
 
 module Chromiebara
-  class ProtocolError < StandardError; end
-  class TimeoutError < StandardError; end
+  class Error < StandardError; end
+  class ProtocolError < Error; end
+  class TimeoutError < Error; end
+  class PageCrashed < Error; end
 
   require 'chromiebara/event_emitter'
   require 'chromiebara/promise'

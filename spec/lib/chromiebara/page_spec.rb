@@ -84,12 +84,11 @@ module Chromiebara
 
     describe 'Page.Events.error' do
       it 'should throw when page crashes' do
-        pending 'lifecyclewatcher should finish when page crashes'
         error = nil
         page.on :error, -> (err) { error = err }
         Promise.all(
           wait_event(page, :error),
-          page.goto('chrome://crash')
+          begin; page.goto('chrome://crash'); rescue PageCrashed; end
         )
         expect(error.message).to eq 'Page crashed!'
       end
