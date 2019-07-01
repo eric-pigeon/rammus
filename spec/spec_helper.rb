@@ -1,5 +1,4 @@
 require 'chromiebara'
-#require 'support/test_app'
 require 'support/test_server'
 require 'support/match_screenshot'
 require 'support/test_emitter'
