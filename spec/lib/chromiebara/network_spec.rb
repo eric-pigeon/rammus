@@ -279,7 +279,7 @@ module Chromiebara
         expect(responses[0].request).not_to be_nil
         remote_address = responses[0].remote_address
         # Either IPv6 or IPv4, depending on environment.
-        expect(remote_address[:ip].include?('::1') || remote_address.ip == '127.0.0.1').to eq true
+        expect(remote_address[:ip].include?('::1') || remote_address[:ip] == '127.0.0.1').to eq true
         expect(remote_address[:port]).to eq server.port
       end
 

@@ -95,29 +95,28 @@ module Chromiebara
       expect(await page.evaluate_function function).to eq text
     end
 
-    xit 'should click offscreen buttons' do
+    it 'should click offscreen buttons' do
       page.goto server.domain + 'offscreenbuttons.html'
-      # TODO
-      # const messages = [];
-      # page.on('console', msg => messages.push(msg.text()));
-      # for (let i = 0; i < 11; ++i) {
-      #   // We might've scrolled to click a button - reset to (0, 0).
-      #   await await page.evaluate(() => window.scrollTo(0, 0));
-      #   await page.click(`#btn${i}`);
-      # }
-      # expect(messages).toEqual([
-      #   'button #0 clicked',
-      #   'button #1 clicked',
-      #   'button #2 clicked',
-      #   'button #3 clicked',
-      #   'button #4 clicked',
-      #   'button #5 clicked',
-      #   'button #6 clicked',
-      #   'button #7 clicked',
-      #   'button #8 clicked',
-      #   'button #9 clicked',
-      #   'button #10 clicked'
-      # ]);
+      messages = []
+      page.on :console, -> (msg) { messages << msg.text }
+      11.times do |i|
+        # We might've scrolled to click a button - reset to (0, 0).
+        await page.evaluate_function "() => window.scrollTo(0, 0)"
+        page.click("#btn#{i}")
+      end
+      expect(messages).to eq [
+        'button #0 clicked',
+        'button #1 clicked',
+        'button #2 clicked',
+        'button #3 clicked',
+        'button #4 clicked',
+        'button #5 clicked',
+        'button #6 clicked',
+        'button #7 clicked',
+        'button #8 clicked',
+        'button #9 clicked',
+        'button #10 clicked'
+      ]
     end
 
     it 'should click wrapped links' do
