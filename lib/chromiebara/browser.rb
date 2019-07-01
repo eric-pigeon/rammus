@@ -90,7 +90,7 @@ module Chromiebara
     def create_page_in_context(context_id)
       response = await client.command(Protocol::Target.create_target(url: 'about:blank', browser_context_id: context_id))
       target_id = response["targetId"]
-      target = @_targets.fetch target_id
+      target = await wait_for_target { |t| t.target_id == target_id }
       target.page
     end
 
