@@ -100,21 +100,20 @@ module Chromiebara
         expect(response.ok?).to eq true
       end
 
-      # TODO
       # @see https://github.com/GoogleChrome/puppeteer/issues/4337
-      #xit 'should work with redirect inside sync XHR' do
-      #  await page.goto(server.empty_page);
-      #  server.set_redirect('/logo.png', '/pptr.png');
-      #  await page.set_request_interception(true);
-      #  page.on('request', request => request.continue());
-      #  const status = await page.evaluate(async() => {
-      #    const request = new XMLHttpRequest();
-      #    request.open('GET', '/logo.png', false);  // `false` makes the request synchronous
-      #    request.send(null);
-      #    return request.status;
-      #  });
-      #  expect(status).to eq(200);
-      #end
+      xit 'should work with redirect inside sync XHR' do
+        page.goto server.empty_page
+        server.set_redirect '/logo.png', '/pptr.png'
+        page.set_request_interception true
+        page.on :request, -> (request) { request.continue }
+        status = await page.evaluate_function("async() => {
+          const request = new XMLHttpRequest();
+          request.open('GET', '/logo.png', false);  // `false` makes the request synchronous
+          request.send(null);
+          return request.status;
+        }")
+        expect(status).to eq 200
+      end
 
       it 'should works with customizing referer headers' do
         page.set_extra_http_headers 'referer': server.empty_page

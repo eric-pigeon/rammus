@@ -15,7 +15,7 @@ module Chromiebara
     # @return [Boolean]
     #
     def emulate_viewport(width:, height:, device_scale_factor: 1, is_mobile: false, has_touch: false, is_landscape: false)
-      # /** @type {Protocol.Emulation.ScreenOrientation} */
+      # @type {Protocol.Emulation.ScreenOrientation}
       screen_orientation = is_landscape ? { angle: 90, type: 'landscapePrimary' } : { angle: 0, type: 'portraitPrimary' }
 
       await Promise.all(

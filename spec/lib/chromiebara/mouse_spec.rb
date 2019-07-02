@@ -146,22 +146,20 @@ module Chromiebara
       ]
     end
 
-    # TODO
-    #// @see https://crbug.com/929806
-    xit 'should work with mobile viewports and cross process navigations' do
-      # TODO
-      # page.goto server.empty_page
-      # page.set_viewport width: 360, height: 640, isMobile: true
-      # await page.goto(server.CROSS_PROCESS_PREFIX + '/mobile.html');
-      # await await page.evaluate(() => {
-      #   document.addEventListener('click', event => {
-      #     window.result = {x: event.clientX, y: event.clientY};
-      #   });
-      # });
+    # @see https://crbug.com/929806
+    it 'should work with mobile viewports and cross process navigations' do
+      page.goto server.empty_page
+      page.set_viewport width: 360, height: 640, is_mobile: true
+      page.goto server.cross_process_domain + 'mobile.html'
+      await page.evaluate_function("() => {
+        document.addEventListener('click', event => {
+          window.result = {x: event.clientX, y: event.clientY};
+        });
+      }")
 
-      # await page.mouse.click(30, 40);
+      page.mouse.click 30, 40
 
-      # expect(await await page.evaluate('result')).toEqual({x: 30, y: 40});
+      expect(await page.evaluate('result')).to eq "x" => 30, "y" => 40
     end
   end
 end
