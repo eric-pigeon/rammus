@@ -52,7 +52,6 @@ class TestServer
     @_request_subscribers = {}
     @_gzip_routes = Set.new
     @_content_security_policy = {}
-    # TODO set to assets/cached
     @_cached_path_prefix = STATIC_PATH + "/cached"
     @_start_time = Time.now
   end
