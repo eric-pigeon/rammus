@@ -58,9 +58,9 @@ module Chromiebara
           WAIT_FOR_PREDICATE_PAGE_FUNCTION,
           @_predicate_body,
           @_polling,
-          @_timeout,
+          @_timeout * 1000, # javascript set timeout is in milliseconds
           *@_args
-        ), 0
+        ), 120 # TODO need to track timeouts on this side
       rescue => err
         error = err
       end
@@ -75,10 +75,10 @@ module Chromiebara
       # Ignore timeouts in pageScript - we track timeouts ourselves.
       # If the frame's execution context has already changed, `frame.evaluate` will
       # throw an error - ignore this predicate run altogether.
-      #if (!error && await this._dom_world.evaluate(s => !s, success).catch(e => true)) {
-      #  await success.dispose();
-      #  return;
-      #}
+      if error.nil? && (await dom_world.evaluate_function("s => !s", success).catch { |err| true })
+        success.dispose
+        return
+      end
 
       # When the page is navigated, the promise is rejected.
       # We will try again in the new execution context.
