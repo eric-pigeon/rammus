@@ -1,11 +1,5 @@
 module Chromiebara
-  RSpec.describe Page, browser: true do
-    include Promise::Await
-    before { @_context = browser.create_context }
-    after { @_context.close }
-    let(:context) { @_context }
-    let!(:page) { context.new_page }
-
+  RSpec.describe Page, page: true do
     describe '#close' do
       it 'should reject all promises when page is closed' do
         new_page = context.new_page
@@ -272,6 +266,7 @@ module Chromiebara
       end
 
       it 'should work for non-blank page' do
+        pending 'page crashes on chrome'
         page.goto server.empty_page
         await page.evaluate_function "() => window.set = new Set(['hello', 'world'])"
         prototype_handle = await page.evaluate_handle_function "() => Set.prototype"
