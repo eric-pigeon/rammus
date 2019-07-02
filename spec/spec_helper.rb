@@ -113,6 +113,26 @@ module SeverHelper
 
     after(:context) { @_browser.close }
   end
+
+  shared_context 'page', page: true do
+    include Chromiebara::Promise::Await
+
+    before(:context) { @_browser = Chromiebara.launch }
+    before { @_context = browser.create_context }
+
+    let(:browser) { @_browser }
+    let(:context) { @_context }
+    let(:page) { context.new_page }
+
+    before do
+      page.on :error, ->(error) do
+        raise error if page.listener_count(:error) == 1
+      end
+    end
+
+    after(:context) { @_browser.close }
+    after { @_context.close }
+  end
 end
 
 RSpec.configure do |config|
