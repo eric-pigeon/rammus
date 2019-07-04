@@ -497,12 +497,12 @@ module Chromiebara
       end
 
       xit 'should return matching responses' do
-        # TODO
+        #TODO
         # Disable cache: otherwise, chromium will cache similar requests.
         page.set_cache_enabled false
         page.goto server.empty_page
         # Attach three frames.
-        _frames = await Promise.all(
+        frames = await Promise.all(
           attach_frame(page, 'frame1', server.empty_page),
           attach_frame(page, 'frame2', server.empty_page),
           attach_frame(page, 'frame3', server.empty_page),
@@ -510,21 +510,24 @@ module Chromiebara
         # Navigate all frames to the same URL.
         server_responses = []
         server.set_route '/one-style.html' do |req, res|
-          server_responses << res
+          promise, resolve, _reject = Promise.create
+          server_responses << resolve
+          promise.then { |val| res.write(val); res.finish }.await 0
         end
-        _navigations = []
-        #for (let i = 0; i < 3; ++i) {
-        #  navigations.push(frames[i].goto(server.domain + '/one-style.html'));
-        #  await server.waitForRequest('/one-style.html');
-        #}
-        ## Respond from server out-of-order.
-        #serverResponseTexts = ['AAA', 'BBB', 'CCC'];
-        #for (i of [1, 2, 0]) {
-        #  serverResponses[i].end(serverResponseTexts[i]);
-        #  response = await navigations[i];
-        #  expect(response.frame()).to eq(frames[i]);
-        #  expect(await response.text()).to eq(serverResponseTexts[i]);
-        #}
+
+        navigations = []
+        3.times do |i|
+          navigations << (frames[i].goto server.domain + 'one-style.html')
+          await server.wait_for_request '/one-style.html'
+        end
+
+        # Respond from server out-of-order.
+        server_responses.zip(['AAA', 'BBB', 'CCC']).each do |server, text|
+          server.call text
+          #response = await navigations[i];
+          # expect(response.frame()).to eq(frames[i]);
+          #  expect(await response.text()).to eq(serverResponseTexts[i]);
+        end
       end
     end
 
