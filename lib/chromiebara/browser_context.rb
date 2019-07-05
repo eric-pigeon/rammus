@@ -39,7 +39,7 @@ module Chromiebara
       targets
         .select { |target| target.type == "page" }
         .map(&:page)
-      # return pages.filter(page => !!page);
+        .compact
     end
 
     # An array of all active targets inside the browser context.
@@ -63,10 +63,18 @@ module Chromiebara
       await client.command Protocol::Browser.reset_permissions browser_context_id: id || nil
     end
 
-
     def wait_for_target(timeout: 2, predicate: nil, &block)
       predicate ||= block
       browser.wait_for_target(timeout: timeout) { |target| target.browser_context == self && predicate.(target) }
+    end
+
+    # Returns whether BrowserContext is incognito. The default browser context
+    # is the only non-incognito browser context.
+    #
+    # @return[Boolean]
+    #
+    def incognito?
+      !id.nil?
     end
 
     private
@@ -90,8 +98,5 @@ module Chromiebara
         # chrome-specific permissions we have.
         'midi-sysex' => 'midiSysex'
       }
-
-    # browserContext.isIncognito()
-    # browserContext.waitForTarget(predicate[, options])
   end
 end
