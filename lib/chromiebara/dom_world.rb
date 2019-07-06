@@ -462,7 +462,7 @@ module Chromiebara
         wait_task = WaitTask.new(self, PREDICATE, title, polling, timeout, selector_or_xpath, is_xpath, wait_for_visible, wait_for_hidden)
 
         Promise.resolve(nil).then do
-          handle = await wait_task.promise
+          handle = await wait_task.promise, 0
 
           if !handle.as_element
             handle.dispose

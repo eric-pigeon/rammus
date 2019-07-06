@@ -1,11 +1,5 @@
 module Chromiebara
-  RSpec.describe WaitTask, browser: true do
-    include Promise::Await
-    before { @_context = browser.create_context }
-    after { @_context.close }
-    let(:context) { @_context }
-    let!(:page) { context.new_page }
-
+  RSpec.describe WaitTask, page: true do
     describe 'Page#wait_for' do
       it 'should wait for selector' do
         pending 'todo'
@@ -348,28 +342,32 @@ module Chromiebara
       it 'should have an error message specifically for awaiting an element to be hidden' do
         pending 'broken'
         await page.set_content "<div></div>"
+
         expect { await page.wait_for_selector 'div', hidden: true, timeout: 10 }
           .to raise_error(/waiting for selector "div" to be hidden failed: timeout/)
       end
 
-      #it 'should respond to node attribute mutation' do
-      #  let div_found = false;
-      #  wait_for_selector = page.wait_for_selector('.zombo').then(() => div_found = true);
-      #  await page.set_content(`<div class='notZombo'></div>`);
-      #  expect(div_found).to eq false
-      #  await page.evaluate(() => document.querySelector('div').className = 'zombo');
-      #  expect(await wait_for_selector).to eq true
-      #end
-      #it 'should return the element handle' do
-      #  wait_for_selector = page.wait_for_selector('.zombo');
-      #  await page.set_content(`<div class='zombo'>anything</div>`);
-      #  expect(await page.evaluate(x => x.textContent, await wait_for_selector)).to eq 'anything'
-      #end
-      #(asyncawait ? it : xit)('should have correct stack trace for timeout' do
-      #  let error;
-      #  await page.wait_for_selector('.zombo', {timeout: 10}).catch(e => error = e);
-      #  expect(error.stack).toContain('waittask.spec.js');
-      #end
+      it 'should respond to node attribute mutation' do
+        div_found = false
+        wait_for_selector = page.wait_for_selector('.zombo').then { div_found = true }
+        await page.set_content "<div class='notZombo'></div>"
+        expect(div_found).to eq false
+        await page.evaluate_function "() => document.querySelector('div').className = 'zombo'"
+        expect(await wait_for_selector).to eq true
+      end
+
+      it 'should return the element handle' do
+        wait_for_selector = page.wait_for_selector '.zombo'
+        await page.set_content "<div class='zombo'>anything</div>"
+        expect(await page.evaluate_function("x => x.textContent", (await wait_for_selector))).to eq 'anything'
+      end
+
+      xit 'should have correct stack trace for timeout' do
+        # TODO
+        error = nil
+        await page.wait_for_selector('.zombo', timeout: 10).catch { |e| error = e }
+        expect(error.backtracke).to include 'waittask.spec.js'
+      end
     end
 
     describe 'Frame#wait_for_xpath' do

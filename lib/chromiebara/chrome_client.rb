@@ -81,7 +81,6 @@ module Chromiebara
         message = JSON.parse message
 
         if message["method"] == Protocol::Target.attached_to_target
-          ProtocolLogger.puts_event message
           session_id = message.dig "params", "sessionId"
           session = CDPSession.new(self, message.dig("params", "targetInfo", "type"), session_id)
           @_sessions[session_id] = session
