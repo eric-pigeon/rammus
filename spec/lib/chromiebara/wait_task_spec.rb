@@ -22,7 +22,7 @@ module Chromiebara
       #  expect(found).to eq true
       #end
       #it 'should not allow you to select an element with single slash xpath' do
-      #  await page.set_content(`<div>some text</div>`);
+      #  await page.set_content("<div>some text</div>");
       #  let error = null;
       #  await page.wait_for('/html/body/div').catch(e => error = e);
       #  expect(error).to eqTruthy();
@@ -34,9 +34,9 @@ module Chromiebara
       #  expect(Date.now() - startTime).not.to eqLessThan(timeout / 2);
       #end
       #it 'should work with multiline body' do
-      #  result = await page.wait_forFunction(`
+      #  result = await page.wait_for_function("
       #    (() => true)()
-      #  `);
+      #  ");
       #  expect(await result.jsonValue()).to eq true
       #end
       #it 'should wait for predicate' do
@@ -56,51 +56,57 @@ module Chromiebara
     end
 
     describe 'Frame#wait_for_function' do
-      #it 'should accept a string' do
-      #  watchdog = page.wait_forFunction('window.__FOO === 1');
-      #  await page.evaluate(() => window.__FOO = 1);
-      #  await watchdog;
-      #end
-      #it 'should work when resolved right before execution context disposal' do
-      #  await page.evaluateOnNewDocument(() => window.__RELOADED = true);
-      #  await page.wait_forFunction(() => {
-      #    if (!window.__RELOADED)
-      #      window.location.reload();
-      #    return true;
-      #  });
-      #end
-      #it 'should poll on interval' do
-      #  let success = false;
-      #  startTime = Date.now();
-      #  polling = 100;
-      #  watchdog = page.wait_forFunction(() => window.__FOO === 'hit', {polling})
-      #      .then(() => success = true);
-      #  await page.evaluate(() => window.__FOO = 'hit');
-      #  expect(success).to eq false
-      #  await page.evaluate(() => document.body.appendChild(document.createElement('div')));
-      #  await watchdog;
-      #  expect(Date.now() - startTime).not.to eqLessThan(polling / 2);
-      #end
-      #it 'should poll on mutation' do
-      #  let success = false;
-      #  watchdog = page.wait_forFunction(() => window.__FOO === 'hit', {polling: 'mutation'})
-      #      .then(() => success = true);
-      #  await page.evaluate(() => window.__FOO = 'hit');
-      #  expect(success).to eq false
-      #  await page.evaluate(() => document.body.appendChild(document.createElement('div')));
-      #  await watchdog;
-      #end
-      #it 'should poll on raf' do
-      #  watchdog = page.wait_forFunction(() => window.__FOO === 'hit', {polling: 'raf'});
-      #  await page.evaluate(() => window.__FOO = 'hit');
-      #  await watchdog;
-      #end
+      it 'should accept a string' do
+        watchdog = page.wait_for_function('window.__FOO === 1')
+        await page.evaluate_function "() => window.__FOO = 1"
+        await watchdog
+      end
+
+      it 'should work when resolved right before execution context disposal' do
+        page.evaluate_on_new_document "() => window.__RELOADED = true"
+        await page.wait_for_function("() => {
+          if (!window.__RELOADED)
+            window.location.reload();
+          return true;
+        }")
+      end
+
+      it 'should poll on interval' do
+        pending 'what'
+        success = false
+        start_time = Time.now
+        polling = 100
+        watchdog = page.wait_for_function("() => window.__FOO === 'hit'", polling: polling)
+            .then { success = true }
+        await page.evaluate_function "() => window.__FOO = 'hit'"
+        expect(success).to eq false
+        await page.evaluate_function "() => document.body.appendChild(document.createElement('div'))"
+        await watchdog
+        expect(Time.now - start_time).to be >= (polling / 2)
+      end
+
+      it 'should poll on mutation' do
+        success = false
+        watchdog = page.wait_for_function("() => window.__FOO === 'hit'", polling: 'mutation')
+            .then { success = true }
+        await page.evaluate_function("() => window.__FOO = 'hit'")
+        expect(success).to eq false
+        await page.evaluate_function("() => document.body.appendChild(document.createElement('div'))")
+        await watchdog
+      end
+
+      it 'should poll on raf' do
+        watchdog = page.wait_for_function "() => window.__FOO === 'hit'", polling: 'raf'
+        await page.evaluate_function "() => window.__FOO = 'hit'"
+        await watchdog
+      end
+
       #it_fails_ffox('should work with strict CSP policy' do
       #  server.setCSP('/empty.html', 'script-src ' + server.domain);
       #  await page.goto(server.empty_page);
       #  let error = null;
       #  await Promise.all([
-      #    page.wait_forFunction(() => window.__FOO === 'hit', {polling: 'raf'}).catch(e => error = e),
+      #    page.wait_for_function(() => window.__FOO === 'hit', {polling: 'raf'}).catch(e => error = e),
       #    page.evaluate(() => window.__FOO = 'hit')
       #  ]);
       #  expect(error).to eq null
@@ -108,7 +114,7 @@ module Chromiebara
       #it 'should throw on bad polling value' do
       #  let error = null;
       #  try {
-      #    await page.wait_forFunction(() => !!document.body, {polling: 'unknown'});
+      #    await page.wait_for_function(() => !!document.body, {polling: 'unknown'});
       #  } catch (e) {
       #    error = e;
       #  }
@@ -118,7 +124,7 @@ module Chromiebara
       #it 'should throw negative polling interval' do
       #  let error = null;
       #  try {
-      #    await page.wait_forFunction(() => !!document.body, {polling: -10});
+      #    await page.wait_for_function(() => !!document.body, {polling: -10});
       #  } catch (e) {
       #    error = e;
       #  }
@@ -126,23 +132,23 @@ module Chromiebara
       #  expect(error.message).toContain('Cannot poll with non-positive interval');
       #end
       #it 'should return the success value as a JSHandle' do
-      #  expect(await (await page.wait_forFunction(() => 5)).jsonValue()).to eq 5
+      #  expect(await (await page.wait_for_function(() => 5)).jsonValue()).to eq 5
       #end
       #it 'should return the window as a success value', async({ page }) => {
-      #  expect(await page.wait_forFunction(() => window)).to eqTruthy();
+      #  expect(await page.wait_for_function(() => window)).to eqTruthy();
       #end
       #it 'should accept ElementHandle arguments' do
       #  await page.set_content('<div></div>');
       #  div = await page.$('div');
       #  let resolved = false;
-      #  wait_forFunction = page.wait_forFunction(element => !element.parentElement, {}, div).then(() => resolved = true);
+      #  wait_for_function = page.wait_for_function(element => !element.parentElement, {}, div).then(() => resolved = true);
       #  expect(resolved).to eq false
       #  await page.evaluate(element => element.remove(), div);
-      #  await wait_forFunction;
+      #  await wait_for_function;
       #end
       #it 'should respect timeout' do
       #  let error = null;
-      #  await page.wait_forFunction('false', {timeout: 10}).catch(e => error = e);
+      #  await page.wait_for_function('false', {timeout: 10}).catch(e => error = e);
       #  expect(error).to eqTruthy();
       #  expect(error.message).toContain('waiting for function failed: timeout');
       #  expect(error).to eqInstanceOf(puppeteer.errors.TimeoutError);
@@ -150,22 +156,22 @@ module Chromiebara
       #it 'should respect default timeout' do
       #  page.setDefaultTimeout(1);
       #  let error = null;
-      #  await page.wait_forFunction('false').catch(e => error = e);
+      #  await page.wait_for_function('false').catch(e => error = e);
       #  expect(error).to eqInstanceOf(puppeteer.errors.TimeoutError);
       #  expect(error.message).toContain('waiting for function failed: timeout');
       #end
       #it 'should disable timeout when its set to 0' do
-      #  watchdog = page.wait_forFunction(() => {
+      #  watchdog = page.wait_for_function(() => {
       #    window.__counter = (window.__counter || 0) + 1;
       #    return window.__injected;
       #  }, {timeout: 0, polling: 10});
-      #  await page.wait_forFunction(() => window.__counter > 10);
+      #  await page.wait_for_function(() => window.__counter > 10);
       #  await page.evaluate(() => window.__injected = true);
       #  await watchdog;
       #end
       #it 'should survive cross-process navigation' do
       #  let fooFound = false;
-      #  wait_forFunction = page.wait_forFunction('window.__FOO === 1').then(() => fooFound = true);
+      #  wait_for_function = page.wait_for_function('window.__FOO === 1').then(() => fooFound = true);
       #  await page.goto(server.empty_page);
       #  expect(fooFound).to eq false
       #  await page.reload();
@@ -173,11 +179,11 @@ module Chromiebara
       #  await page.goto(server.CROSS_PROCESS_domain + '/grid.html');
       #  expect(fooFound).to eq false
       #  await page.evaluate(() => window.__FOO = 1);
-      #  await wait_forFunction;
+      #  await wait_for_function;
       #  expect(fooFound).to eq true
       #end
       #it 'should survive navigations' do
-      #  watchdog = page.wait_forFunction(() => window.__done);
+      #  watchdog = page.wait_for_function(() => window.__done);
       #  await page.goto(server.empty_page);
       #  await page.goto(server.domain + '/consolelog.html');
       #  await page.evaluate(() => window.__done = true);
