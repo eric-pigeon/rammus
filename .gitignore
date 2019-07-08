@@ -3,3 +3,5 @@ spec/examples.txt
 .yardoc/
 doc/
 .DS_Store
+Gemfile.lock
+.ruby-version

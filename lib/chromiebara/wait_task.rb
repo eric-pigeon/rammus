@@ -11,12 +11,13 @@ module Chromiebara
     # @param {!Array<*>} args
     #
     def initialize(dom_world, predicate_body, title, polling, timeout, *args)
-      #if (helper.isString(polling))
-      #  assert(polling === 'raf' || polling === 'mutation', 'Unknown polling option: ' + polling);
-      #else if (helper.isNumber(polling))
-      #  assert(polling > 0, 'Cannot poll with non-positive interval: ' + polling);
-      #else
-      #  throw new Error('Unknown polling options: ' + polling);
+      if polling.is_a? String
+        raise "Unknown polling option: #{polling}" unless polling == 'raf' || polling == 'mutation'
+      elsif polling.is_a? Numeric
+        raise "Cannot poll with non-positive interval: #{polling}" if polling.negative?
+      else
+        raise "Unknown polling options: #{polling}"
+      end
 
       @dom_world = dom_world
       @_polling = polling

@@ -384,7 +384,6 @@ module Chromiebara
     #
     def wait_for_function(page_function, *args, polling: 'raf', timeout: nil)
       timeout ||= timeout_settings.timeout
-      polling ||= 'raf'
       WaitTask.new(self, page_function, 'function', polling, timeout, *args).promise
     end
 

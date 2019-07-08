@@ -1,60 +1,5 @@
 module Chromiebara
   RSpec.describe WaitTask, page: true do
-    describe 'Page#wait_for' do
-      it 'should wait for selector' do
-        pending 'todo'
-        found = false
-        wait_for = page.wait_for('div').then { found = true }
-        page.goto server.empty_page
-        expect(found).to eq false
-        await page.goto server.domain + 'grid.html'
-        await wait_for
-        expect(found).to eq true
-      end
-
-      #it 'should wait for an xpath' do
-      #  let found = false;
-      #  wait_for = page.wait_for('//div').then(() => found = true);
-      #  await page.goto(server.empty_page);
-      #  expect(found).to eq false
-      #  await page.goto(server.domain + '/grid.html');
-      #  await wait_for;
-      #  expect(found).to eq true
-      #end
-      #it 'should not allow you to select an element with single slash xpath' do
-      #  await page.set_content("<div>some text</div>");
-      #  let error = null;
-      #  await page.wait_for('/html/body/div').catch(e => error = e);
-      #  expect(error).to eqTruthy();
-      #end
-      #it 'should timeout' do
-      #  startTime = Date.now();
-      #  timeout = 42;
-      #  await page.wait_for(timeout);
-      #  expect(Date.now() - startTime).not.to eqLessThan(timeout / 2);
-      #end
-      #it 'should work with multiline body' do
-      #  result = await page.wait_for_function("
-      #    (() => true)()
-      #  ");
-      #  expect(await result.jsonValue()).to eq true
-      #end
-      #it 'should wait for predicate' do
-      #  await Promise.all([
-      #    page.wait_for(() => window.innerWidth < 100),
-      #    page.setViewport({width: 10, height: 10}),
-      #  ]);
-      #end
-      #it 'should throw when unknown type' do
-      #  let error = null;
-      #  await page.wait_for({foo: 'bar'}).catch(e => error = e);
-      #  expect(error.message).toContain('Unsupported target type');
-      #end
-      #it 'should wait for predicate with arguments' do
-      #  await page.wait_for((arg1, arg2) => arg1 !== arg2, {}, 1, 2);
-      #end
-    end
-
     describe 'Frame#wait_for_function' do
       it 'should accept a string' do
         watchdog = page.wait_for_function('window.__FOO === 1')
@@ -101,94 +46,99 @@ module Chromiebara
         await watchdog
       end
 
-      #it_fails_ffox('should work with strict CSP policy' do
-      #  server.setCSP('/empty.html', 'script-src ' + server.domain);
-      #  await page.goto(server.empty_page);
-      #  let error = null;
-      #  await Promise.all([
-      #    page.wait_for_function(() => window.__FOO === 'hit', {polling: 'raf'}).catch(e => error = e),
-      #    page.evaluate(() => window.__FOO = 'hit')
-      #  ]);
-      #  expect(error).to eq null
-      #end
-      #it 'should throw on bad polling value' do
-      #  let error = null;
-      #  try {
-      #    await page.wait_for_function(() => !!document.body, {polling: 'unknown'});
-      #  } catch (e) {
-      #    error = e;
-      #  }
-      #  expect(error).to eqTruthy();
-      #  expect(error.message).toContain('polling');
-      #end
-      #it 'should throw negative polling interval' do
-      #  let error = null;
-      #  try {
-      #    await page.wait_for_function(() => !!document.body, {polling: -10});
-      #  } catch (e) {
-      #    error = e;
-      #  }
-      #  expect(error).to eqTruthy();
-      #  expect(error.message).toContain('Cannot poll with non-positive interval');
-      #end
-      #it 'should return the success value as a JSHandle' do
-      #  expect(await (await page.wait_for_function(() => 5)).jsonValue()).to eq 5
-      #end
-      #it 'should return the window as a success value', async({ page }) => {
-      #  expect(await page.wait_for_function(() => window)).to eqTruthy();
-      #end
-      #it 'should accept ElementHandle arguments' do
-      #  await page.set_content('<div></div>');
-      #  div = await page.$('div');
-      #  let resolved = false;
-      #  wait_for_function = page.wait_for_function(element => !element.parentElement, {}, div).then(() => resolved = true);
-      #  expect(resolved).to eq false
-      #  await page.evaluate(element => element.remove(), div);
-      #  await wait_for_function;
-      #end
-      #it 'should respect timeout' do
-      #  let error = null;
-      #  await page.wait_for_function('false', {timeout: 10}).catch(e => error = e);
-      #  expect(error).to eqTruthy();
-      #  expect(error.message).toContain('waiting for function failed: timeout');
-      #  expect(error).to eqInstanceOf(puppeteer.errors.TimeoutError);
-      #end
-      #it 'should respect default timeout' do
-      #  page.setDefaultTimeout(1);
-      #  let error = null;
-      #  await page.wait_for_function('false').catch(e => error = e);
-      #  expect(error).to eqInstanceOf(puppeteer.errors.TimeoutError);
-      #  expect(error.message).toContain('waiting for function failed: timeout');
-      #end
-      #it 'should disable timeout when its set to 0' do
-      #  watchdog = page.wait_for_function(() => {
-      #    window.__counter = (window.__counter || 0) + 1;
-      #    return window.__injected;
-      #  }, {timeout: 0, polling: 10});
-      #  await page.wait_for_function(() => window.__counter > 10);
-      #  await page.evaluate(() => window.__injected = true);
-      #  await watchdog;
-      #end
-      #it 'should survive cross-process navigation' do
-      #  let fooFound = false;
-      #  wait_for_function = page.wait_for_function('window.__FOO === 1').then(() => fooFound = true);
-      #  await page.goto(server.empty_page);
-      #  expect(fooFound).to eq false
-      #  await page.reload();
-      #  expect(fooFound).to eq false
-      #  await page.goto(server.CROSS_PROCESS_domain + '/grid.html');
-      #  expect(fooFound).to eq false
-      #  await page.evaluate(() => window.__FOO = 1);
-      #  await wait_for_function;
-      #  expect(fooFound).to eq true
-      #end
-      #it 'should survive navigations' do
-      #  watchdog = page.wait_for_function(() => window.__done);
-      #  await page.goto(server.empty_page);
-      #  await page.goto(server.domain + '/consolelog.html');
-      #  await page.evaluate(() => window.__done = true);
-      #  await watchdog;
-      #end
+      it 'should work with strict CSP policy' do
+        server.set_content_security_policy '/empty.html', 'script-src ' + server.domain
+        page.goto server.empty_page
+        error = nil
+        await Promise.all(
+          page.wait_for_function("() => window.__FOO === 'hit'", polling: 'raf').catch { |e| error = e },
+          page.evaluate_function("() => window.__FOO = 'hit'")
+        )
+        expect(error).to eq nil
+      end
+
+      it 'should throw on bad polling value' do
+        expect do
+          await page.wait_for_function "() => !!document.body", polling: 'unknown'
+        end.to raise_error(/polling/)
+      end
+
+      it 'should throw negative polling interval' do
+        expect do
+          await page.wait_for_function "() => !!document.body", polling: -10
+        end.to raise_error(/Cannot poll with non-positive interval/)
+      end
+
+      it 'should return the success value as a JSHandle' do
+        # TODO, allow functions in wait for function, passing empty args for now to
+        # force a function call
+        expect((await page.wait_for_function("() => 5", [])).json_value).to eq 5
+      end
+
+      it 'should return the window as a success value' do
+        expect(await page.wait_for_function("() => window", [])).not_to be_nil
+      end
+
+      it 'should accept ElementHandle arguments' do
+        await page.set_content '<div></div>'
+        div = page.query_selector 'div'
+        resolved = false
+        wait_for_function = page.wait_for_function("element => !element.parentElement", {}, div).then { resolved = true }
+        expect(resolved).to eq false
+        await page.evaluate_function("element => element.remove()", div)
+        await wait_for_function
+      end
+
+      # TODO
+      xit 'should respect timeout' do
+        #let error = null;
+        #await page.wait_for_function('false', {timeout: 10}).catch(e => error = e);
+        #expect(error).to eqTruthy();
+        #expect(error.message).toContain('waiting for function failed: timeout');
+        #expect(error).to eqInstanceOf(puppeteer.errors.TimeoutError);
+      end
+
+      # TODO
+      xit 'should respect default timeout' do
+        #page.setDefaultTimeout(1);
+        #let error = null;
+        #await page.wait_for_function('false').catch(e => error = e);
+        #expect(error).to eqInstanceOf(puppeteer.errors.TimeoutError);
+        #expect(error.message).toContain('waiting for function failed: timeout');
+      end
+
+      # TODO
+      xit 'should disable timeout when its set to 0' do
+        #watchdog = page.wait_for_function(() => {
+        #  window.__counter = (window.__counter || 0) + 1;
+        #  return window.__injected;
+        #}, {timeout: 0, polling: 10});
+        #await page.wait_for_function(() => window.__counter > 10);
+        #await page.evaluate(() => window.__injected = true);
+        #await watchdog;
+      end
+
+      it 'should survive cross-process navigation' do
+        foo_found = false
+        wait_for_function = page.wait_for_function('window.__FOO === 1').then { foo_found = true }
+        page.goto server.empty_page
+        expect(foo_found).to eq false
+        page.reload
+        expect(foo_found).to eq false
+        page.goto server.cross_process_domain + 'grid.html'
+        expect(foo_found).to eq false
+        await page.evaluate_function "() => window.__FOO = 1"
+        await wait_for_function
+        expect(foo_found).to eq true
+      end
+
+      it 'should survive navigations' do
+        watchdog = page.wait_for_function "() => window.__done"
+        page.goto server.empty_page
+        page.goto server.domain + 'consolelog.html'
+        await page.evaluate_function "() => window.__done = true"
+        await watchdog
+      end
     end
 
     describe 'Frame#wait_for_selector' do

@@ -51,7 +51,6 @@ module Chromiebara
       :touchscreen_tap,
       :type,
       :url,
-      :wait_for,
       :wait_for_function,
       :wait_for_navigation,
       :wait_for_selector,
