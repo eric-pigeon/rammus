@@ -17,6 +17,7 @@ module Chromiebara
       :query_selector_all,
       :query_selector_all_evaluate_function,
       :query_selector_evaluate_function,
+      :wait_for_function,
       :xpath
     ] => :main_world
 
@@ -123,41 +124,6 @@ module Chromiebara
       secondary_world.click selector, options
     end
 
-    # @param {(string|number|Function)} selectorOrFunctionOrTimeout
-    # @param {!Object=} options
-    # @param {!Array<*>} args
-    # @return {!Promise<?Puppeteer.JSHandle>}
-    #
-    def wait_for(selector_or_function_or_timeout, options = {}, *args)
-      # const xPathPattern = '//';
-
-      # if (helper.isString(selectorOrFunctionOrTimeout)) {
-      #   const string = /** @type {string} */ (selectorOrFunctionOrTimeout);
-      #   if (string.startsWith(xPathPattern))
-      #     return this.waitForXPath(string, options);
-      #   return this.waitForSelector(string, options);
-      # }
-      # if (helper.isNumber(selectorOrFunctionOrTimeout))
-      #   return new Promise(fulfill => setTimeout(fulfill, /** @type {number} */ (selectorOrFunctionOrTimeout)));
-      # if (typeof selectorOrFunctionOrTimeout === 'function')
-      #   return this.waitForFunction(selectorOrFunctionOrTimeout, options, ...args);
-      # return Promise.reject(new Error('Unsupported target type: ' + (typeof selectorOrFunctionOrTimeout)));
-      #
-
-      #* @param {string} selector
-      #* @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
-      #* @return {!Promise<?Puppeteer.ElementHandle>}
-      #*/
-      #sync waitForSelector(selector, options) {
-      # const handle = await this._secondaryWorld.waitForSelector(selector, options);
-      # if (!handle)
-      #   return null;
-      # const mainExecutionContext = await this._mainWorld.executionContext();
-      # const result = await mainExecutionContext._adoptElementHandle(handle);
-      # await handle.dispose();
-      # return result;
-    end
-
     #  @param {string} selector
     #  @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
     #  @return {!Promise<?Puppeteer.ElementHandle>}
@@ -184,14 +150,6 @@ module Chromiebara
         handle.dispose
         result
       end
-    end
-
-    # @param {Function|string} pageFunction
-    # @param {!{polling?: string|number, timeout?: number}=} options
-    # @return {!Promise<!Puppeteer.JSHandle>}
-    #
-    def wait_for_function(page_function, *args, polling: nil, timeout: nil)
-      main_world.wait_for_function page_function, *args, polling: polling, timeout: timeout
     end
 
     def _detach
