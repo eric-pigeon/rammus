@@ -40,7 +40,6 @@ module Chromiebara
       end
 
       it 'should work with SVG nodes' do
-        pending 'string vs symbol keys'
         content = <<~HTML
         <svg xmlns="http://www.w3.org/2000/svg" width="500" height="500">
           <rect id="theRect" x="30" y="50" width="200" height="300"></rect>
@@ -56,6 +55,7 @@ module Chromiebara
         }
         JAVASCRIPT
         web_bounding_box = await page.evaluate_function function, element
+        web_bounding_box = web_bounding_box.map { |k, v| [k.to_sym, v] }.to_h
         expect(pptr_bounding_box).to eq web_bounding_box
       end
     end
