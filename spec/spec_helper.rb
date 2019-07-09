@@ -107,6 +107,8 @@ module SeverHelper
   after(:each) { server.reset }
 
   shared_context 'browser', browser: true do
+    include Chromiebara::Promise::Await
+
     before(:context) { @_browser = Chromiebara::Launcher.launch }
 
     let(:browser) { @_browser }

@@ -1,14 +1,13 @@
 module Chromiebara
   RSpec.describe Browser, browser: true do
-    include Promise::Await
-
-    before do
-      @browser = Launcher.launch
+    after(:each) do
+      browser.browser_contexts.select(&:incognito?).each(&:close)
+      browser.pages[1..-1].each(&:close)
     end
 
     describe '#create_browser_context' do
       it 'creates a new context' do
-        context = @browser.create_context
+        context = browser.create_context
 
         expect(context).to be_a Chromiebara::BrowserContext
       end
@@ -16,42 +15,41 @@ module Chromiebara
 
     describe '#browser_contexts' do
       it 'returns all browser_contexts' do
-        expect(@browser.browser_contexts.length).to eq 1
+        expect(browser.browser_contexts.length).to eq 1
 
-        @browser.create_context
+        browser.create_context
 
-        expect(@browser.browser_contexts.length).to eq 2
+        expect(browser.browser_contexts.length).to eq 2
       end
     end
 
     describe '#close_context' do
       it 'deletes the context' do
-        context = @browser.create_context
+        context = browser.create_context
 
-        expect(@browser.browser_contexts.size).to eq 2
+        expect(browser.browser_contexts.size).to eq 2
 
-        @browser.delete_context(context)
+        browser.delete_context(context)
 
-        expect(@browser.browser_contexts.size).to eq 1
+        expect(browser.browser_contexts.size).to eq 1
 
-        response = await @browser.client.command Protocol::Target.get_browser_contexts
+        response = await browser.client.command Protocol::Target.get_browser_contexts
         expect(response["browserContextIds"].size).to eq 0
       end
 
       xit 'raises an error if the context does not exist' do
-        context = BrowserContext.new(client: @browser.client, browser: @browser, id: "FAKEID")
+        context = BrowserContext.new(client: browser.client, browser: browser, id: "FAKEID")
 
         # TODO should raise a specific error here?
         expect do
-          @browser.delete_context context
+          browser.delete_context context
         end.to raise_error "Failed to find context with id FAKEID"
       end
     end
 
     describe '#target' do
       it 'retuns the target for the browser' do
-        # TODO figure out why there are 2 browser targets when launching
-        target = @browser.target
+        target = browser.target
 
         expect(target.type).to eq "browser"
       end
@@ -59,7 +57,7 @@ module Chromiebara
 
     describe '#version' do
       it 'returns the browser version' do
-        version = @browser.version
+        version = browser.version
 
         expect(version).to be_a Hash
       end
