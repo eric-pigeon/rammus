@@ -40,27 +40,27 @@ module Chromiebara
         expect(cookie['httpOnly']).to eq true
       end
 
-      # TODO
-      #it_fails_ffox('should properly report "Strict" sameSite cookie', async({page, server}) => {
-      #  server.setRoute('/empty.html', (req, res) => {
-      #    res.setHeader('Set-Cookie', ';SameSite=Strict');
-      #    res.end();
-      #  });
-      #  await page.goto(server.EMPTY_PAGE);
-      #  const cookies = await page.cookies();
-      #  expect(cookies.length).toBe(1);
-      #  expect(cookies[0].sameSite).toBe('Strict');
-      #});
-      #it_fails_ffox('should properly report "Lax" sameSite cookie', async({page, server}) => {
-      #  server.setRoute('/empty.html', (req, res) => {
-      #    res.setHeader('Set-Cookie', ';SameSite=Lax');
-      #    res.end();
-      #  });
-      #  await page.goto(server.EMPTY_PAGE);
-      #  const cookies = await page.cookies();
-      #  expect(cookies.length).toBe(1);
-      #  expect(cookies[0].sameSite).toBe('Lax');
-      #});
+      it 'should properly report "Strict" sameSite cookie' do
+        server.set_route '/empty.html' do |req, res|
+          res.set_cookie 'cooky', same_site: :strict
+          res.finish
+        end
+        page.goto server.empty_page
+        cookies = page.cookies
+        expect(cookies.length).to eq 1
+        expect(cookies[0]["sameSite"]).to eq 'Strict'
+      end
+
+      it 'should properly report "Lax" sameSite cookie' do
+        server.set_route '/empty.html' do |req, res|
+          res.set_cookie 'cooky', same_site: :lax
+          res.finish
+        end
+        page.goto server.empty_page
+        cookies = page.cookies
+        expect(cookies.length).to eq 1
+        expect(cookies[0]["sameSite"]).to eq 'Lax'
+      end
 
       it 'should get multiple cookies' do
         page.goto server.empty_page
@@ -276,7 +276,7 @@ module Chromiebara
 
       it 'should set cookies from a frame' do
         pending 'broken'
-        page.goto server.domain + "/grid.html"
+        page.goto server.domain + "empty.html"
         page.set_cookie name: 'localhost-cookie', value: 'best'
         function = <<~JAVASCRIPT
           src => {
