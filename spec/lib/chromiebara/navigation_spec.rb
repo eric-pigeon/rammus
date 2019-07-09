@@ -453,6 +453,7 @@ module Chromiebara
           history.pushState({}, '', '/first.html');
           history.pushState({}, '', '/second.html');
         }"
+        browser.wait_for_target { |target| target.url == server.domain + 'second.html' }
         expect(page.url).to eq server.domain + 'second.html'
 
         page.go_back
