@@ -67,9 +67,7 @@ module Chromiebara
       #
       def create_protocol_error(method, object)
         message = "Protocol error (#{method}): #{object.dig("error", "message")}"
-        # TODO
-        # if ('data' in object.error)
-        #   message += ` ${object.error.data}`;
+        message += object.dig("error", "data").to_s
         ProtocolError.new message
       end
   end
