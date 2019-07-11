@@ -4,7 +4,7 @@ module Chromiebara
 
     after(:each) do
       browser.browser_contexts.select(&:incognito?).each(&:close)
-      browser.pages[1..-1].each(&:close)
+      browser.pages[1..-1]&.each(&:close)
     end
 
     describe '#close' do
