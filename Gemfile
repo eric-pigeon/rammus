@@ -8,4 +8,6 @@ if RUBY_ENGINE != "jruby"
   gem 'byebug'
 end
 
+gem 'coveralls', require: false
+
 gemspec
