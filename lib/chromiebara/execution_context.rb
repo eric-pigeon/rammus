@@ -38,8 +38,9 @@ module Chromiebara
       world.nil? ? nil : world.frame
     end
 
-    # @param [String] javascript
-    # @return {!Promise<(!Object|undefined)>}
+    # @param [String] page_function
+    #
+    # @return [Promise<Object,nil>]
     #
     def evaluate(page_function)
       evaluate_internal true, page_function
@@ -49,20 +50,21 @@ module Chromiebara
       evaluate_function_internal true, page_function, *args
     end
 
-    # @param {Function|string} pageFunction
-    # @param {...*} args
-    # @return {!Promise<!JSHandle>}
+    # @param [String] page_function
+    #
+    # @return [Chromiebara::JSHandle]
     #
     def evaluate_handle(page_function)
-      evaluate_internal  false, page_function
+      evaluate_internal false, page_function
     end
 
     def evaluate_handle_function(page_function, *args)
       evaluate_function_internal false, page_function, *args
     end
 
-    # @param {!JSHandle} prototypeHandle
-    # @return {!Promise<!JSHandle>}
+    # @param [Chromiebara::JSHandle] prototype_handle
+    #
+    # @return [Chromiebara::JSHandle]
     #
     def query_objects(prototype_handle)
       raise 'Prototype JSHandle is disposed!' if prototype_handle.disposed?
@@ -71,8 +73,9 @@ module Chromiebara
       JSHandle.create_js_handle self, response["objects"]
     end
 
-    # @param {Puppeteer.ElementHandle} elementHandle
-    # @return {Promise<Puppeteer.ElementHandle>}
+    # @param [Chromiebara::ElementHandle] element_handle
+    #
+    # @return [Chromiebara::ElementHandle]
     #
     def _adopt_element_handle(element_handle)
       'Cannot adopt handle that already belongs to this execution context' if element_handle.execution_context == self
@@ -168,9 +171,6 @@ module Chromiebara
         { value: arg }
       end
 
-      # @param {!Error} error
-      # @return {!Protocol.Runtime.evaluateReturnValue}
-      #
       def rewrite_error(error)
         if error.message.include? 'Object reference chain is too long'
           return { "result" => { "type" => 'undefined' } }
