@@ -71,7 +71,7 @@ module Chromiebara
       timeout ||= timeout_settings.navigation_timeout
       error_message = "Navigation Timeout Exceeded: #{timeout}s exceeded"
 
-      watcher = LifecycleWatcher.new self, frame, wait_until, timeout
+      watcher = LifecycleWatcher.new frame_manager: self, frame: frame, wait_until: wait_until, timeout: timeout
       response = await client.command(Protocol::Page.navigate url: url, referrer: referer, frame_id: frame.id),
         timeout, error: error_message
       raise "#{response["errorText"]} at #{url}" if response["errorText"]
@@ -91,29 +91,19 @@ module Chromiebara
       watcher&.dispose
     end
 
-    # @param {!Puppeteer.Frame} frame
+    # @param [Chromiebara::Frame] frame
     # @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
-    # @return {!Promise<?Puppeteer.Response>}
+    #
+    # @return [Promise<?Chromiebara::Response>]
     #
     def wait_for_frame_navigation(frame, timeout: nil, wait_until: nil)
       wait_until ||= [:load]
       timeout ||= timeout_settings.navigation_timeout
-      watcher = LifecycleWatcher.new self, frame, wait_until, timeout
-      # TODO
-      # const watcher = new LifecycleWatcher(this, frame, waitUntil, timeout);
-      # const error = await Promise.race([
-      #   watcher.timeoutOrTerminationPromise(),
-      #   watcher.sameDocumentNavigationPromise(),
-      #   watcher.newDocumentNavigationPromise()
-      # ]);
-      # watcher.dispose();
-      # if (error)
-      #   throw error;
-      # return watcher.navigationResponse();
+      watcher = LifecycleWatcher.new frame_manager: self, frame: frame, wait_until: wait_until, timeout: timeout
       Promise.resolve(nil).then do
         begin
           error = await Promise.race(
-            watcher.termination_promise,
+            watcher.timeout_or_termination_promise,
             watcher.same_document_navigation_promise,
             watcher.new_document_navigation_promise
           )
@@ -217,7 +207,6 @@ module Chromiebara
 
       # @param {!Protocol.Page.lifecycleEventPayload} event
       #
-      # TODO
       def on_lifecycle_event(event)
         frame = @_frames.fetch event["frameId"]
         frame.send(:on_lifecycle_event, event["loaderId"], event["name"]);

@@ -55,18 +55,15 @@ module Chromiebara
       @_event_callbacks_mutex.synchronize { @_event_callbacks[event].size }
     end
 
-    # TODO
-    # private
-
-      # @param [String] event
-      # @[aram [Hash] data
-      #
-      def emit(event, data = nil)
-        @_event_callbacks_mutex.synchronize do
-          @_event_callbacks[event].each do |callable|
-            EVENT_QUEUE << -> { callable.call data }
-          end
+    # @param [String] event
+    # @[aram [Hash] data
+    #
+    def emit(event, data = nil)
+      @_event_callbacks_mutex.synchronize do
+        @_event_callbacks[event].each do |callable|
+          EVENT_QUEUE << -> { callable.call data }
         end
       end
+    end
   end
 end
