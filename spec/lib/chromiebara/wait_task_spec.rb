@@ -123,7 +123,7 @@ module Chromiebara
         wait_for_function = page.wait_for_function('window.__FOO === 1').then { foo_found = true }
         page.goto server.empty_page
         expect(foo_found).to eq false
-        page.reload
+        await page.reload
         expect(foo_found).to eq false
         page.goto server.cross_process_domain + 'grid.html'
         expect(foo_found).to eq false
@@ -218,7 +218,7 @@ module Chromiebara
         wait_for_selector = page.wait_for_selector('.box').then { box_found = true }
         page.goto server.empty_page
         expect(box_found).to eq false
-        page.reload
+        await page.reload
         expect(box_found).to eq false
         page.goto server.cross_process_domain + 'grid.html'
         await wait_for_selector

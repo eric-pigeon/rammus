@@ -240,7 +240,7 @@ module Chromiebara
         page.set_offline_mode true
         expect { page.goto server.empty_page }.to raise_error(/net::ERR_INTERNET_DISCONNECTED/)
         page.set_offline_mode false
-        response = page.reload
+        response = await page.reload
         expect(response.status).to eq 200
       end
 
@@ -554,7 +554,7 @@ module Chromiebara
           called = true
         end
         page.evaluate_on_new_document('() => woof()')
-        page.reload
+        await page.reload
         expect(called).to eq true
       end
 
@@ -752,7 +752,7 @@ module Chromiebara
 
         ## By-pass CSP and try one more time.
         page.set_bypass_csp true
-        page.reload
+        await page.reload
         page.add_script_tag content: 'window.__injected = 42;'
         expect(await page.evaluate_function("() => window.__injected")).to eq 42
       end
@@ -769,7 +769,7 @@ module Chromiebara
 
         # By-pass CSP and try one more time.
         page.set_bypass_csp true
-        page.reload
+        await page.reload
         page.add_script_tag content: 'window.__injected = 42;'
         expect(await page.evaluate_function("() => window.__injected")).to eq 42
       end
@@ -798,7 +798,7 @@ module Chromiebara
 
         # By-pass CSP and try one more time.
         page.set_bypass_csp true
-        page.reload
+        await page.reload
 
         frame = attach_frame page, 'frame1', server.domain + 'csp.html'
         frame.add_script_tag content: 'window.__injected = 42;'

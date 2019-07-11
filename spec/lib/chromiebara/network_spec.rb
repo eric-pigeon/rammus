@@ -110,7 +110,7 @@ module Chromiebara
 
         # Load and re-load to make sure it's cached.
         page.goto server.domain + 'cached/one-style.html'
-        page.reload
+        await page.reload
 
         expect(responses.size).to eq 2
         expect(responses['one-style.css'].status).to eq 200
@@ -136,7 +136,7 @@ module Chromiebara
         # Load and re-load to make sure serviceworker is installed and running.
         page.goto server.domain + 'serviceworkers/fetch/sw.html',  wait_until: :networkidle2
         await page.evaluate_function 'async() => await window.activationPromise'
-        page.reload
+        await page.reload
 
         expect(responses.size).to eq 2
         expect(responses['sw.html'].status).to eq 200
@@ -408,7 +408,7 @@ module Chromiebara
         response = page.goto server.empty_page
         expect(response.status).to eq 401
         page.authenticate username: 'user', password: 'pass'
-        response = page.reload
+        response = await page.reload
         expect(response.status).to eq 200
       end
 
