@@ -77,7 +77,7 @@ module Chromiebara
         # Setup request interception.
         page.set_request_interception true
         page.on :request, -> (request) { request.continue }
-        response = page.reload
+        response = await page.reload
         expect(response.status).to eq 200
       end
 

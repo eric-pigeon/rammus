@@ -291,15 +291,19 @@ module Chromiebara
       build_metrics_object response["metrics"]
     end
 
-    # @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
-    # @return {!Promise<?Puppeteer.Response>}
+    # @param timeout [Numeric]
+    # @param wait_until [Symbol, Array<Symbol>]
+    #
+    # @return [Promise<Chromiebara::Response, nil>]
     #
     def reload(timeout: nil, wait_until: nil)
-      response, _ = await Promise.all(
-        wait_for_navigation(timeout: timeout, wait_until: wait_until),
-        client.command(Protocol::Page.reload)
-      )
-      response
+      Promise.resolve(nil).then do
+        response, _ = await Promise.all(
+          wait_for_navigation(timeout: timeout, wait_until: wait_until),
+          client.command(Protocol::Page.reload)
+        )
+        response
+      end
     end
 
     # @param {(string|Function)} urlOrPredicate
@@ -392,7 +396,7 @@ module Chromiebara
       needs_reload = @_emulation_manager.emulate_viewport viewport
       @_viewport = viewport
 
-      reload if needs_reload
+      await reload if needs_reload
     end
 
     # @return {?Puppeteer.Viewport}

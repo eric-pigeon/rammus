@@ -571,7 +571,7 @@ module Chromiebara
       it 'should work' do
         page.goto server.empty_page
         await page.evaluate_function'() => window._foo = 10'
-        page.reload
+        await page.reload
         expect(await page.evaluate_function '() => window._foo').to eq(nil)
       end
     end
