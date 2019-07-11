@@ -137,11 +137,12 @@ module Chromiebara
     # @param [String] html
     #
     def set_content(html, timeout: nil, wait_until: nil)
-      wait_until = [:load]
+      wait_until ||= [:load]
       timeout ||= timeout_settings.navigation_timeout
       # We rely upon the fact that document.open() will reset frame lifecycle with "init"
       # lifecycle event. @see https://crrev.com/608658
 
+      watcher = LifecycleWatcher.new frame_manager: frame_manager, frame: frame, wait_until: wait_until, timeout: timeout
       function = <<~JAVASCRIPT
       html => {
         document.open();
@@ -150,7 +151,6 @@ module Chromiebara
       }
       JAVASCRIPT
       await evaluate_function function, html
-      watcher = LifecycleWatcher.new frame_manager, frame, wait_until, timeout
 
       Promise.resolve(nil).then do
         begin
