@@ -13,6 +13,11 @@ require 'chromiebara/tracing'
 require 'chromiebara/worker'
 
 module Chromiebara
+  # Page provides methods to interact with a single tab or extension background
+  # page in Chromium.
+  #
+  # One Browser instance might have multiple Page instances.
+  #
   class Page
     include Promise::Await
     include EventEmitter
@@ -93,7 +98,7 @@ module Chromiebara
       # @type {?Puppeteer.Viewport}
       @_viewport = nil
 
-      # @type {!Map<string, Worker>}
+      # Map<String, Chromiebara::Worker>
       @_workers = Hash.new
       client.on Protocol::Target.attached_to_target, -> (event) do
         if event.dig("targetInfo", "type") != 'worker'
@@ -170,26 +175,29 @@ module Chromiebara
       @_timeout_settings.timeout = timeout
     end
 
-    # @param {Function|string} pageFunction
-    # @param {!Array<*>} args
-    #  @return {!Promise<!Puppeteer.JSHandle>}
+    # @param [String} page_function
+    # @param [Array<*>] args
+    #
+    # @return [Promise<Chromiebara::JSHandle>]
     #
     def evaluate_handle(page_function, *args)
       context = main_frame.execution_context
       context.evaluate_handle page_function, *args
     end
 
-    # @param {Function|string} page_function
-    # @param {!Array<*>} args
-    #  @return {!Promise<!Puppeteer.JSHandle>}
+    # @param [String[ page_function
+    # @param [Array<*>] args
+    #
+    # @return [Promise<Chromiebara::JSHandle>]
     #
     def evaluate_handle_function(page_function, *args)
       context = main_frame.execution_context
       context.evaluate_handle_function page_function, *args
     end
 
-    # @param {!Puppeteer.JSHandle} prototypeHandle
-    # @return {!Promise<!Puppeteer.JSHandle>}
+    # @param [Chromiebara::JSHandle] prototype_handle
+    #
+    # @return [Chromiebara::JSHandle]
     #
     def query_objects(prototype_handle)
       context = main_frame.execution_context
@@ -209,7 +217,7 @@ module Chromiebara
       response["cookies"]
     end
 
-    # @param {Array<Protocol.Network.deleteCookiesParameters>} cookies
+    # @param [Array<Protocol.Network.delete_cookies_parameters>] cookies
     #
     def delete_cookie(*cookies)
       page_url = url
@@ -228,7 +236,7 @@ module Chromiebara
       end
     end
 
-    # @param {Array<Network.CookieParam>} cookies
+    # @param [Array<Network::CookieParam>] cookies
     #
     def set_cookie(*cookies)
       page_url = url
@@ -251,8 +259,9 @@ module Chromiebara
       end
     end
 
-    # @param {string} name
-    # @param {Function} puppeteerFunction
+    # @param [String] name
+    # @param [#call] function
+    # TODO document block
     #
     def expose_function(name, function = nil, &block)
       function ||= block
@@ -284,7 +293,7 @@ module Chromiebara
       Promise.all(frames.map { |frame| frame.evaluate(expression) }) # TODO.catch(debugError)));
     end
 
-    # @return {!Promise<!Metrics>}
+    # @return [Chromiebara::Metrics]
     #
     def metrics
       response = await client.command Protocol::Performance.get_metrics
@@ -306,9 +315,12 @@ module Chromiebara
       end
     end
 
-    # @param {(string|Function)} urlOrPredicate
-    # @param {!{timeout?: number}=} options
-    # @return {!Promise<!Puppeteer.Request>}
+    # @param [String] url_or_predicate
+    # @param [Numeric] timeout
+    #
+    # TODO document block
+    #
+    # @return [Promise<Chromiebara::Request>]
     #
     def wait_for_request(url_or_predicate = nil, timeout: nil, &block)
       timeout ||= @_timeout_settings.timeout
