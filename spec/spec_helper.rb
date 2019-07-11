@@ -5,6 +5,10 @@ require 'support/test_emitter'
 if RUBY_ENGINE != "jruby"
   require 'byebug'
 end
+if ENV['TRAVIS']
+  require 'coveralls'
+  Coveralls.wear!
+end
 
 class Server
   def domain
