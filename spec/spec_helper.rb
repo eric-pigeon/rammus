@@ -7,7 +7,9 @@ if RUBY_ENGINE != "jruby"
 end
 if ENV['TRAVIS']
   require 'coveralls'
-  Coveralls.wear!
+  Coveralls.wear! do
+    add_filter %r{/lib/chromiebara/protocol*}
+  end
 end
 
 class Server
