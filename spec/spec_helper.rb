@@ -1,15 +1,15 @@
+if ENV['TRAVIS']
+  require 'coveralls'
+  Coveralls.wear! do
+    add_filter %r{/lib/chromiebara/protocol*}
+  end
+end
 require 'chromiebara'
 require 'support/test_server'
 require 'support/match_screenshot'
 require 'support/test_emitter'
 if RUBY_ENGINE != "jruby"
   require 'byebug'
-end
-if ENV['TRAVIS']
-  require 'coveralls'
-  Coveralls.wear! do
-    add_filter %r{/lib/chromiebara/protocol*}
-  end
 end
 
 class Server
