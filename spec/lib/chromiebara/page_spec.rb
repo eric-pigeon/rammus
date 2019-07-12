@@ -21,7 +21,7 @@ module Chromiebara
 
       it 'should run beforeunload if asked for' do
         new_page = context.new_page
-        new_page.goto server.domain + 'beforeunload.html'
+        await new_page.goto server.domain + 'beforeunload.html'
         # We have to interact with a page so that 'beforeunload' handlers
         # fire.
         new_page.click 'body'
@@ -35,7 +35,7 @@ module Chromiebara
 
       it 'should *not* run beforeunload by default' do
         new_page = context.new_page
-        new_page.goto server.domain + 'beforeunload.html'
+        await new_page.goto server.domain + 'beforeunload.html'
         # We have to interact with a page so that 'beforeunload' handlers
         # fire.
         new_page.click 'body'
@@ -59,30 +59,13 @@ module Chromiebara
       end
     end
 
-    describe 'Async stacks' do
-      it 'should work' do
-        server.set_route '/empty.html' do |req, res|
-          res.status = 204
-          res.finish
-        end
-        error = nil
-        begin
-          page.goto server.empty_page
-        rescue => err
-          error = err
-        end
-        expect(error).not_to be_nil
-        expect(error.backtrace.join '').to include __FILE__
-      end
-    end
-
     describe 'Page.Events.error' do
       it 'should throw when page crashes' do
         error = nil
         page.on :error, -> (err) { error = err }
-        Promise.all(
+        await Promise.all(
           wait_event(page, :error),
-          begin; page.goto('chrome://crash'); rescue PageCrashed; end
+          page.goto('chrome://crash').catch { |_err| }
         )
         expect(error.message).to eq 'Page crashed!'
       end
@@ -108,7 +91,7 @@ module Chromiebara
       end
 
       it 'should work with clicking target=_blank' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         await page.set_content '<a target=_blank href="/one-style.html">yo</a>'
         popup, _ = await Promise.all(
           Promise.new { |resolve, _reject| page.once :popup, resolve },
@@ -119,7 +102,7 @@ module Chromiebara
       end
 
       it 'should work with fake-clicking target=_blank and rel=noopener' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         await page.set_content '<a target=_blank rel=noopener href="/one-style.html">yo</a>'
         popup, _ = await Promise.all(
           Promise.new { |resolve, _reject| page.once :popup, resolve },
@@ -130,7 +113,7 @@ module Chromiebara
       end
 
       it 'should work with clicking target=_blank and rel=noopener' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         await page.set_content '<a target=_blank rel=noopener href="/one-style.html">yo</a>'
         popup, _ = await Promise.all(
           Promise.new { |resolve, _reject| page.once :popup, resolve },
@@ -147,30 +130,30 @@ module Chromiebara
       end
 
       it 'should be prompt by default' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         expect(get_permission page, 'geolocation').to eq 'prompt'
       end
 
       it 'should deny permission when not listed' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         context.override_permissions server.empty_page, []
         expect(get_permission page, 'geolocation').to eq 'denied'
       end
 
       it 'should fail when bad permission is given' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         expect { context.override_permissions(server.empty_page, ['foo']) }
           .to raise_error 'Unknown permission: foo'
       end
 
       it 'should grant permission when listed' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         context.override_permissions server.empty_page, ['geolocation']
         expect(get_permission page, 'geolocation').to eq 'granted'
       end
 
       it 'should reset permissions' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         context.override_permissions server.empty_page, ['geolocation']
         expect(get_permission(page, 'geolocation')).to eq 'granted'
         context.clear_permission_overrides
@@ -178,7 +161,7 @@ module Chromiebara
       end
 
       it 'should trigger permission onchange' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         await page.evaluate_function("() => {
           window.events = [];
           return navigator.permissions.query({name: 'geolocation'}).then(function(result) {
@@ -198,10 +181,10 @@ module Chromiebara
       end
 
       it 'should isolate permissions between browser contexs' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         other_context = browser.create_context
         other_page = other_context.new_page
-        other_page.goto server.empty_page
+        await other_page.goto server.empty_page
         expect(get_permission page, 'geolocation').to eq 'prompt'
         expect(get_permission other_page, 'geolocation').to eq 'prompt'
 
@@ -221,7 +204,7 @@ module Chromiebara
     describe 'Page.set_geolocation' do
       it 'should work' do
         context.override_permissions server.domain, ['geolocation']
-        page.goto server.empty_page
+        await page.goto server.empty_page
         page.set_geolocation longitude: 10, latitude: 10
         geolocation = await page.evaluate_function("() => new Promise(resolve => navigator.geolocation.getCurrentPosition(position => {
           resolve({latitude: position.coords.latitude, longitude: position.coords.longitude});
@@ -238,7 +221,7 @@ module Chromiebara
     describe 'Page.set_offline_mode' do
       it 'should work' do
         page.set_offline_mode true
-        expect { page.goto server.empty_page }.to raise_error(/net::ERR_INTERNET_DISCONNECTED/)
+        expect { await page.goto server.empty_page }.to raise_error(/net::ERR_INTERNET_DISCONNECTED/)
         page.set_offline_mode false
         response = await page.reload
         expect(response.status).to eq 200
@@ -267,7 +250,7 @@ module Chromiebara
 
       it 'should work for non-blank page' do
         pending 'page crashes on chrome'
-        page.goto server.empty_page
+        await page.goto server.empty_page
         await page.evaluate_function "() => window.set = new Set(['hello', 'world'])"
         prototype_handle = await page.evaluate_handle_function "() => Set.prototype"
         objects_handle = page.query_objects prototype_handle
@@ -339,7 +322,7 @@ module Chromiebara
       end
 
       it 'should trigger correct Log' do
-        page.goto 'about:blank'
+        await page.goto 'about:blank'
         message, _ = await Promise.all(
           wait_event(page, :console),
           page.evaluate_function("async url => fetch(url).catch(e => {})", server.empty_page)
@@ -351,7 +334,7 @@ module Chromiebara
       it 'should have location when fetch fails' do
         # The point of this test is to make sure that we report console messages from
         # Log domain: https://vanilla.aslushnikov.com/?Log.entryAdded
-        page.goto server.empty_page
+        await page.goto server.empty_page
         message, _ = await Promise.all(
           wait_event(page, :console),
           page.set_content("<script>fetch('http://wat');</script>"),
@@ -373,7 +356,7 @@ module Chromiebara
 
       # @see https://github.com/GoogleChrome/puppeteer/issues/3865
       it 'should not throw when there are console messages in detached iframes' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         await page.evaluate_function("async() => {
           // 1. Create a popup that Puppeteer is not connected to.
           win = window.open(window.location.href, 'Title', 'toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=yes,width=780,height=200,top=0,left=0');
@@ -426,7 +409,7 @@ module Chromiebara
       end
 
       it 'should get metrics from a page' do
-        page.goto 'about:blank'
+        await page.goto 'about:blank'
         metrics = page.metrics
         check_metrics metrics
       end
@@ -442,7 +425,7 @@ module Chromiebara
 
     describe 'Page#wait_for_request' do
       it 'should work' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         request, _ = await Promise.all(
           page.wait_for_request(server.domain + 'digits/2.png'),
           page.evaluate_function("() => {
@@ -455,7 +438,7 @@ module Chromiebara
       end
 
       it 'should work with predicate' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         request, _ = await Promise.all(
           page.wait_for_request { |r| r.url() == server.domain + 'digits/2.png' },
           page.evaluate_function("() => {
@@ -468,7 +451,7 @@ module Chromiebara
       end
 
       it 'should work with no timeout' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         request, _ = await Promise.all(
           page.wait_for_request(server.domain + 'digits/2.png'),
           page.evaluate_function("() => setTimeout(() => {
@@ -483,7 +466,7 @@ module Chromiebara
 
     describe 'Page#wait_for_response' do
       it 'should work' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         response, _ = await Promise.all(
           page.wait_for_response(server.domain + 'digits/2.png'),
           page.evaluate_function("() => {
@@ -496,7 +479,7 @@ module Chromiebara
       end
 
       it 'should work with predicate' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         response, _ = await Promise.all(
           page.wait_for_response { |r| r.url == server.domain + 'digits/2.png' },
           page.evaluate_function("() => {
@@ -509,7 +492,7 @@ module Chromiebara
       end
 
       it 'should work with no timeout' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         response, _ = await Promise.all(
           page.wait_for_response(server.domain + 'digits/2.png'),
           page.evaluate_function("() => setTimeout(() => {
@@ -563,7 +546,7 @@ module Chromiebara
           a * b
         end
 
-        page.goto server.empty_page
+        await page.goto server.empty_page
         result = await page.evaluate_function("async function() {
           return await compute(9, 4);
         }")
@@ -586,7 +569,7 @@ module Chromiebara
           Promise.resolve(a * b)
         end
 
-        page.goto server.domain + 'frames/nested-frames.html'
+        await page.goto server.domain + 'frames/nested-frames.html'
         frame = page.frames[1]
         result = await frame.evaluate_function("async function() {
           return await compute(3, 5);
@@ -595,7 +578,7 @@ module Chromiebara
       end
 
       it 'should work on frames before navigation' do
-        page.goto server.domain + 'frames/nested-frames.html'
+        await page.goto server.domain + 'frames/nested-frames.html'
         page.expose_function 'compute' do |a, b|
           Promise.resolve(a * b)
         end
@@ -650,7 +633,7 @@ module Chromiebara
       end
 
       it 'should emulate device user-agent' do
-        page.goto server.domain + 'mobile.html'
+        await page.goto server.domain + 'mobile.html'
         expect(await page.evaluate_function("() => navigator.userAgent")).not_to include 'iPhone'
         page.set_user_agent(Chromiebara.devices['iPhone 6'][:user_agent])
         expect(await page.evaluate_function("() => navigator.userAgent")).to include 'iPhone'
@@ -743,7 +726,7 @@ module Chromiebara
     describe 'Page#set_bypass_csp' do
       it 'should bypass CSP meta tag' do
         # Make sure CSP prohibits add_script_tag.
-        page.goto server.domain + 'csp.html'
+        await page.goto server.domain + 'csp.html'
         begin
           page.add_script_tag content: 'window.__injected = 42;'
         rescue => _err
@@ -760,7 +743,7 @@ module Chromiebara
       it 'should bypass CSP header' do
         # Make sure CSP prohibits add_script_tag.
         server.set_content_security_policy '/empty.html', 'default-src "self"'
-        page.goto server.empty_page
+        await page.goto server.empty_page
         begin
           page.add_script_tag content: 'window.__injected = 42;'
         rescue => _err
@@ -776,17 +759,17 @@ module Chromiebara
 
       it 'should bypass after cross-process navigation' do
         page.set_bypass_csp true
-        page.goto server.domain + 'csp.html'
+        await page.goto server.domain + 'csp.html'
         page.add_script_tag content: 'window.__injected = 42;'
         expect(await page.evaluate_function("() => window.__injected")).to eq 42
 
-        page.goto server.cross_process_domain + 'csp.html'
+        await page.goto server.cross_process_domain + 'csp.html'
         page.add_script_tag content: 'window.__injected = 42;'
         expect(await page.evaluate_function("() => window.__injected")).to eq 42
       end
 
       it 'should bypass CSP in iframes as well' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
 
         # Make sure CSP prohibits add_script_tag in an iframe.
         frame = attach_frame page, 'frame1', server.domain + 'csp.html'
@@ -813,20 +796,20 @@ module Chromiebara
       end
 
       it 'should work with a url' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         script_handle = page.add_script_tag url: '/injectedfile.js'
         expect(script_handle.as_element).not_to be_nil
         expect(await page.evaluate_function("() => __injected")).to eq 42
       end
 
       it 'should work with a url and type=module' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         page.add_script_tag url: '/es6/es6import.js', type: 'module'
         expect(await page.evaluate_function("() => __es6injected")).to eq 42
       end
 
       it 'should work with a path and type=module' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
 
         path = File.expand_path("../../support/public/es6/es6pathimport.js", File.dirname(__FILE__))
         page.add_script_tag(path: path, type: 'module')
@@ -835,20 +818,20 @@ module Chromiebara
       end
 
       it 'should work with a content and type=module' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         page.add_script_tag content: "import num from '/es6/es6module.js';window.__es6injected = num;", type: 'module'
         await page.wait_for_function('window.__es6injected')
         expect(await page.evaluate_function("() => __es6injected")).to eq 42
       end
 
       it 'should throw an error if loading from url fail' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         expect { page.add_script_tag url: '/nonexistfile.js' }
           .to raise_error 'Loading script from /nonexistfile.js failed'
       end
 
       it 'should work with a path' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         path = File.expand_path("../../support/public/injectedfile.js", File.dirname(__FILE__))
         script_handle = page.add_script_tag path: path
         expect(script_handle.as_element).not_to be_nil
@@ -856,7 +839,7 @@ module Chromiebara
       end
 
       it 'should include sourcemap when path is provided' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         path = File.expand_path("../../support/public/injectedfile.js", File.dirname(__FILE__))
         page.add_script_tag path: path
         result = await page.evaluate_function("() => __injectedError.stack")
@@ -864,20 +847,20 @@ module Chromiebara
       end
 
       it 'should work with content' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         script_handle = page.add_script_tag content: 'window.__injected = 35;'
         expect(script_handle.as_element).not_to be_nil
         expect(await page.evaluate_function("() => __injected")).to eq 35
       end
 
       it 'should throw when added with content to the CSP page' do
-        page.goto server.domain + 'csp.html'
+        await page.goto server.domain + 'csp.html'
         expect { page.add_script_tag content: 'window.__injected = 35;' }
           .to raise_error(/Evaluation failed/)
       end
 
       it 'should throw when added with URL to the CSP page' do
-        page.goto server.domain + 'csp.html'
+        await page.goto server.domain + 'csp.html'
         expect { page.add_script_tag url: server.cross_process_domain + 'injectedfile.js' }
           .to raise_error(/Loading script from #{server.cross_process_domain + 'injectedfile.js'} failed/)
       end
@@ -890,20 +873,20 @@ module Chromiebara
       end
 
       it 'should work with a url' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         style_handle = page.add_style_tag url: '/injectedstyle.css'
         expect(style_handle.as_element).not_to be_nil
         expect(await page.evaluate("window.getComputedStyle(document.querySelector('body')).getPropertyValue('background-color')")).to eq 'rgb(255, 0, 0)'
       end
 
       it 'should throw an error if loading from url fail' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         expect { page.add_style_tag url: '/nonexistfile.js' }
           .to raise_error 'Loading style from /nonexistfile.js failed'
       end
 
       it 'should work with a path' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         path = File.expand_path("../../support/public/injectedstyle.css", File.dirname(__FILE__))
         style_handle = page.add_style_tag path: path
         expect(style_handle.as_element).not_to be_nil
@@ -911,7 +894,7 @@ module Chromiebara
       end
 
       it 'should include sourcemap when path is provided' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         path = File.expand_path("../../support/public/injectedstyle.css", File.dirname(__FILE__))
         page.add_style_tag path: path
         style_handle = page.query_selector 'style'
@@ -920,20 +903,20 @@ module Chromiebara
       end
 
       it 'should work with content' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         style_handle = page.add_style_tag content: 'body { background-color: green; }'
         expect(style_handle.as_element).not_to be_nil
         expect(await page.evaluate("window.getComputedStyle(document.querySelector('body')).getPropertyValue('background-color')")).to eq 'rgb(0, 128, 0)'
       end
 
       it 'should throw when added with content to the CSP page' do
-        page.goto server.domain + 'csp.html'
+        await page.goto server.domain + 'csp.html'
         expect { page.add_style_tag content: 'body { background-color: green; }' }
           .to raise_error(/Evaluation failed/)
       end
 
       it 'should throw when added with URL to the CSP page' do
-        page.goto server.domain + 'csp.html'
+        await page.goto server.domain + 'csp.html'
         expect { page.add_style_tag url: server.cross_process_domain + 'injectedstyle.css' }
           .to raise_error(/Loading style from #{server.cross_process_domain + 'injectedstyle.css'} failed/)
       end
@@ -942,7 +925,7 @@ module Chromiebara
     describe '#url' do
       it 'returns the pages current url' do
         expect(page.url).to eq "about:blank"
-        page.goto server.empty_page
+        await page.goto server.empty_page
         expect(page.url).to eq server.empty_page
       end
     end
@@ -950,20 +933,20 @@ module Chromiebara
     describe 'Page#set_javascript_enabled' do
       it 'should work' do
         page.set_javascript_enabled false
-        page.goto 'data:text/html, <script>var something = "forbidden"</script>'
+        await page.goto 'data:text/html, <script>var something = "forbidden"</script>'
 
         expect { await page.evaluate('something') }
           .to raise_error(/something is not defined/)
 
         page.set_javascript_enabled true
-        page.goto 'data:text/html, <script>var something = "forbidden"</script>'
+        await page.goto 'data:text/html, <script>var something = "forbidden"</script>'
         expect(await page.evaluate('something')).to eq 'forbidden'
       end
     end
 
     describe 'Page#set_cache_enabled' do
       it 'should enable or disable the cache based on the state passed' do
-        page.goto server.domain + 'cached/one-style.html'
+        await page.goto server.domain + 'cached/one-style.html'
         cached_request, _ = await Promise.all(
           server.wait_for_request('/cached/one-style.html'),
           page.reload
@@ -984,7 +967,7 @@ module Chromiebara
         page.set_request_interception true
         page.set_request_interception false
 
-        page.goto server.domain + 'cached/one-style.html'
+        await page.goto server.domain + 'cached/one-style.html'
         non_cached_request, _ = await Promise.all(
           server.wait_for_request('/cached/one-style.html'),
           page.reload
@@ -1005,28 +988,28 @@ module Chromiebara
 
     describe '#title' do
       it 'should return the page title' do
-        page.goto server.domain + "/title.html"
+        await page.goto server.domain + "/title.html"
         expect(page.title).to eq 'Woof-Woof'
       end
     end
 
     describe 'Page.select' do
       it 'should select single option' do
-        page.goto server.domain + 'input/select.html'
+        await page.goto server.domain + 'input/select.html'
         page.select 'select', 'blue'
         expect(await page.evaluate_function("() => result.onInput")).to eq ['blue']
         expect(await page.evaluate_function("() => result.onChange")).to eq ['blue']
       end
 
       it 'should select only first option' do
-        page.goto server.domain + '/input/select.html'
+        await page.goto server.domain + '/input/select.html'
         page.select 'select', 'blue', 'green', 'red'
         expect(await page.evaluate_function("() => result.onInput")).to eq ['blue']
         expect(await page.evaluate_function("() => result.onChange")).to eq ['blue']
       end
 
       it 'should not throw when select causes navigation' do
-        page.goto server.domain + 'input/select.html'
+        await page.goto server.domain + 'input/select.html'
         page.query_selector_evaluate_function 'select', "select => select.addEventListener('input', () => window.location = '/empty.html')"
         await Promise.all(
           page.wait_for_navigation,
@@ -1036,7 +1019,7 @@ module Chromiebara
       end
 
       it 'should select multiple options' do
-        page.goto server.domain + 'input/select.html'
+        await page.goto server.domain + 'input/select.html'
         await page.evaluate_function("() => makeMultiple()")
         page.select 'select', 'blue', 'green', 'red'
         expect(await page.evaluate_function("() => result.onInput")).to eq ['blue', 'green', 'red']
@@ -1044,44 +1027,44 @@ module Chromiebara
       end
 
       it 'should respect event bubbling' do
-        page.goto server.domain + 'input/select.html'
+        await page.goto server.domain + 'input/select.html'
         page.select 'select', 'blue'
         expect(await page.evaluate_function("() => result.onBubblingInput")).to eq ['blue']
         expect(await page.evaluate_function("() => result.onBubblingChange")).to eq ['blue']
       end
 
       it 'should throw when element is not a <select>' do
-        page.goto server.domain + '/input/select.html'
+        await page.goto server.domain + '/input/select.html'
         expect { page.select('body', '') }.to raise_error(/Element is not a <select> element./)
       end
 
       it 'should return [] on no matched values' do
-        page.goto server.domain + 'input/select.html'
+        await page.goto server.domain + 'input/select.html'
         result = page.select 'select','42','abc'
         expect(result).to eq []
       end
 
       it 'should return an array of matched values' do
-        page.goto server.domain + 'input/select.html'
+        await page.goto server.domain + 'input/select.html'
         await page.evaluate_function("() => makeMultiple()")
         result = page.select 'select','blue','black','magenta'
         expect(result).to match_array(['blue', 'black', 'magenta'])
       end
 
       it 'should return an array of one element when multiple is not set' do
-        page.goto server.domain + 'input/select.html'
+        await page.goto server.domain + 'input/select.html'
         result = page.select 'select','42','blue','black','magenta'
         expect(result.length).to eq 1
       end
 
       it 'should return [] on no values' do
-        page.goto server.domain + 'input/select.html'
+        await page.goto server.domain + 'input/select.html'
         result = page.select 'select'
         expect(result).to eq []
       end
 
       it 'should deselect all options when passed no values for a multiple select' do
-        page.goto server.domain + 'input/select.html'
+        await page.goto server.domain + 'input/select.html'
         await page.evaluate_function("() => makeMultiple()")
         page.select 'select','blue','black','magenta'
         page.select 'select'
@@ -1090,7 +1073,7 @@ module Chromiebara
       end
 
       it 'should deselect all options when passed no values for a select without multiple' do
-        page.goto server.domain + 'input/select.html'
+        await page.goto server.domain + 'input/select.html'
         page.select 'select','blue','black','magenta'
         page.select 'select'
         result = await page.query_selector_evaluate_function('select', "select => Array.from(select.options).every(option => !option.selected)")
@@ -1105,7 +1088,7 @@ module Chromiebara
 
       # @see https://github.com/GoogleChrome/puppeteer/issues/3327
       it 'should work when re-defining top-level Event class' do
-        page.goto server.domain + 'input/select.html'
+        await page.goto server.domain + 'input/select.html'
         await page.evaluate_function("() => window.Event = null")
         page.select 'select', 'blue'
         expect(await page.evaluate_function("() => result.onInput")).to eq ['blue']

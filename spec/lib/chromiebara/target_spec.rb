@@ -63,12 +63,12 @@ module Chromiebara
       end
 
       it 'should report when a service worker is created and destroyed' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         created_target = Promise.new do |resolve, _reject|
           context.once :target_created, -> target { resolve.(target) }
         end
 
-        page.goto server.domain + 'serviceworkers/empty/sw.html'
+        await page.goto server.domain + 'serviceworkers/empty/sw.html'
 
         expect((await created_target).type).to eq 'service_worker'
         expect((await created_target).url).to eq server.domain + 'serviceworkers/empty/sw.js'
@@ -82,7 +82,7 @@ module Chromiebara
 
       xit 'should create a worker from a service worker' do
         # TODO
-        page.goto server.domain + 'serviceworkers/empty/sw.html'
+        await page.goto server.domain + 'serviceworkers/empty/sw.html'
 
         target = await context.wait_for_target { |t| t.type == 'service_worker' }
         worker = target.worker
@@ -90,7 +90,7 @@ module Chromiebara
       end
 
       xit 'should create a worker from a shared worker' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         await page.evaluate_function "() => { new SharedWorker('data:text/javascript,console.log(\"hi\")'); }"
         target = await context.wait_for_target { |t| t.type == 'shared_worker' }
         worker = await target.worker
@@ -98,18 +98,18 @@ module Chromiebara
       end
 
       it 'should report when a target url changes' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         changed_target = Promise.new do |resolve, _reject|
           context.once :target_changed, -> (target) { resolve.(target) }
         end
-        page.goto server.cross_process_domain
+        await page.goto server.cross_process_domain
         expect((await changed_target).url).to eq server.cross_process_domain
 
 
         changed_target = Promise.new do |resolve, _reject|
           context.once :target_changed, -> (target) { resolve.(target) }
         end
-        page.goto server.empty_page
+        await page.goto server.empty_page
         expect((await changed_target).url).to eq server.empty_page
       end
 

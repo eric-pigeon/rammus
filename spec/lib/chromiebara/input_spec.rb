@@ -7,7 +7,7 @@ module Chromiebara
     let!(:page) { context.new_page }
 
     it 'should upload the file' do
-      page.goto server.domain + 'input/fileupload.html'
+      await page.goto server.domain + 'input/fileupload.html'
       file_path = File.expand_path("../../../fixtures", __FILE__) + '/file-to-upload.txt'
       input = page.query_selector 'input'
       input.upload_file file_path

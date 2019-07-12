@@ -11,7 +11,7 @@ module Chromiebara
 
     it 'should output a trace' do
       page.tracing.start screenshots: true, path: output_file
-      page.goto server.domain + 'grid.html'
+      await page.goto server.domain + 'grid.html'
       page.tracing.stop
       expect(File.exist? output_file).to eq true
     end
@@ -35,7 +35,7 @@ module Chromiebara
 
     it 'should return a buffer' do
       trace = page.tracing.start(screenshots: true, path: output_file) do
-        page.goto server.domain + 'grid.html'
+        await page.goto server.domain + 'grid.html'
       end
       buf = File.read output_file
       expect(trace).to eq buf
@@ -43,14 +43,14 @@ module Chromiebara
 
     it 'should work without options' do
       trace = page.tracing.start do
-        page.goto server.domain + 'grid.html'
+        await page.goto server.domain + 'grid.html'
       end
       expect(trace).not_to be_nil
     end
 
     it 'should support without a path' do
       trace = page.tracing.start screenshots: true do
-        page.goto server.domain + 'grid.html'
+        await page.goto server.domain + 'grid.html'
       end
       expect(trace).to include 'screenshot'
     end

@@ -17,7 +17,7 @@ module Chromiebara
     end
 
     it 'returns accessibility tree' do
-      page.goto server.domain + 'accessibility.html'
+      await page.goto server.domain + 'accessibility.html'
       expected = {
         role: 'WebArea',
         name: 'Accessibility Test',

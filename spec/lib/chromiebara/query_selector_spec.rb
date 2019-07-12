@@ -64,7 +64,7 @@ module Chromiebara
       end
 
       it 'should return empty array if nothing is found' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         elements = page.query_selector_all 'div'
         expect(elements.length).to eq 0
       end
@@ -92,7 +92,7 @@ module Chromiebara
 
     describe 'ElementHandle#query_selector' do
       it 'should query existing element' do
-        page.goto server.domain + 'playground.html'
+        await page.goto server.domain + 'playground.html'
         await page.set_content '<html><body><div class="second"><div class="inner">A</div></div></body></html>'
         html = page.query_selector 'html'
         second = html.query_selector '.second'
@@ -179,7 +179,7 @@ module Chromiebara
 
     describe 'ElementHandle#xpath' do
       it 'should query existing element' do
-        page.goto server.domain + 'playground.html'
+        await page.goto server.domain + 'playground.html'
         await page.set_content '<html><body><div class="second"><div class="inner">A</div></div></body></html>'
         html = page.query_selector 'html'
         second = html.xpath "./body/div[contains(@class, 'second')]"

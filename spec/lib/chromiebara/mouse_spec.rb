@@ -49,7 +49,7 @@ module Chromiebara
     end
 
     it 'should resize the textarea' do
-      page.goto server.domain + 'input/textarea.html'
+      await page.goto server.domain + 'input/textarea.html'
       textarea_dimensions = await page.evaluate_function dimensions
       x = textarea_dimensions["x"]
       y = textarea_dimensions["y"]
@@ -66,7 +66,7 @@ module Chromiebara
     end
 
     it 'should select the text with mouse' do
-      page.goto server.domain + 'input/textarea.html'
+      await page.goto server.domain + 'input/textarea.html'
       page.focus 'textarea'
       text = "This is the text that we are going to try to select. Let's see how it goes."
       page.keyboard.type text
@@ -88,7 +88,7 @@ module Chromiebara
     end
 
     it 'should trigger hover state' do
-      page.goto server.domain + 'input/scrollable.html'
+      await page.goto server.domain + 'input/scrollable.html'
 
       page.hover '#button-6'
       expect(await page.evaluate "document.querySelector('button:hover').id").to eq 'button-6'
@@ -99,14 +99,14 @@ module Chromiebara
     end
 
     it 'should trigger hover state with removed window.Node' do
-      page.goto server.domain + 'input/scrollable.html'
+      await page.goto server.domain + 'input/scrollable.html'
       await page.evaluate 'delete window.Node'
       page.hover '#button-6'
       expect(await page.evaluate "document.querySelector('button:hover').id").to eq 'button-6'
     end
 
     it 'should set modifier keys on click' do
-      page.goto server.domain + 'input/scrollable.html'
+      await page.goto server.domain + 'input/scrollable.html'
       await page.evaluate "document.querySelector('#button-3').addEventListener('mousedown', e => window.lastEvent = e, true)"
       modifiers = { 'Shift' => 'shiftKey', 'Control' => 'ctrlKey', 'Alt' => 'altKey', 'Meta' => 'metaKey' }
       # In Firefox, the Meta modifier only exists on Mac
@@ -148,9 +148,9 @@ module Chromiebara
 
     # @see https://crbug.com/929806
     it 'should work with mobile viewports and cross process navigations' do
-      page.goto server.empty_page
+      await page.goto server.empty_page
       page.set_viewport width: 360, height: 640, is_mobile: true
-      page.goto server.cross_process_domain + 'mobile.html'
+      await page.goto server.cross_process_domain + 'mobile.html'
       await page.evaluate_function("() => {
         document.addEventListener('click', event => {
           window.result = {x: event.clientX, y: event.clientY};

@@ -7,7 +7,7 @@ module Chromiebara
     let!(:page) { context.new_page }
 
     it 'can click buttons' do
-      page.goto server.domain + 'input/button.html'
+      await page.goto server.domain + 'input/button.html'
       page.click 'button'
       expect(await page.evaluate 'result').to eq 'Clicked'
     end
@@ -25,7 +25,7 @@ module Chromiebara
     end
 
     it 'should click the button if window.Node is removed' do
-      page.goto server.domain + 'input/button.html'
+      await page.goto server.domain + 'input/button.html'
       await page.evaluate 'delete window.Node'
       page.click 'button'
       expect(await page.evaluate 'result').to eq 'Clicked'
@@ -46,16 +46,16 @@ module Chromiebara
     end
 
     it 'should click the button after navigation ' do
-      page.goto server.domain + 'input/button.html'
+      await page.goto server.domain + 'input/button.html'
       page.click 'button'
-      page.goto server.domain + 'input/button.html'
+      await page.goto server.domain + 'input/button.html'
       page.click 'button'
       expect(await page.evaluate 'result').to eq 'Clicked'
     end
 
     it 'should click with disabled javascript' do
       page.set_javascript_enabled false
-      page.goto server.domain + 'wrappedlink.html'
+      await page.goto server.domain + 'wrappedlink.html'
       await Promise.all(
         page.wait_for_navigation,
         page.click('a')
@@ -79,7 +79,7 @@ module Chromiebara
     end
 
     it 'should select the text by triple clicking' do
-      page.goto server.domain + 'input/textarea.html'
+      await page.goto server.domain + 'input/textarea.html'
       page.focus 'textarea'
       text = "This is the text that we are going to try to select. Let's see how it goes."
       page.keyboard.type text
@@ -96,7 +96,7 @@ module Chromiebara
     end
 
     it 'should click offscreen buttons' do
-      page.goto server.domain + 'offscreenbuttons.html'
+      await page.goto server.domain + 'offscreenbuttons.html'
       messages = []
       page.on :console, -> (msg) { messages << msg.text }
       11.times do |i|
@@ -120,13 +120,13 @@ module Chromiebara
     end
 
     it 'should click wrapped links' do
-      page.goto server.domain + 'wrappedlink.html'
+      await page.goto server.domain + 'wrappedlink.html'
       page.click 'a'
       expect(await page.evaluate 'window.__clicked').to eq true
     end
 
     it 'should click on checkbox input and toggle' do
-      page.goto server.domain + 'input/checkbox.html'
+      await page.goto server.domain + 'input/checkbox.html'
       expect(await page.evaluate 'result.check').to eq nil
       page.click 'input#agree'
       expect(await page.evaluate 'result.check').to eq true
@@ -145,7 +145,7 @@ module Chromiebara
     end
 
     it 'should click on checkbox label and toggle' do
-      page.goto server.domain + 'input/checkbox.html'
+      await page.goto server.domain + 'input/checkbox.html'
       expect(await page.evaluate 'result.check').to eq nil
       page.click 'label[for="agree"]'
       expect(await page.evaluate 'result.check').to eq true
@@ -159,7 +159,7 @@ module Chromiebara
     end
 
     it 'should fail to click a missing button' do
-      page.goto server.domain + 'input/checkbox.html'
+      await page.goto server.domain + 'input/checkbox.html'
       expect { page.click 'button.does-not-exist' }
         .to raise_error 'No node found for selector: button.does-not-exist'
     end
@@ -173,7 +173,7 @@ module Chromiebara
     end
 
     it 'should scroll and click the button' do
-      page.goto server.domain + 'input/scrollable.html'
+      await page.goto server.domain + 'input/scrollable.html'
       page.click '#button-5'
       expect(await page.evaluate "document.querySelector('#button-5').textContent").to eq 'clicked'
       page.click '#button-80'
@@ -181,7 +181,7 @@ module Chromiebara
     end
 
     it 'should double click the button' do
-      page.goto server.domain + 'input/button.html'
+      await page.goto server.domain + 'input/button.html'
       function = <<~JAVASCRIPT
       () => {
         window.double = false;
@@ -199,7 +199,7 @@ module Chromiebara
     end
 
     it 'should click a partially obscured button' do
-      page.goto server.domain + 'input/button.html'
+      await page.goto server.domain + 'input/button.html'
       function = <<~JAVASCRIPT
       () => {
         const button = document.querySelector('button');
@@ -214,13 +214,13 @@ module Chromiebara
     end
 
     it 'should click a rotated button' do
-      page.goto server.domain + 'input/rotatedButton.html'
+      await page.goto server.domain + 'input/rotatedButton.html'
       page.click 'button'
       expect(await page.evaluate 'window.result').to eq 'Clicked'
     end
 
     it 'should fire contextmenu event on right click' do
-      page.goto server.domain + 'input/scrollable.html'
+      await page.goto server.domain + 'input/scrollable.html'
       page.click '#button-8', button: 'right'
       expect(await page.evaluate "document.querySelector('#button-8').textContent").to eq 'context menu'
     end
@@ -233,7 +233,7 @@ module Chromiebara
     end
 
     it 'should click the button inside an iframe' do
-      page.goto server.domain
+      await page.goto server.domain
       await page.set_content '<div style="width:100px;height:100px">spacer</div>'
       attach_frame page, 'button-test', server.domain + 'input/button.html'
       frame = page.frames[1]
