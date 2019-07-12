@@ -24,14 +24,14 @@ module Chromiebara
           expect(request.frame.url).to eq 'about:blank'
           request.continue
         end
-        response = page.goto server.empty_page
+        response = await page.goto server.empty_page
         expect(response.ok?).to eq true
         expect(response.remote_address[:port]).to eq server.port
       end
 
       it 'should work when POST is redirected with 302' do
         server.set_redirect '/rredirect', '/empty.html'
-        page.goto server.empty_page
+        await page.goto server.empty_page
         page.set_request_interception true
         page.on :request, -> (request) { request.continue }
         content = <<~HTML
@@ -54,7 +54,7 @@ module Chromiebara
           headers = request.headers.merge foo: 'bar'
           request.continue headers: headers
         end
-        page.goto server.domain + 'rrredirect'
+        await page.goto server.domain + 'rrredirect'
       end
 
       it 'should contain referer header' do
@@ -64,14 +64,14 @@ module Chromiebara
           requests << request unless is_favicon request
           request.continue
         end
-        page.goto server.domain + 'one-style.html'
+        await page.goto server.domain + 'one-style.html'
         expect(requests[1].url).to include '/one-style.css'
         expect(requests[1].headers["referer"]).to include '/one-style.html'
       end
 
       it 'should properly return navigation response when URL has cookies' do
         # Setup cookie.
-        page.goto server.empty_page
+        await page.goto server.empty_page
         page.set_cookie name: 'foo', value: 'bar'
 
         # Setup request interception.
@@ -84,9 +84,9 @@ module Chromiebara
       it 'should stop intercepting' do
         page.set_request_interception true
         page.once :request, -> (request) { request.continue }
-        page.goto server.empty_page
+        await page.goto server.empty_page
         page.set_request_interception false
-        page.goto server.empty_page
+        await page.goto server.empty_page
       end
 
       it 'should show custom HTTP headers' do
@@ -96,13 +96,13 @@ module Chromiebara
           expect(request.headers['foo']).to eq 'bar'
           request.continue
         end
-        response = page.goto server.empty_page
+        response = await page.goto server.empty_page
         expect(response.ok?).to eq true
       end
 
       # @see https://github.com/GoogleChrome/puppeteer/issues/4337
       xit 'should work with redirect inside sync XHR' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         server.set_redirect '/logo.png', '/pptr.png'
         page.set_request_interception true
         page.on :request, -> (request) { request.continue }
@@ -122,7 +122,7 @@ module Chromiebara
           expect(request.headers['referer']).to eq server.empty_page
           request.continue
         end
-        response = page.goto server.empty_page
+        response = await page.goto server.empty_page
         expect(response.ok?).to eq true
       end
 
@@ -137,7 +137,7 @@ module Chromiebara
         end
         failed_requests = 0
         page.on :request_failed, -> (_event) { failed_requests += 1 }
-        response = page.goto server.domain + 'one-style.html'
+        response = await page.goto server.domain + 'one-style.html'
         expect(response.ok?).to eq true
         expect(response.request.failure).to eq nil
         expect(failed_requests).to eq 1
@@ -150,7 +150,7 @@ module Chromiebara
         end
         failed_request = nil
         page.on :request_failed, -> (request) { failed_request = request }
-        page.goto server.empty_page rescue nil
+        await page.goto server.empty_page rescue nil
         expect(failed_request).not_to be_nil
         expect(failed_request.failure[:error_text]).to eq 'net::ERR_INTERNET_DISCONNECTED'
       end
@@ -169,7 +169,7 @@ module Chromiebara
       it 'should fail navigation when aborting main resource' do
         page.set_request_interception true
         page.on :request, -> (request) { request.abort }
-        expect { page.goto server.empty_page }
+        expect { await page.goto server.empty_page }
           .to raise_error(/net::ERR_FAILED/)
       end
 
@@ -184,7 +184,7 @@ module Chromiebara
         server.set_redirect '/non-existing-page-2.html', '/non-existing-page-3.html'
         server.set_redirect '/non-existing-page-3.html', '/non-existing-page-4.html'
         server.set_redirect '/non-existing-page-4.html', '/empty.html'
-        response = page.goto server.domain + 'non-existing-page.html'
+        response = await page.goto server.domain + 'non-existing-page.html'
         expect(response.status).to eq 200
         expect(response.url).to include 'empty.html'
         expect(requests.length).to eq 5
@@ -215,7 +215,7 @@ module Chromiebara
           res.finish
         end
 
-        response = page.goto server.domain + 'one-style.html'
+        response = await page.goto server.domain + 'one-style.html'
         expect(response.status).to eq 200
         expect(response.url).to include 'one-style.html'
         expect(requests.length).to eq 5
@@ -239,7 +239,7 @@ module Chromiebara
             request.continue
           end
         end
-        page.goto server.empty_page
+        await page.goto server.empty_page
         result = await page.evaluate_function("async() => {
           try {
             await fetch('/non-existing.json');
@@ -251,7 +251,7 @@ module Chromiebara
       end
 
       it 'should work with equal requests' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         response_count = 1
         server.set_route '/zzz' do |req, res|
           res.write(response_count * 11)
@@ -284,14 +284,14 @@ module Chromiebara
           request.continue
         end
         data_url = 'data:text/html,<div>yo</div>'
-        response = page.goto data_url
+        response = await page.goto data_url
         expect(response.status).to eq 200
         expect(requests.length).to eq 1
         expect(requests[0].url).to eq data_url
       end
 
       it 'should be able to fetch data_url and fire data_url requests' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         page.set_request_interception true
         requests = []
         page.on :request, -> (request) do
@@ -312,7 +312,7 @@ module Chromiebara
           requests << request
           request.continue
         end
-        response = page.goto server.empty_page + '#hash'
+        response = await page.goto server.empty_page + '#hash'
         expect(response.status).to eq 200
         expect(response.url).to eq server.empty_page
         expect(requests.length).to eq 1
@@ -324,7 +324,7 @@ module Chromiebara
         # report URL as-is. @see crbug.com/759388
         page.set_request_interception true
         page.on :request, -> (request) { request.continue }
-        response = page.goto server.domain + ' some nonexisting page'
+        response = await page.goto server.domain + ' some nonexisting page'
         expect(response.status).to eq 404
       end
 
@@ -332,7 +332,7 @@ module Chromiebara
         page.set_request_interception true
         server.set_route('/malformed') { |_req, res| res.finish }
         page.on :request, -> (request) { request.continue }
-        response = page.goto server.domain + 'malformed?rnd=%911'
+        response = await page.goto server.domain + 'malformed?rnd=%911'
         expect(response.status).to eq 200
       end
 
@@ -345,7 +345,7 @@ module Chromiebara
           request.continue
           requests << request
         end
-        response = page.goto "data:text/html,<link rel=\"stylesheet\" href=\"#{server.domain}/fonts?helvetica|arial\"/>"
+        response = await page.goto "data:text/html,<link rel=\"stylesheet\" href=\"#{server.domain}/fonts?helvetica|arial\"/>"
         expect(response.status).to eq 200
         expect(requests.length).to eq 2
         expect(requests[1].response.status).to eq 404
@@ -369,7 +369,7 @@ module Chromiebara
       it 'should throw if interception is not enabled' do
         expect do
           page.on :request, -> (request) { request.continue }
-          page.goto server.empty_page
+          await page.goto server.empty_page
         end.to raise_error(/Request Interception is not enabled/)
       end
 
@@ -381,7 +381,7 @@ module Chromiebara
           request.continue
         end
         file_path = File.expand_path("../../../support/public/one-style.html", __FILE__)
-        page.goto path_to_file_url file_path
+        await page.goto path_to_file_url file_path
         expect(urls.size).to eq 2
         expect(urls).to include 'one-style.html'
         expect(urls).to include 'one-style.css'
@@ -392,7 +392,7 @@ module Chromiebara
       it 'should work' do
         page.set_request_interception true
         page.on :request, -> (request) { request.continue }
-        page.goto server.empty_page
+        await page.goto server.empty_page
       end
 
       it 'should amend HTTP headers' do
@@ -402,7 +402,7 @@ module Chromiebara
           headers['FOO'] = 'bar'
           request.continue headers: headers
         end
-        page.goto server.empty_page
+        await page.goto server.empty_page
         request, _ = await Promise.all(
           server.wait_for_request('/sleep.zzz'),
           page.evaluate_function("() => fetch('/sleep.zzz')")
@@ -418,13 +418,13 @@ module Chromiebara
         end
         console_message = nil
         page.on :console, -> (msg) { console_message = msg }
-        page.goto server.empty_page
+        await page.goto server.empty_page
         expect(page.url).to eq server.empty_page
         expect(console_message.text).to eq('yellow');
       end
 
       it 'should amend method' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
 
         page.set_request_interception true
         page.on :request, -> (request) do
@@ -438,7 +438,7 @@ module Chromiebara
       end
 
       it 'should amend post data' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
 
         page.set_request_interception true
         page.on :request, -> (request) do
@@ -471,7 +471,7 @@ module Chromiebara
         page.on :request, -> (request) do
           request.respond status: 201, headers: { foo: 'bar' }, body: 'Yo, page!'
         end
-        response = page.goto server.empty_page
+        response = await page.goto server.empty_page
         expect(response.status).to eq 201
         expect(response.headers["foo"]).to eq 'bar'
         expect(await page.evaluate_function("() => document.body.textContent")).to eq 'Yo, page!'
@@ -482,7 +482,7 @@ module Chromiebara
         page.on :request, -> (request) do
           request.respond status: 422, body: 'Yo, page!'
         end
-        response = page.goto server.empty_page
+        response = await page.goto server.empty_page
         expect(response.status).to eq 422
         expect(response.status_text).to eq 'Unprocessable Entity'
         expect(await page.evaluate_function("() => document.body.textContent")).to eq 'Yo, page!'
@@ -496,7 +496,7 @@ module Chromiebara
           end
           request.respond status: 302, headers: { location: server.empty_page }
         end
-        response = page.goto server.domain + 'rrredirect'
+        response = await page.goto server.domain + 'rrredirect'
         expect(response.request.redirect_chain.length).to eq 1
         expect(response.request.redirect_chain[0].url).to eq server.domain + 'rrredirect'
         expect(response.url).to eq server.empty_page
@@ -523,7 +523,7 @@ module Chromiebara
         page.on :request, -> (request) do
           request.respond status: 200, headers: { 'foo': true }, body: 'Yo, page!'
         end
-        response = page.goto server.empty_page
+        response = await page.goto server.empty_page
         expect(response.status).to eq 200
         headers = response.headers
         expect(headers['foo']).to eq 'true'

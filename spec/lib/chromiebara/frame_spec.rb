@@ -8,7 +8,7 @@ module Chromiebara
 
     describe 'Frame#execution_context' do
       it 'should work' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         attach_frame page, 'frame1', server.empty_page
         expect(page.frames.length).to eq 2
         frame1, frame2 = page.frames
@@ -31,7 +31,7 @@ module Chromiebara
 
     describe 'Frame#evaluate_handle_function' do
       it 'should work' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         main_frame = page.main_frame
         window_handle = main_frame.evaluate_handle_function '() => window'
         expect(window_handle).not_to be_nil
@@ -49,7 +49,7 @@ module Chromiebara
 
     describe 'Frame Management' do
       it 'should handle nested frames' do
-        page.goto server.domain + 'frames/nested-frames.html'
+        await page.goto server.domain + 'frames/nested-frames.html'
         expect(dump_frames(page.main_frame)).to eq([
           'http://localhost:<PORT>/frames/nested-frames.html',
           '    http://localhost:<PORT>/frames/two-frames.html (2frames)',
@@ -60,7 +60,7 @@ module Chromiebara
       end
 
       it 'should send events when frames are manipulated dynamically' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         # validate frame_attached events
         attached_frames = []
         page.on :frame_attached, -> (frame) { attached_frames << frame }
@@ -84,7 +84,7 @@ module Chromiebara
       end
 
       it 'should send "frame_navigated" when navigating on anchor URLs' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         await Promise.all(
           wait_event(page, :frame_navigated),
           page.goto(server.empty_page + '#foo')
@@ -93,9 +93,9 @@ module Chromiebara
       end
 
       it 'should persist main_frame on cross-process navigation' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         main_frame = page.main_frame
-        page.goto server.cross_process_domain + 'empty.html'
+        await page.goto server.cross_process_domain + 'empty.html'
         expect(page.main_frame == main_frame).to eq true
       end
 
@@ -103,7 +103,7 @@ module Chromiebara
         has_events = false
         page.on :frame_attached, -> (frame) { has_events = true }
         page.on :frame_detached, -> (frame) { has_events = true }
-        page.goto server.empty_page
+        await page.goto server.empty_page
         expect(has_events).to eq false
       end
 
@@ -114,7 +114,7 @@ module Chromiebara
         page.on :frame_attached, -> (frame) { attached_frames << frame }
         page.on :frame_detached, -> (frame) { detached_frames << frame }
         page.on :frame_navigated, -> (frame) { navigated_frames << frame }
-        page.goto server.domain + 'frames/nested-frames.html'
+        await page.goto server.domain + 'frames/nested-frames.html'
         expect(attached_frames.length).to eq 4
         expect(detached_frames.length).to eq 0
         expect(navigated_frames.length).to eq 5
@@ -122,7 +122,7 @@ module Chromiebara
         attached_frames = []
         detached_frames = []
         navigated_frames = []
-        page.goto server.empty_page
+        await page.goto server.empty_page
         expect(attached_frames.length).to eq 0
         expect(detached_frames.length).to eq 4
         expect(navigated_frames.length).to eq 1
@@ -135,7 +135,7 @@ module Chromiebara
         page.on :frame_attached, -> (frame) { attached_frames << frame }
         page.on :frame_detached, -> (frame) { detached_frames << frame }
         page.on :frame_navigated, -> (frame) { navigated_frames << frame }
-        page.goto server.domain + 'frames/frameset.html'
+        await page.goto server.domain + 'frames/frameset.html'
         expect(attached_frames.length).to eq 4
         expect(detached_frames.length).to eq 0
         expect(navigated_frames.length).to eq 5
@@ -143,14 +143,14 @@ module Chromiebara
         attached_frames = []
         detached_frames = []
         navigated_frames = []
-        page.goto server.empty_page
+        await page.goto server.empty_page
         expect(attached_frames.length).to eq 0
         expect(detached_frames.length).to eq 4
         expect(navigated_frames.length).to eq 1
       end
 
       it 'should report frame from-inside shadow DOM' do
-        page.goto server.domain + 'shadow.html'
+        await page.goto server.domain + 'shadow.html'
         function = <<~JAVASCRIPT
         async url => {
           const frame = document.createElement('iframe');

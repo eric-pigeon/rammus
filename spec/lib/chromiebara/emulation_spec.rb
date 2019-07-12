@@ -16,7 +16,7 @@ module Chromiebara
       end
 
       it 'should support mobile emulation' do
-        page.goto server.domain + 'mobile.html'
+        await page.goto server.domain + 'mobile.html'
         expect(await page.evaluate_function "() => window.innerWidth").to eq 800
         page.set_viewport iPhone[:viewport]
         expect(await page.evaluate_function "() => window.innerWidth").to eq 375
@@ -25,7 +25,7 @@ module Chromiebara
       end
 
       it 'should support touch emulation' do
-        page.goto server.domain + 'mobile.html'
+        await page.goto server.domain + 'mobile.html'
         expect(await page.evaluate_function "() => 'ontouchstart' in window").to eq false
         page.set_viewport iPhone[:viewport]
         expect(await page.evaluate_function "() => 'ontouchstart' in window").to eq true
@@ -50,10 +50,10 @@ module Chromiebara
       end
 
       it 'should be detectable by Modernizr' do
-        page.goto server.domain + 'detect-touch.html'
+        await page.goto server.domain + 'detect-touch.html'
         expect(await page.evaluate_function "() => document.body.textContent.trim()").to eq 'NO'
         page.set_viewport iPhone[:viewport]
-        page.goto server.domain + 'detect-touch.html'
+        await page.goto server.domain + 'detect-touch.html'
         expect(await page.evaluate_function "() => document.body.textContent.trim()").to eq 'YES'
       end
 
@@ -64,7 +64,7 @@ module Chromiebara
       end
 
       it 'should support landscape emulation' do
-        page.goto server.domain + 'mobile.html'
+        await page.goto server.domain + 'mobile.html'
         expect(await page.evaluate_function "() => screen.orientation.type").to eq 'portrait-primary'
         page.set_viewport iPhoneLandscape[:viewport]
         expect(await page.evaluate_function "() => screen.orientation.type").to eq 'landscape-primary'
@@ -75,7 +75,7 @@ module Chromiebara
 
     describe 'Page#emulate' do
       it 'should emulate mobile' do
-        page.goto server.domain + 'mobile.html'
+        await page.goto server.domain + 'mobile.html'
         page.emulate iPhone
         expect(await page.evaluate_function "() => window.innerWidth").to eq 375
         expect(await page.evaluate_function "() => navigator.userAgent").to include 'iPhone'
@@ -83,7 +83,7 @@ module Chromiebara
 
       it 'should support clicking' do
         page.emulate iPhone
-        page.goto server.domain + 'input/button.html'
+        await page.goto server.domain + 'input/button.html'
         button = page.query_selector 'button'
         await page.evaluate_function "button => button.style.marginTop = '200px'", button
         button.click

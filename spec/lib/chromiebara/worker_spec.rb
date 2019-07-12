@@ -16,7 +16,7 @@ module Chromiebara
 
       expect(await worker.evaluate_function '() => self.workerFunction()').to eq 'worker function result'
 
-      page.goto server.empty_page
+      await page.goto server.empty_page
       expect(page.workers.length).to eq 0
     end
 

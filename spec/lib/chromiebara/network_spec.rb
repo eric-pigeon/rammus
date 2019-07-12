@@ -13,7 +13,7 @@ module Chromiebara
           next if is_favicon request
           requests << request
         end
-        page.goto server.empty_page
+        await page.goto server.empty_page
         expect(requests.length).to eq 1
       end
 
@@ -23,7 +23,7 @@ module Chromiebara
           next if is_favicon request
           requests << request
         end
-        page.goto server.empty_page
+        await page.goto server.empty_page
         attach_frame page, 'frame1', server.empty_page
         expect(requests.length).to eq 2
       end
@@ -34,7 +34,7 @@ module Chromiebara
           next if is_favicon request
           requests << request
         end
-        page.goto server.empty_page
+        await page.goto server.empty_page
         await page.evaluate_function "() => fetch('/empty.html')"
         expect(requests.length).to eq 2
       end
@@ -47,13 +47,13 @@ module Chromiebara
           next if is_favicon request
           requests << request
         end
-        page.goto server.empty_page
+        await page.goto server.empty_page
         expect(requests.length).to eq 1
         expect(requests[0].frame).to eq page.main_frame
       end
 
       it 'should work for subframe navigation request' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         requests = []
         page.on :request, -> (request) do
           next if is_favicon request
@@ -65,7 +65,7 @@ module Chromiebara
       end
 
       it 'should work for fetch requests' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         requests = []
         page.on :request, -> (request) do
           next if is_favicon request
@@ -79,7 +79,7 @@ module Chromiebara
 
     describe 'Request#headers' do
       it 'should work' do
-        response = page.goto server.empty_page
+        response = await page.goto server.empty_page
         expect(response.request.headers['user-agent']).to include 'Chrome'
       end
     end
@@ -90,14 +90,14 @@ module Chromiebara
           res.header['foo'] = 'bar'
           res.finish
         end
-        response = page.goto server.empty_page
+        response = await page.goto server.empty_page
         expect(response.headers['foo']).to eq 'bar'
       end
     end
 
     describe 'Response#from_cache' do
       it 'should return |false| for non-cached content' do
-        response = page.goto server.empty_page
+        response = await page.goto server.empty_page
         expect(response.from_cache).to eq false
       end
 
@@ -109,7 +109,7 @@ module Chromiebara
         end
 
         # Load and re-load to make sure it's cached.
-        page.goto server.domain + 'cached/one-style.html'
+        await page.goto server.domain + 'cached/one-style.html'
         await page.reload
 
         expect(responses.size).to eq 2
@@ -122,7 +122,7 @@ module Chromiebara
 
     describe 'Response#from_service_worker' do
       it 'should return |false| for non-service-worker content' do
-        response = page.goto server.empty_page
+        response = await page.goto server.empty_page
         expect(response.from_service_worker).to eq false
       end
 
@@ -134,7 +134,7 @@ module Chromiebara
         end
 
         # Load and re-load to make sure serviceworker is installed and running.
-        page.goto server.domain + 'serviceworkers/fetch/sw.html',  wait_until: :networkidle2
+        await page.goto server.domain + 'serviceworkers/fetch/sw.html',  wait_until: :networkidle2
         await page.evaluate_function 'async() => await window.activationPromise'
         await page.reload
 
@@ -148,7 +148,7 @@ module Chromiebara
 
     describe 'Request#post_data' do
       it 'should work' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         request = nil
         page.on :request, -> (r) { request = r }
         await page.evaluate_function "() => fetch('./post', { method: 'POST', body: JSON.stringify({foo: 'bar'})})"
@@ -157,27 +157,27 @@ module Chromiebara
       end
 
       it 'should be |undefined| when there is no post data' do
-        response = page.goto server.empty_page
+        response = await page.goto server.empty_page
         expect(response.request.post_data).to eq nil
       end
     end
 
     describe 'Response#text' do
       it 'should work' do
-        response = page.goto server.domain + 'simple.json'
+        response = await page.goto server.domain + 'simple.json'
         expect(response.text).to eq "{\"foo\": \"bar\"}\n"
       end
 
       it 'should return uncompressed text' do
         server.enable_gzip '/simple.json'
-        response = page.goto server.domain + 'simple.json'
+        response = await page.goto server.domain + 'simple.json'
         expect(response.headers['content-encoding']).to eq 'gzip'
         expect(response.text).to eq "{\"foo\": \"bar\"}\n"
       end
 
       it 'should throw when requesting body of redirected response' do
         server.set_redirect '/foo.html', '/empty.html'
-        response = page.goto server.domain + "foo.html"
+        response = await page.goto server.domain + "foo.html"
         redirect_chain = response.request.redirect_chain
         expect(redirect_chain.length).to eq 1
         redirected = redirect_chain[0].response
@@ -189,7 +189,7 @@ module Chromiebara
 
       # TODO
       xit 'should wait until response completes' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         # Setup server to trap request.
         server_response = nil
         server.set_route '/get' do |req, res|
@@ -225,7 +225,7 @@ module Chromiebara
 
     describe 'Response#json' do
       it 'should work' do
-        response = page.goto server.domain + 'simple.json'
+        response = await page.goto server.domain + 'simple.json'
         expect(response.json).to eq 'foo' => 'bar'
       end
     end
@@ -249,7 +249,7 @@ module Chromiebara
 
     describe 'Response#status_text' do
       it 'should work' do
-        response = page.goto server.domain + 'empty.html'
+        response = await page.goto server.domain + 'empty.html'
         expect(response.status_text).to eq 'OK'
       end
     end
@@ -258,7 +258,7 @@ module Chromiebara
       it 'Page.Events.Request' do
         requests = []
         page.on :request, -> (request) { requests << request }
-        page.goto server.empty_page
+        await page.goto server.empty_page
         expect(requests.length).to eq 1
         expect(requests[0].url).to eq server.empty_page
         expect(requests[0].resource_type).to eq 'document'
@@ -271,7 +271,7 @@ module Chromiebara
       it 'Page.Events.Response' do
         responses = []
         page.on :response, -> (response) { responses << response }
-        page.goto server.empty_page
+        await page.goto server.empty_page
         expect(responses.length).to eq 1
         expect(responses[0].url).to eq server.empty_page
         expect(responses[0].status).to eq 200
@@ -294,7 +294,7 @@ module Chromiebara
         end
         failed_requests = []
         page.on :request_failed, -> (request) {failed_requests << request }
-        page.goto server.domain + 'one-style.html'
+        await page.goto server.domain + 'one-style.html'
         expect(failed_requests.length).to eq 1
         expect(failed_requests[0].url).to include 'one-style.css'
         expect(failed_requests[0].response).to eq nil
@@ -306,7 +306,7 @@ module Chromiebara
       it 'Page.Events.RequestFinished' do
         requests = []
         page.on :request_finished, -> (request) { requests << request }
-        page.goto server.empty_page
+        await page.goto server.empty_page
         expect(requests.length).to eq 1
         expect(requests[0].url).to eq server.empty_page
         expect(requests[0].response).not_to be_nil
@@ -319,7 +319,7 @@ module Chromiebara
         page.on :request, -> (request) { events << 'request' }
         page.on :response, -> (response) { events << 'response' }
         page.on :request_finished, -> (request) { events << 'requestfinished' }
-        page.goto server.empty_page
+        await page.goto server.empty_page
         expect(events).to eq ['request', 'response', 'requestfinished']
       end
 
@@ -331,7 +331,7 @@ module Chromiebara
         page.on :request_failed, -> (request) { events <<  "FAIL #{request.url}" }
         server.set_redirect '/foo.html', '/empty.html'
         foo_url = server.domain + 'foo.html'
-        response = page.goto foo_url
+        response = await page.goto foo_url
         expect(events).to eq([
           "GET #{foo_url}",
           "302 #{foo_url}",
@@ -354,7 +354,7 @@ module Chromiebara
         requests = {}
         page.on :request, -> (request) { requests[request.url.split('/').pop] = request }
         server.set_redirect '/rrredirect', '/frames/one-frame.html'
-        page.goto server.domain + 'rrredirect'
+        await page.goto server.domain + 'rrredirect'
         expect(requests['rrredirect'].is_navigation_request).to eq true
         expect(requests['one-frame.html'].is_navigation_request).to eq true
         expect(requests['frame.html'].is_navigation_request).to eq true
@@ -370,7 +370,7 @@ module Chromiebara
         end
         page.set_request_interception true
         server.set_redirect '/rrredirect', '/frames/one-frame.html'
-        page.goto server.domain + 'rrredirect'
+        await page.goto server.domain + 'rrredirect'
         expect(requests['rrredirect'].is_navigation_request).to eq true
         expect(requests['one-frame.html'].is_navigation_request).to eq true
         expect(requests['frame.html'].is_navigation_request).to eq true
@@ -381,7 +381,7 @@ module Chromiebara
       it 'should work when navigating to image' do
         requests = []
         page.on :request, -> (request) { requests << request }
-        page.goto server.domain + 'pptr.png'
+        await page.goto server.domain + 'pptr.png'
         expect(requests[0].is_navigation_request).to eq true
       end
     end
@@ -405,7 +405,7 @@ module Chromiebara
     describe 'Page#authenticate' do
       it 'should work' do
         server.set_auth '/empty.html', 'user', 'pass'
-        response = page.goto server.empty_page
+        response = await page.goto server.empty_page
         expect(response.status).to eq 401
         page.authenticate username: 'user', password: 'pass'
         response = await page.reload
@@ -415,19 +415,19 @@ module Chromiebara
       it 'should fail if wrong credentials' do
         server.set_auth '/empty.html', 'user2', 'pass2'
         page.authenticate username: 'foo', password: 'bar'
-        response = page.goto server.empty_page
+        response = await page.goto server.empty_page
         expect(response.status).to eq 401
       end
 
       it 'should allow disable authentication' do
         server.set_auth '/empty.html', 'user3', 'pass3'
         page.authenticate username: 'user3', password: 'pass3'
-        response = page.goto server.empty_page
+        response = await page.goto server.empty_page
         expect(response.status).to eq 200
 
         page.authenticate
         # Navigate to a different origin to bust Chrome's credential caching.
-        response = page.goto server.cross_process_domain + 'empty.html'
+        response = await page.goto server.cross_process_domain + 'empty.html'
         expect(response.status).to eq 401
       end
     end

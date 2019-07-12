@@ -55,7 +55,7 @@ module Chromiebara
       end
 
       it 'should evaluate in the page context' do
-        page.goto server.domain + 'global-var.html'
+        await page.goto server.domain + 'global-var.html'
         expect(await page.evaluate('globalVar')).to eq 123
       end
 
@@ -102,7 +102,7 @@ module Chromiebara
           # for the execution context to be created from
           await Promise.resolve(nil).then { frame_evaluation = frame.evaluate_function "() => 6 * 7" }
         end
-        page.goto server.empty_page
+        await page.goto server.empty_page
         expect(await frame_evaluation).to eq 42
       end
 
@@ -258,7 +258,7 @@ module Chromiebara
       end
 
       it 'should not throw an error when evaluation does a navigation' do
-        page.goto server.domain + 'one-style.html'
+        await page.goto server.domain + 'one-style.html'
         result = await page.evaluate_function "() => {
           window.location = '/empty.html';
           return [42];
@@ -270,14 +270,14 @@ module Chromiebara
     describe 'Page#evaluate_on_new_document' do
       it 'should evaluate before anything else on the page' do
         page.evaluate_on_new_document "function(){ window.injected = 123; }"
-        page.goto server.domain + 'tamperable.html'
+        await page.goto server.domain + 'tamperable.html'
         expect(await page.evaluate_function "() => window.result").to eq 123
       end
 
       it 'should work with CSP' do
         server.set_content_security_policy '/empty.html', 'script-src ' + server.domain
         page.evaluate_on_new_document "function() { window.injected = 123; }"
-        page.goto server.domain + 'empty.html'
+        await page.goto server.domain + 'empty.html'
         expect(await page.evaluate_function "() => window.injected").to eq 123
 
         # Make sure CSP works.
@@ -291,7 +291,7 @@ module Chromiebara
 
     describe 'Frame#evaluate_function' do
       it 'should have different execution contexts' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         attach_frame page, 'frame1', server.empty_page
         expect(page.frames.length).to eq 2
         await page.frames[0].evaluate_function "() => window.FOO = 'foo'"
@@ -301,17 +301,17 @@ module Chromiebara
       end
 
       it 'should have correct execution contexts' do
-        page.goto server.domain + 'frames/one-frame.html'
+        await page.goto server.domain + 'frames/one-frame.html'
         expect(page.frames.length).to eq 2
         expect(await page.frames[0].evaluate_function '() => document.body.textContent.trim()').to eq ''
         expect(await page.frames[1].evaluate_function '() => document.body.textContent.trim()').to eq "Hi, I'm frame"
       end
 
       it 'should execute after cross-site navigation' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         main_frame = page.main_frame
         expect(await main_frame.evaluate_function '() => window.location.href').to include 'localhost'
-        page.goto server.cross_process_domain + 'empty.html'
+        await page.goto server.cross_process_domain + 'empty.html'
         expect(await main_frame.evaluate_function '() => window.location.href').to include '127'
       end
     end

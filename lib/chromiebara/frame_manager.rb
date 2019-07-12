@@ -69,26 +69,35 @@ module Chromiebara
       referer ||= network_manager.extra_http_headers[:referer]
       wait_until ||= [:load]
       timeout ||= timeout_settings.navigation_timeout
-      error_message = "Navigation Timeout Exceeded: #{timeout}s exceeded"
 
-      watcher = LifecycleWatcher.new frame_manager: self, frame: frame, wait_until: wait_until, timeout: timeout
-      response = await client.command(Protocol::Page.navigate url: url, referrer: referer, frame_id: frame.id),
-        timeout, error: error_message
-      raise "#{response["errorText"]} at #{url}" if response["errorText"]
-      ensure_new_document_navigation = !!response["loaderId"]
+      Promise.resolve(nil).then do
+        watcher = LifecycleWatcher.new frame_manager: self, frame: frame, wait_until: wait_until, timeout: timeout
 
-      navigation_promise = if ensure_new_document_navigation
-        watcher.new_document_navigation_promise
-      else
-        watcher.same_document_navigation_promise
+        error, ensure_new_document_navigation = await Promise.race(
+          navigate(url, referer, frame.id),
+          watcher.timeout_or_termination_promise
+        )
+
+        if error.nil?
+          navigation_promise =
+            if ensure_new_document_navigation
+              watcher.new_document_navigation_promise
+            else
+              watcher.same_document_navigation_promise
+            end
+
+          error = await Promise.race(
+            watcher.timeout_or_termination_promise,
+            navigation_promise
+          )
+        end
+
+        watcher.dispose
+
+        raise error unless error.nil?
+
+        watcher.navigation_response
       end
-
-      error = await Promise.race(watcher.termination_promise, navigation_promise), timeout, error: error_message
-      raise error unless error.nil?
-
-      watcher.navigation_response
-    ensure
-      watcher&.dispose
     end
 
     # @param [Chromiebara::Frame] frame
@@ -121,8 +130,9 @@ module Chromiebara
       @_frames.values
     end
 
-    # @param {!string} frameId
-    # @return {?Frame}
+    # @param [String] frame_id
+    #
+    # @return [Frame, nil]
     #
     def frame(frame_id)
       @_frames[frame_id]
@@ -136,6 +146,22 @@ module Chromiebara
     end
 
     private
+
+      def navigate(url, referrer, frame_id)
+        Promise.resolve(nil).then do
+          begin
+            response = await client.command(Protocol::Page.navigate url: url, referrer: referrer, frame_id: frame_id)
+            ensure_new_document_navigation = !!response["loaderId"]
+            if response["errorText"]
+              [StandardError.new("#{response["errorText"]} at #{url}"), ensure_new_document_navigation]
+            else
+              [nil, ensure_new_document_navigation]
+            end
+          rescue => error
+            [error, false]
+          end
+        end
+      end
 
       # @param {!Protocol.Page.FrameTree} frameTree
       #

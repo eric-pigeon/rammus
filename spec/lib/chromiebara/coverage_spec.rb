@@ -9,7 +9,7 @@ module Chromiebara
     describe 'JSCoverage' do
       it 'should work' do
         page.coverage.start_js_coverage
-        page.goto server.domain + 'jscoverage/simple.html', wait_until: :networkidle0
+        await page.goto server.domain + 'jscoverage/simple.html', wait_until: :networkidle0
         coverage = page.coverage.stop_js_coverage
         expect(coverage.length).to eq 1
         expect(coverage[0][:url]).to include '/jscoverage/simple.html'
@@ -21,7 +21,7 @@ module Chromiebara
 
       it 'should report source_urls' do
         page.coverage.start_js_coverage
-        page.goto server.domain + 'jscoverage/sourceurl.html'
+        await page.goto server.domain + 'jscoverage/sourceurl.html'
         coverage = page.coverage.stop_js_coverage
         expect(coverage.length).to eq 1
         expect(coverage[0][:url]).to eq 'nicename.js'
@@ -29,14 +29,14 @@ module Chromiebara
 
       it 'should ignore eval() scripts by default' do
         page.coverage.start_js_coverage
-        page.goto server.domain + 'jscoverage/eval.html'
+        await page.goto server.domain + 'jscoverage/eval.html'
         coverage = page.coverage.stop_js_coverage
         expect(coverage.length).to eq 1
       end
 
       it 'shouldn\'t ignore eval() scripts if reportAnonymousScripts is true' do
         page.coverage.start_js_coverage report_anonymous_scripts: true
-        page.goto server.domain + 'jscoverage/eval.html'
+        await page.goto server.domain + 'jscoverage/eval.html'
         coverage = page.coverage.stop_js_coverage
         expect(coverage.detect { |entry| entry[:url].start_with? 'debugger://' }).not_to be_nil
         expect(coverage.length).to eq 2
@@ -44,7 +44,7 @@ module Chromiebara
 
       it 'should ignore pptr internal scripts if reportAnonymousScripts is true' do
         page.coverage.start_js_coverage report_anonymous_scripts: true
-        page.goto server.empty_page
+        await page.goto server.empty_page
         await page.evaluate 'console.log("foo")'
         await page.evaluate_function "() => console.log('bar')"
         coverage = page.coverage.stop_js_coverage
@@ -53,7 +53,7 @@ module Chromiebara
 
       it 'should report multiple scripts' do
         page.coverage.start_js_coverage
-        page.goto server.domain + 'jscoverage/multiple.html'
+        await page.goto server.domain + 'jscoverage/multiple.html'
         coverage = page.coverage.stop_js_coverage
         expect(coverage.length).to eq 2
         coverage.sort! { |a, b| a[:url] <=> b[:url] }
@@ -63,7 +63,7 @@ module Chromiebara
 
       it 'should report right ranges' do
         page.coverage.start_js_coverage
-        page.goto server.domain + 'jscoverage/ranges.html'
+        await page.goto server.domain + 'jscoverage/ranges.html'
         coverage = page.coverage.stop_js_coverage
         expect(coverage.length).to eq 1
         entry = coverage[0]
@@ -74,7 +74,7 @@ module Chromiebara
 
       it 'should report scripts that have no coverage' do
         page.coverage.start_js_coverage
-        page.goto server.domain + 'jscoverage/unused.html'
+        await page.goto server.domain + 'jscoverage/unused.html'
         coverage = page.coverage.stop_js_coverage
         expect(coverage.length).to eq 1
         entry = coverage[0]
@@ -84,7 +84,7 @@ module Chromiebara
 
       it 'should work with conditionals' do
         page.coverage.start_js_coverage
-        page.goto server.domain + 'jscoverage/involved.html'
+        await page.goto server.domain + 'jscoverage/involved.html'
         coverage = page.coverage.stop_js_coverage
         coverage.each { |part| part[:url].gsub!(/:\d{4}\//, ':<PORT>/') }
         expected = [
@@ -121,16 +121,16 @@ module Chromiebara
       describe '#reset_on_navigation' do
         it 'should report scripts across navigations when disabled' do
           page.coverage.start_js_coverage reset_on_navigation: false
-          page.goto server.domain + 'jscoverage/multiple.html'
-          page.goto server.empty_page
+          await page.goto server.domain + 'jscoverage/multiple.html'
+          await page.goto server.empty_page
           coverage = page.coverage.stop_js_coverage
           expect(coverage.length).to eq 2
         end
 
         it 'should NOT report scripts across navigations when enabled' do
           page.coverage.start_js_coverage
-          page.goto server.domain + 'jscoverage/multiple.html'
-          page.goto server.empty_page
+          await page.goto server.domain + 'jscoverage/multiple.html'
+          await page.goto server.empty_page
           coverage = page.coverage.stop_js_coverage
           expect(coverage.length).to eq 0
         end
@@ -149,7 +149,7 @@ module Chromiebara
     describe 'CSSCoverage' do
       it 'should work' do
         page.coverage.start_css_coverage
-        page.goto server.domain + 'csscoverage/simple.html'
+        await page.goto server.domain + 'csscoverage/simple.html'
         coverage = page.coverage.stop_css_coverage
         expect(coverage.length).to eq 1
         expect(coverage[0][:url]).to include '/csscoverage/simple.html'
@@ -160,7 +160,7 @@ module Chromiebara
 
       it 'should report sourceURLs' do
         page.coverage.start_css_coverage
-        page.goto server.domain + 'csscoverage/sourceurl.html'
+        await page.goto server.domain + 'csscoverage/sourceurl.html'
         coverage = page.coverage.stop_css_coverage
         expect(coverage.length).to eq 1
         expect(coverage[0][:url]).to eq 'nicename.css'
@@ -168,7 +168,7 @@ module Chromiebara
 
       it 'should report multiple stylesheets' do
         page.coverage.start_css_coverage
-        page.goto server.domain + 'csscoverage/multiple.html'
+        await page.goto server.domain + 'csscoverage/multiple.html'
         coverage = page.coverage.stop_css_coverage
         expect(coverage.length).to eq 2
         coverage.sort! { |a, b| a[:url] <=> b[:url] }
@@ -178,7 +178,7 @@ module Chromiebara
 
       it 'should report stylesheets that have no coverage' do
         page.coverage.start_css_coverage
-        page.goto server.domain + 'csscoverage/unused.html'
+        await page.goto server.domain + 'csscoverage/unused.html'
         coverage = page.coverage.stop_css_coverage
         expect(coverage.length).to eq 1
         expect(coverage[0][:url]).to eq 'unused.css'
@@ -187,7 +187,7 @@ module Chromiebara
 
       it 'should work with media queries' do
         page.coverage.start_css_coverage
-        page.goto server.domain + 'csscoverage/media.html'
+        await page.goto server.domain + 'csscoverage/media.html'
         coverage = page.coverage.stop_css_coverage
         expect(coverage.length).to eq 1
         expect(coverage[0][:url]).to include '/csscoverage/media.html'
@@ -196,7 +196,7 @@ module Chromiebara
 
       it 'should work with complicated usecases' do
         page.coverage.start_css_coverage
-        page.goto server.domain + 'csscoverage/involved.html'
+        await page.goto server.domain + 'csscoverage/involved.html'
         coverage = page.coverage.stop_css_coverage
         coverage.each { |part| part[:url].gsub!(/:\d{4}\//, ':<PORT>/') }
         expected = [
@@ -249,16 +249,16 @@ module Chromiebara
       describe 'reset_on_navigation' do
         it 'should report stylesheets across navigations' do
           page.coverage.start_css_coverage reset_on_navigation: false
-          page.goto server.domain + 'csscoverage/multiple.html'
-          page.goto server.empty_page
+          await page.goto server.domain + 'csscoverage/multiple.html'
+          await page.goto server.empty_page
           coverage = page.coverage.stop_css_coverage
           expect(coverage.length).to eq 2
         end
 
         it 'should NOT report scripts across navigations' do
           page.coverage.start_css_coverage
-          page.goto server.domain + 'csscoverage/multiple.html'
-          page.goto server.empty_page
+          await page.goto server.domain + 'csscoverage/multiple.html'
+          await page.goto server.empty_page
           coverage = page.coverage.stop_css_coverage
           expect(coverage.length).to eq 0
         end

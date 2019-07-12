@@ -9,7 +9,7 @@ module Chromiebara
     describe '#bounding_box' do
       it 'returns the bounding box' do
         page.set_viewport width: 500, height: 500
-        page.goto server.domain + 'grid.html'
+        await page.goto server.domain + 'grid.html'
         element_handle = page.query_selector '.box:nth-of-type(13)'
         box = element_handle.bounding_box
         expect(box).to eq(x: 100, y: 50, width: 50, height: 50)
@@ -17,7 +17,7 @@ module Chromiebara
 
       it 'should handle nested frames' do
         page.set_viewport width: 500, height: 500
-        page.goto server.domain + 'frames/nested-frames.html'
+        await page.goto server.domain + 'frames/nested-frames.html'
         nestedFrame = page.frames[1].child_frames[1]
         element_handle = nestedFrame.query_selector 'div'
         box = element_handle.bounding_box
@@ -62,7 +62,7 @@ module Chromiebara
 
     describe '#box_model' do
       it 'returns the box model' do
-        page.goto server.domain + 'resetcss.html'
+        await page.goto server.domain + 'resetcss.html'
 
         # Step 1: Add Frame and position it absolutely.
         attach_frame page, 'frame1', server.domain + 'resetcss.html'
@@ -131,7 +131,7 @@ module Chromiebara
 
     describe '#content_frame' do
       it 'returns the frame' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         attach_frame page, 'frame1', server.empty_page
         element_handle = page.query_selector '#frame1'
         frame = element_handle.content_frame
@@ -141,41 +141,41 @@ module Chromiebara
 
     describe '#click' do
       it 'click the element' do
-        page.goto server.domain + 'input/button.html'
+        await page.goto server.domain + 'input/button.html'
         button = page.query_selector 'button'
         button.click
         expect(await page.evaluate_function "() => result").to eq 'Clicked'
       end
 
       it 'should work for Shadow DOM v1' do
-        page.goto server.domain + 'shadow.html'
+        await page.goto server.domain + 'shadow.html'
         button_handle = await page.evaluate_handle_function "() => button"
         button_handle.click
         expect(await page.evaluate_function "() => clicked").to eq true
       end
 
       it 'should work for TextNodes' do
-        page.goto server.domain + 'input/button.html'
+        await page.goto server.domain + 'input/button.html'
         button_text_node = await page.evaluate_handle_function "() => document.querySelector('button').firstChild"
         expect { button_text_node.click }.to raise_error 'Node is not of type HTMLElement'
       end
 
       it 'should throw for detached nodes' do
-        page.goto server.domain + 'input/button.html'
+        await page.goto server.domain + 'input/button.html'
         button = page.query_selector 'button'
         await page.evaluate_function "button => button.remove()", button
         expect { button.click }. to raise_error 'Node is detached from document'
       end
 
       it 'should throw for hidden nodes' do
-        page.goto server.domain + 'input/button.html'
+        await page.goto server.domain + 'input/button.html'
         button = page.query_selector 'button'
         await page.evaluate_function "button => button.style.display = 'none'", button
         expect { button.click }.to raise_error 'Node is either not visible or not an HTMLElement'
       end
 
       it 'should throw for recursively hidden nodes' do
-        page.goto server.domain + 'input/button.html'
+        await page.goto server.domain + 'input/button.html'
         button = page.query_selector 'button'
         await page.evaluate_function "button => button.parentElement.style.display = 'none'", button
         expect { button.click }.to raise_error 'Node is either not visible or not an HTMLElement'
@@ -190,7 +190,7 @@ module Chromiebara
 
     describe '#hover' do
       it 'hovers the element' do
-        page.goto server.domain + 'input/scrollable.html'
+        await page.goto server.domain + 'input/scrollable.html'
         button = page.query_selector '#button-6'
         button.hover
         expect(await page.evaluate_function "() => document.querySelector('button:hover').id").to eq 'button-6'
@@ -199,7 +199,7 @@ module Chromiebara
 
     describe '#is_intersecting_viewport' do
       it 'should work' do
-        page.goto server.domain + 'offscreenbuttons.html'
+        await page.goto server.domain + 'offscreenbuttons.html'
         11.times do |i|
           button = page.query_selector "#btn#{i}"
           # All but last button are visible.

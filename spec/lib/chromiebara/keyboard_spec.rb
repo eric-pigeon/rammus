@@ -27,7 +27,7 @@ module Chromiebara
       end
 
       it 'should move with the arrow keys' do
-        page.goto server.domain + '/input/textarea.html'
+        await page.goto server.domain + '/input/textarea.html'
         page.type 'textarea', 'Hello World!'
         expect(await page.evaluate_function "() => document.querySelector('textarea').value").to eq 'Hello World!'
         'World!'.length.times { page.keyboard.press 'ArrowLeft' }
@@ -41,7 +41,7 @@ module Chromiebara
       end
 
       it 'should send a character with ElementHandle.press' do
-        page.goto server.domain + '/input/textarea.html'
+        await page.goto server.domain + '/input/textarea.html'
         textarea = page.query_selector 'textarea'
         textarea.press 'a'
         expect(await page.evaluate "document.querySelector('textarea').value").to eq 'a'
@@ -53,14 +53,14 @@ module Chromiebara
       end
 
       it 'ElementHandle#press should support |text| option' do
-        page.goto server.domain + 'input/textarea.html'
+        await page.goto server.domain + 'input/textarea.html'
         textarea = page.query_selector 'textarea'
         textarea.press 'a', text: 'ё'
         expect(await page.evaluate_function "() => document.querySelector('textarea').value").to eq 'ё'
       end
 
       it 'should send a character with send_character' do
-         page.goto server.domain + '/input/textarea.html'
+         await page.goto server.domain + '/input/textarea.html'
          page.focus 'textarea'
          page.keyboard.send_character '嗨'
 
@@ -71,7 +71,7 @@ module Chromiebara
       end
 
       it 'should report shift_key' do
-        page.goto server.domain + '/input/keyboard.html'
+        await page.goto server.domain + '/input/keyboard.html'
         keyboard = page.keyboard
         code_for_key = { 'Shift' => 16, 'Alt' => 18, 'Control' => 17 }
 
@@ -94,7 +94,7 @@ module Chromiebara
       end
 
       it 'should report multiple modifiers' do
-        page.goto server.domain + '/input/keyboard.html'
+        await page.goto server.domain + '/input/keyboard.html'
         keyboard = page.keyboard
         keyboard.down 'Control'
         expect(await page.evaluate "getResult()").to eq 'Keydown: Control ControlLeft 17 [Control]'
@@ -111,7 +111,7 @@ module Chromiebara
       end
 
       it 'should send proper codes while typing' do
-        page.goto server.domain + '/input/keyboard.html'
+        await page.goto server.domain + '/input/keyboard.html'
         page.keyboard.type '!'
         expect(await page.evaluate "getResult()").to eq [
           'Keydown: ! Digit1 49 []',
@@ -127,7 +127,7 @@ module Chromiebara
       end
 
       it 'should send proper codes while typing with shift' do
-        page.goto server.domain + '/input/keyboard.html'
+        await page.goto server.domain + '/input/keyboard.html'
         keyboard = page.keyboard
         keyboard.down 'Shift'
         page.keyboard.type '~'
@@ -141,7 +141,7 @@ module Chromiebara
       end
 
       it 'should not type canceled events' do
-        page.goto server.domain + '/input/textarea.html'
+        await page.goto server.domain + '/input/textarea.html'
         page.focus 'textarea'
         await page.evaluate_function(
           <<~JAVASCRIPT
@@ -162,7 +162,7 @@ module Chromiebara
       end
 
       it 'should specify repeat property' do
-        page.goto server.domain + '/input/textarea.html'
+        await page.goto server.domain + '/input/textarea.html'
         page.focus 'textarea'
         await page.evaluate("document.querySelector('textarea').addEventListener('keydown', e => window.lastEvent = e, true)")
         page.keyboard.down 'a'
@@ -181,7 +181,7 @@ module Chromiebara
       end
 
       it 'should type all kinds of characters' do
-        page.goto server.domain + '/input/textarea.html'
+        await page.goto server.domain + '/input/textarea.html'
         page.focus 'textarea'
         text = "This text goes onto two lines.\nThis character is 嗨.";
         page.keyboard.type text
@@ -189,7 +189,7 @@ module Chromiebara
       end
 
       it 'should specify location' do
-        page.goto server.domain + '/input/textarea.html'
+        await page.goto server.domain + '/input/textarea.html'
         await page.evaluate "window.addEventListener('keydown', event => window.keyLocation = event.location, true);"
 
         textarea = page.query_selector 'textarea'
@@ -216,13 +216,13 @@ module Chromiebara
       end
 
       it'should type emoji' do
-        page.goto server.domain + '/input/textarea.html'
+        await page.goto server.domain + '/input/textarea.html'
         page.type 'textarea', '👹 Tokyo street Japan 🇯🇵'
         expect(await page.query_selector_evaluate_function 'textarea', 'textarea => textarea.value').to eq '👹 Tokyo street Japan 🇯🇵'
       end
 
       it 'should type emoji into an iframe' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         attach_frame page, 'emoji-test', server.domain + 'input/textarea.html'
         frame = page.frames[1]
         textarea = frame.query_selector 'textarea'

@@ -8,12 +8,12 @@ module Chromiebara
 
     describe '#cookies' do
       it 'should return empty array without cookies' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         expect(page.cookies).to eq []
       end
 
       it 'should get a cookie' do
-        page.goto(server.empty_page)
+        await page.goto(server.empty_page)
         await page.evaluate("document.cookie = 'username=John Doe';")
         expect(page.cookies).to eq([
           {
@@ -35,7 +35,7 @@ module Chromiebara
           res.set_cookie 'http_cookie', value: 'test-cookie', http_only: true
           res.finish
         end
-        page.goto server.empty_page
+        await page.goto server.empty_page
         cookie = page.cookies.first
         expect(cookie['httpOnly']).to eq true
       end
@@ -45,7 +45,7 @@ module Chromiebara
           res.set_cookie 'cooky', same_site: :strict
           res.finish
         end
-        page.goto server.empty_page
+        await page.goto server.empty_page
         cookies = page.cookies
         expect(cookies.length).to eq 1
         expect(cookies[0]["sameSite"]).to eq 'Strict'
@@ -56,14 +56,14 @@ module Chromiebara
           res.set_cookie 'cooky', same_site: :lax
           res.finish
         end
-        page.goto server.empty_page
+        await page.goto server.empty_page
         cookies = page.cookies
         expect(cookies.length).to eq 1
         expect(cookies[0]["sameSite"]).to eq 'Lax'
       end
 
       it 'should get multiple cookies' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
 
         await page.evaluate("document.cookie = 'username=John Doe'; document.cookie = 'password=1234';")
         cookies = page.cookies.sort { |a, b| a["name"] <=> b["name"] }
@@ -130,7 +130,7 @@ module Chromiebara
 
     describe '#set_cookie' do
       it 'sets cookies' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
 
         page.set_cookie name: 'password', value: '123456'
         expect(await page.evaluate 'document.cookie').to eq 'password=123456'
@@ -140,8 +140,8 @@ module Chromiebara
         context_2 = browser.create_context
         page_2 = context_2.new_page
 
-        page.goto server.empty_page
-        page_2.goto server.empty_page
+        await page.goto server.empty_page
+        await page_2.goto server.empty_page
 
         page.set_cookie name: 'page1cookie', value: 'page1value'
         page_2.set_cookie name: 'page2cookie', value: 'page2value'
@@ -161,7 +161,7 @@ module Chromiebara
       end
 
       it 'should set multiple cookies' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         page.set_cookie(
           { name: 'password', value: '123456' },
           { name: 'foo', value: 'bar' }
@@ -171,7 +171,7 @@ module Chromiebara
       end
 
       it 'should have expires set to -1 for session cookies' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         page.set_cookie name: 'password', value: '123456'
         cookie = page.cookies.first
         expect(cookie["session"]).to eq true
@@ -179,7 +179,7 @@ module Chromiebara
       end
 
       it 'should set cookie with reasonable defaults' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         page.set_cookie name: 'password', value: '123456'
         expect(page.cookies).to eq [
           "name" => 'password',
@@ -195,7 +195,7 @@ module Chromiebara
       end
 
       it 'should set a cookie with a path' do
-        page.goto server.domain + 'grid.html'
+        await page.goto server.domain + 'grid.html'
         page.set_cookie(name: 'gridcookie', value: 'GRID', path: '/grid.html')
         expect(page.cookies).to eq([
           "name" => 'gridcookie',
@@ -209,22 +209,22 @@ module Chromiebara
           "session" => true
         ])
         expect(await page.evaluate('document.cookie')).to eq 'gridcookie=GRID'
-        page.goto server.empty_page
+        await page.goto server.empty_page
         expect(page.cookies).to eq []
         expect(await page.evaluate 'document.cookie').to eq ''
-        page.goto server.domain + 'grid.html'
+        await page.goto server.domain + 'grid.html'
         expect(await page.evaluate 'document.cookie').to eq 'gridcookie=GRID'
       end
 
       it 'should not set a cookie on a blank page' do
-         page.goto 'about:blank'
+         await page.goto 'about:blank'
 
          expect {page.set_cookie({ name: 'example-cookie', value: 'best' }) }
            .to raise_error ProtocolError, /At least one of the url and domain needs to be specified/
       end
 
       it 'should not set a cookie with blank page URL' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         expect do
           page.set_cookie(
             { name: 'example-cookie', value: 'best' },
@@ -234,14 +234,14 @@ module Chromiebara
       end
 
       it 'should not set a cookie on a data URL page' do
-        page.goto 'data:,Hello%2C%20World!'
+        await page.goto 'data:,Hello%2C%20World!'
 
         expect { page.set_cookie name: 'example-cookie', value: 'best' }
           .to raise_error(ProtocolError, /At least one of the url and domain needs to be specified/)
       end
 
       it 'should default to setting secure cookie for HTTPS websites' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         secure_url = 'https://example.com'
         page.set_cookie url: secure_url, name: 'foo', value: 'bar'
         cookie, * = page.cookies secure_url
@@ -249,7 +249,7 @@ module Chromiebara
       end
 
       it 'should be able to set unsecure cookie for HTTP website' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         http_url = 'http://example.com'
         page.set_cookie url: http_url, name: 'foo', value: 'bar'
         cookie, * = page.cookies http_url
@@ -257,7 +257,7 @@ module Chromiebara
       end
 
       it 'should set a cookie on a different domain' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         page.set_cookie url: 'https://www.example.com', name: 'example-cookie', value: 'best'
         expect(await page.evaluate 'document.cookie').to eq ''
         expect(page.cookies).to eq []
@@ -276,7 +276,7 @@ module Chromiebara
 
       it 'should set cookies from a frame' do
         pending 'broken'
-        page.goto server.domain + "empty.html"
+        await page.goto server.domain + "empty.html"
         page.set_cookie name: 'localhost-cookie', value: 'best'
         function = <<~JAVASCRIPT
           src => {
@@ -322,7 +322,7 @@ module Chromiebara
 
     describe '#delete_cookies' do
       it 'deletes cookies' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         page.set_cookie(
           { name: 'cookie1', value: '1' },
           { name: 'cookie2', value: '2' },

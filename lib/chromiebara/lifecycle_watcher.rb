@@ -49,12 +49,12 @@ module Chromiebara
 
       @_timeout_task = nil
       @_timeout_promise =
-        if @timeout.nil?
+        if @timeout.nil? || timeout == 0
           Promise.new
         else
           Promise.new do |resolve, _reject |
             @_timeout_task = Concurrent::ScheduledTask.execute(@timeout) { resolve.call nil }
-          end.then { Timeout::Error.new "Navigation Timeout Exceeded #{@timeout}s exceeded" }
+          end.then { Timeout::Error.new "Navigation Timeout Exceeded: #{@timeout}s exceeded" }
         end
 
       @termination_promise, @_termination_callback, _ = Promise.create

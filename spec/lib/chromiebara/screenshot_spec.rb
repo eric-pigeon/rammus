@@ -9,21 +9,21 @@ module Chromiebara
     describe 'Page#screenshot' do
       it 'should work' do
         page.set_viewport width: 500, height: 500
-        page.goto server.domain + 'grid.html'
+        await page.goto server.domain + 'grid.html'
         screenshot = page.screenshot
         expect(screenshot).to match_screenshot('screenshot-sanity.png')
       end
 
       it 'should clip rect' do
         page.set_viewport width: 500, height: 500
-        page.goto server.domain + 'grid.html'
+        await page.goto server.domain + 'grid.html'
         screenshot = page.screenshot clip: { x: 50, y: 100, width: 150, height: 100 }
         expect(screenshot).to match_screenshot('screenshot-clip-rect.png')
       end
 
       it 'should work for offscreen clip' do
         page.set_viewport width: 500, height: 500
-        page.goto server.domain + 'grid.html'
+        await page.goto server.domain + 'grid.html'
         screenshot = page.screenshot clip: { x: 50, y: 600, width: 100, height: 100 }
         expect(screenshot).to match_screenshot 'screenshot-offscreen-clip.png'
       end
@@ -49,7 +49,7 @@ module Chromiebara
 
       it 'should take full_page screenshots' do
         page.set_viewport width: 500, height: 500
-        page.goto server.domain + 'grid.html'
+        await page.goto server.domain + 'grid.html'
         screenshot = page.screenshot full_page: true
         expect(screenshot).to match_screenshot 'screenshot-grid-fullpage.png'
       end
@@ -73,7 +73,7 @@ module Chromiebara
 
       it 'should allow transparency' do
         page.set_viewport width: 100, height: 100
-        page.goto server.empty_page
+        await page.goto server.empty_page
         screenshot = page.screenshot omit_background: true
         expect(screenshot).to match_screenshot 'transparent.png'
       end
@@ -93,7 +93,7 @@ module Chromiebara
 
       it 'should return base64' do
         page.set_viewport width: 500, height: 500
-        page.goto server.domain + 'grid.html'
+        await page.goto server.domain + 'grid.html'
         screenshot = page.screenshot encoding: 'base64'
         expect(Base64.decode64 screenshot).to match_screenshot 'screenshot-sanity.png'
       end
@@ -102,7 +102,7 @@ module Chromiebara
     describe 'ElementHandle#screenshot' do
       it 'should work' do
         page.set_viewport width: 500, height: 500
-        page.goto server.domain + 'grid.html'
+        await page.goto server.domain + 'grid.html'
         await page.evaluate_function '() => window.scrollBy(50, 100)'
         element_handle = page.query_selector '.box:nth-of-type(3)'
         screenshot = element_handle.screenshot

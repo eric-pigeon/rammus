@@ -48,7 +48,7 @@ module Chromiebara
 
       it 'should work with strict CSP policy' do
         server.set_content_security_policy '/empty.html', 'script-src ' + server.domain
-        page.goto server.empty_page
+        await page.goto server.empty_page
         error = nil
         await Promise.all(
           page.wait_for_function("() => window.__FOO === 'hit'", polling: 'raf').catch { |e| error = e },
@@ -121,11 +121,11 @@ module Chromiebara
       it 'should survive cross-process navigation' do
         foo_found = false
         wait_for_function = page.wait_for_function('window.__FOO === 1').then { foo_found = true }
-        page.goto server.empty_page
+        await page.goto server.empty_page
         expect(foo_found).to eq false
         await page.reload
         expect(foo_found).to eq false
-        page.goto server.cross_process_domain + 'grid.html'
+        await page.goto server.cross_process_domain + 'grid.html'
         expect(foo_found).to eq false
         await page.evaluate_function "() => window.__FOO = 1"
         await wait_for_function
@@ -134,8 +134,8 @@ module Chromiebara
 
       it 'should survive navigations' do
         watchdog = page.wait_for_function "() => window.__done"
-        page.goto server.empty_page
-        page.goto server.domain + 'consolelog.html'
+        await page.goto server.empty_page
+        await page.goto server.domain + 'consolelog.html'
         await page.evaluate_function "() => window.__done = true"
         await watchdog
       end
@@ -147,7 +147,7 @@ module Chromiebara
       end
 
       it 'should immediately resolve promise if node exists' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         frame = page.main_frame
         await frame.wait_for_selector '*'
         await frame.evaluate_function add_element, 'div'
@@ -164,7 +164,7 @@ module Chromiebara
       end
 
       it 'should resolve promise when node is added' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         frame = page.main_frame
         watchdog = frame.wait_for_selector 'div'
         await frame.evaluate_function add_element, 'br'
@@ -175,7 +175,7 @@ module Chromiebara
       end
 
       it 'should work when node is added through innerHTML' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         watchdog = page.wait_for_selector 'h3 div'
         await page.evaluate_function add_element, 'span'
         await page.evaluate_function "() => document.querySelector('span').innerHTML = '<h3><div></div></h3>'"
@@ -183,7 +183,7 @@ module Chromiebara
       end
 
       it 'Page#wait_for_selector is shortcut for main frame' do
-        page.goto server.empty_page
+        await page.goto server.empty_page
         attach_frame page, 'frame1', server.empty_page
         other_frame = page.frames[1]
         watchdog = page.wait_for_selector 'div'
@@ -216,11 +216,11 @@ module Chromiebara
       it 'should survive cross-process navigation' do
         box_found = false
         wait_for_selector = page.wait_for_selector('.box').then { box_found = true }
-        page.goto server.empty_page
+        await page.goto server.empty_page
         expect(box_found).to eq false
         await page.reload
         expect(box_found).to eq false
-        page.goto server.cross_process_domain + 'grid.html'
+        await page.goto server.cross_process_domain + 'grid.html'
         await wait_for_selector
         expect(box_found).to eq true
       end
