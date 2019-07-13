@@ -244,8 +244,6 @@ module Chromiebara
       #
       def on_frame_attached(frame_id, parent_frame_id)
         return if @_frames.has_key? frame_id
-        # TODO
-        raise 'x' unless parent_frame_id
         parent_frame = @_frames.fetch parent_frame_id
         frame = Frame.new(self, client, parent_frame, frame_id)
         @_frames[frame.id] = frame

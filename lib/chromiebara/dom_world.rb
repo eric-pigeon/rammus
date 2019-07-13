@@ -153,12 +153,13 @@ module Chromiebara
       await evaluate_function function, html
 
       Promise.resolve(nil).then do
-        begin
-          await watcher.lifecycle_promise
-          nil
-        ensure
-          watcher.dispose
-        end
+        error = await Promise.race(
+          watcher.timeout_or_termination_promise,
+          watcher.lifecycle_promise
+        )
+        watcher.dispose
+        raise error if error
+        nil
       end
     end
 
