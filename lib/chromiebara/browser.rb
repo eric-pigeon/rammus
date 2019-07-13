@@ -47,7 +47,6 @@ module Chromiebara
       [default_context, *@contexts.values]
     end
 
-    # TODO document this
     def delete_context(context)
       _response = await client.command(Protocol::Target.dispose_browser_context(browser_context_id: context.id))
       @contexts.delete(context.id)

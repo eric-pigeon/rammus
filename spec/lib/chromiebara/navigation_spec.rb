@@ -324,26 +324,29 @@ module Chromiebara
         expect(response.url).to include 'grid.html'
       end
 
-      xit 'should work with both domcontentloaded and load' do
-        # TODO
-        #response = nil
-        #server.set_route '/one-style.css', (req, res) => response = res);
-        #navigationPromise = await page.goto(server.domain + '/one-style.html');
-        #domContentLoadedPromise = page.waitForNavigation({
-        #  waitUntil: 'domcontentloaded'
-        #});
+      it 'should work with both domcontentloaded and load' do
+        response = nil
+        server.set_route('/one-style.css') { |req, res| response = res }
 
-        #let bothFired = false;
-        #bothFiredPromise = page.waitForNavigation({
-        #  waitUntil: ['load', 'domcontentloaded']
-        #}).then(() => bothFired = true);
+        dom_content_loaded_promise = page.wait_for_navigation wait_until: :domcontentloaded
 
-        #await server.waitForRequest('/one-style.css');
-        #await domContentLoadedPromise;
-        #expect(bothFired).to eq(false);
-        #response.end();
-        #await bothFiredPromise;
-        #await navigationPromise;
+        both_fired = false
+        both_fired_promise = page.wait_for_navigation(wait_until: [:load, :domcontentloaded]).then do
+          both_fired = true
+        end
+
+        request_promise = server.wait_for_request '/one-style.css'
+
+        navigation_promise = page.goto(server.domain + 'one-style.html')
+
+        await request_promise
+        await dom_content_loaded_promise
+
+        expect(both_fired).to eq(false)
+
+        response.finish
+        await both_fired_promise
+        await navigation_promise
       end
 
       it 'should work with clicking on anchor links' do
@@ -497,8 +500,7 @@ module Chromiebara
         finish_response.(nil)
       end
 
-      xit 'should return matching responses' do
-        #TODO
+      it 'should return matching responses' do
         # Disable cache: otherwise, chromium will cache similar requests.
         page.set_cache_enabled false
         await page.goto server.empty_page
@@ -513,7 +515,7 @@ module Chromiebara
         server.set_route '/one-style.html' do |req, res|
           promise, resolve, _reject = Promise.create
           server_responses << resolve
-          promise.then { |val| res.write(val); res.finish }.await 0
+          await promise.then { |val| res.write(val); res.finish }
         end
 
         navigations = []
@@ -523,11 +525,11 @@ module Chromiebara
         end
 
         # Respond from server out-of-order.
-        server_responses.zip(['AAA', 'BBB', 'CCC']).each do |server, text|
+        server_responses.zip(navigations, frames, ['AAA', 'BBB', 'CCC']).each do |server, navigation, frame, text|
           server.call text
-          #response = await navigations[i];
-          # expect(response.frame()).to eq(frames[i]);
-          #  expect(await response.text()).to eq(serverResponseTexts[i]);
+          response = await navigation
+          expect(response.frame).to eq frame
+          expect(response.text).to eq text
         end
       end
     end
