@@ -6,13 +6,7 @@ module Chromiebara
       tmpdir = Dir.mktmpdir
 
       chrome_arguments = DEFAULT_ARGS
-      if (headless)
-        chrome_arguments.push(
-          '--headless',
-          '--hide-scrollbars',
-          '--mute-audio'
-        )
-      end
+      chrome_arguments.push(*HEADLESS_ARGS) if headless
       # TODO support pipe as well
       chrome_arguments.push('--remote-debugging-port=0')
       chrome_arguments.push("-user-data-dir=#{tmpdir}")
@@ -63,6 +57,12 @@ module Chromiebara
         '--use-mock-keychain',
         'about:blank',
         # '--keep-alive-for-test',
+      ]
+
+      HEADLESS_ARGS = [
+        '--headless',
+        '--hide-scrollbars',
+        '--mute-audio'
       ]
 
       def self.executable_path
