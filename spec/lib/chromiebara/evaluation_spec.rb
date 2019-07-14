@@ -63,19 +63,6 @@ module Chromiebara
         expect(await page.evaluate_function "() => [Symbol('foo4')]").to eq nil
       end
 
-      # TODO
-      #(asyncawait ? it : xit)('should work with function shorthands' do
-      #  // trick node6 transpiler to not touch our object.
-      #  // TODO(lushnikov): remove eval once Node6 is dropped.
-      #  a = eval(`({
-      #    sum(a, b) { return a + b; },
-
-      #    async mult(a, b) { return a * b; }
-      #  })`);
-      #  expect(await page.evaluate_function(a.sum, 1, 2)).to eq 3
-      #  expect(await page.evaluate_function(a.mult, 2, 4)).to eq 8
-      #end
-
       it 'should work with unicode chars' do
         result = await page.evaluate_function "a => a['中文字符']", { '中文字符' => 42 }
         expect(result).to eq 42
