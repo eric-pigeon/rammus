@@ -137,26 +137,26 @@ module Chromiebara
         context.remove_listener :target_changed, listener
       end
 
-      # TODO
-      #it('should not crash while redirecting if original request was missed', async({page, server, context}) => {
-      #  let serverResponse = null;
-      #  server.setRoute('/one-style.css', (req, res) => serverResponse = res);
-      #  // Open a new page. Use window.open to connect to the page later.
-      #  await Promise.all([
-      #    page.evaluate(url => window.open(url), server.PREFIX + '/one-style.html'),
-      #    server.waitForRequest('/one-style.css')
-      #  ]);
-      #  // Connect to the opened page.
-      #  const target = await context.waitForTarget(target => target.url().includes('one-style.html'));
-      #  const newPage = await target.page();
-      #  // Issue a redirect.
-      #  serverResponse.writeHead(302, { location: '/injectedstyle.css' });
-      #  serverResponse.end();
-      #  // Wait for the new page to load.
-      #  await waitEvent(newPage, 'load');
-      #  // Cleanup.
-      #  await newPage.close();
-      #});
+      it 'should not crash while redirecting if original request was missed' do
+        server_response = nil
+        server.set_route '/one-style.css' do |_req, res|
+          await(Promise.new { |resolve, _| server_response = resolve }
+            .then { res.redirect '/injectedstyle.css'; res.finish })
+        end
+        # Open a new page. Use window.open to connect to the page later.
+        await Promise.all(
+          page.evaluate_function("url => window.open(url)", server.domain + 'one-style.html'),
+          server.wait_for_request('/one-style.css')
+        )
+        # Connect to the opened page.
+        target = await context.wait_for_target { |target| target.url.include?('one-style.html') }
+        new_page = target.page
+        server_response.call nil
+        # Wait for the new page to load.
+        await wait_event(new_page, :load)
+        # Cleanup.
+        new_page.close
+      end
 
       # TODO
       #it('should have an opener', async({page, server, context}) => {
