@@ -105,8 +105,7 @@ module Chromiebara
       )).catch do |error|
         # In certain cases, protocol will return error if the request was already canceled
         # or the page was closed. We should tolerate these errors.
-        # TODO
-        # debugError(error);
+        Util.debug_error error
       end)
     end
 
@@ -124,8 +123,7 @@ module Chromiebara
       )).catch do |error|
         # In certain cases, protocol will return error if the request was already canceled
         # or the page was closed. We should tolerate these errors.
-        # TODO
-        # debugError(error);
+        Util.debug_error error
       end;
     end
 

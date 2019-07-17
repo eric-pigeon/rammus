@@ -290,7 +290,7 @@ module Chromiebara
       expression = "(#{add_page_binding})(\"#{name}\")"
       await client.command Protocol::Runtime.add_binding name: name
       await client.command Protocol::Page.add_script_to_evaluate_on_new_document source: expression
-      Promise.all(frames.map { |frame| frame.evaluate(expression) }) # TODO.catch(debugError)));
+      Promise.all(*frames.map { |frame| frame.evaluate(expression).catch { |error| Util.debug_error error  } })
     end
 
     # @return [Chromiebara::Metrics]

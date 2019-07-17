@@ -325,7 +325,7 @@ module Chromiebara
       #
       def clickable_point
         result, layout_metrics = await Promise.all(
-          client.command(Protocol::DOM.get_content_quads object_id: remote_object["objectId"]).catch { |error| }, # TODO
+          client.command(Protocol::DOM.get_content_quads object_id: remote_object["objectId"]).catch { |error| Util.debug_error error },
           client.command(Protocol::Page.get_layout_metrics)
         )
 
@@ -399,7 +399,7 @@ module Chromiebara
       def get_box_model
         await client.command(Protocol::DOM.get_box_model(
           object_id: remote_object["objectId"]
-        )).catch { |_error| } # TODO
+        )).catch { |error| Util.debug_error error }
       end
   end
 end

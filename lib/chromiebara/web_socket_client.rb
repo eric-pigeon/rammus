@@ -4,13 +4,14 @@ require 'socket'
 module Chromiebara
   class WebSocketClient
     attr_reader :driver, :status
-    attr_accessor :on_message
+    attr_accessor :on_message, :on_close
 
     def initialize(url)
       @socket = Socket.new(url)
       @driver = ::WebSocket::Driver.client(@socket)
       @status = :closed
       @on_message = nil
+      @on_close = nil
       @listener_thread = nil
 
       setup_driver
@@ -22,6 +23,10 @@ module Chromiebara
       driver.text command
     end
 
+    def close
+      driver.close
+    end
+
     private
 
       def setup_driver
@@ -31,7 +36,10 @@ module Chromiebara
 
         driver.on(:error) { |e| raise e.message }
 
-        driver.on(:close) { |_e| @status = :closed }
+        driver.on(:close) do |_e|
+          @on_close.call
+          @status = :closed
+        end
 
         driver.on(:open) { |_e| @status = :open }
       end

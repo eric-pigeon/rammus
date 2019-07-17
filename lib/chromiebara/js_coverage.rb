@@ -79,10 +79,9 @@ module Chromiebara
           response = await client.command Protocol::Debugger.get_script_source(script_id: event["scriptId"])
           @_script_urls[event["scriptId"]] = event["url"]
           @_script_sources[event["scriptId"]] = response["scriptSource"]
-        rescue => _error
+        rescue => error
           # This might happen if the page has already navigated away.
-          #TODO
-          #debugError(e);
+          Util.debug_error error
         end
       end
 

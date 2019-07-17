@@ -225,8 +225,8 @@ module Chromiebara
       #
       def on_request_paused(event)
         if !@_user_request_interception_enabled && @_protocol_request_interception_enabled
-          client.command Protocol::Fetch.continue_request(request_id: event["requestId"])
-          # TODO .catch debugError
+          client.command(Protocol::Fetch.continue_request(request_id: event["requestId"]))
+            .catch { |error| Util.debug_error error }
         end
 
         request_id = event["networkId"]
@@ -255,11 +255,10 @@ module Chromiebara
 
         username ||= @_credentials[:username]
         password ||= @_credentials[:password]
-        client.command Protocol::Fetch.continue_with_auth(
+        client.command(Protocol::Fetch.continue_with_auth(
           request_id: event["requestId"],
           auth_challenge_response: { response: response, username: username, password: password }.compact
-        )
-        # TODO catch debugError
+        )).catch { |error| Util.debug_error error }
       end
 
       # @param {!Protocol.Network.loadingFailedPayload} event

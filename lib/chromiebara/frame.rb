@@ -67,7 +67,6 @@ module Chromiebara
     end
 
     # @param [String] url
-    # TODO
     #
     def goto(url, referer: nil, timeout: nil, wait_until: nil)
       frame_manager.navigate_frame self, url, referer: referer, timeout: timeout, wait_until: wait_until
