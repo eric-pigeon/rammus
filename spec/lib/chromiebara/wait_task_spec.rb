@@ -89,13 +89,9 @@ module Chromiebara
         await wait_for_function
       end
 
-      # TODO
-      xit 'should respect timeout' do
-        #let error = null;
-        #await page.wait_for_function('false', {timeout: 10}).catch(e => error = e);
-        #expect(error).to eqTruthy();
-        #expect(error.message).toContain('waiting for function failed: timeout');
-        #expect(error).to eqInstanceOf(puppeteer.errors.TimeoutError);
+      it 'should respect timeout' do
+        expect { await page.wait_for_function 'false', timeout: 0.1 }
+          .to raise_error(TimeoutError, /waiting for function failed: timeout/)
       end
 
       # TODO

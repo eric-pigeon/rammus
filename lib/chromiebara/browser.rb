@@ -133,8 +133,11 @@ module Chromiebara
     #
     def close
       @_close_callback.call
-      # TODO
-      # client.disconnect
+      disconnect
+    end
+
+    def disconnect
+      client.dispose
     end
 
     private

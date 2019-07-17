@@ -34,10 +34,11 @@ module Chromiebara
       @_terminated = false
       # Since page navigation requires us to re-install the pageScript, we should track
       # timeout on our end.
-      #if (timeout) {
-      #  const timeoutError = new TimeoutError(`waiting for ${title} failed: timeout ${timeout}ms exceeded`);
-      #  this._timeoutTimer = setTimeout(() => this.terminate(timeoutError), timeout);
-      #}
+      if timeout
+        @_timeout_timer = Concurrent::ScheduledTask.execute(timeout) do
+          terminate TimeoutError.new "waiting for #{title} failed: timeout #{timeout}s exeeded"
+        end
+      end
       Concurrent.global_io_executor.post { rerun }
     end
 

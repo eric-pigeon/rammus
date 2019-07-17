@@ -17,11 +17,13 @@ module Chromiebara
       super()
       @web_socket = web_socket
       web_socket.on_message = method :on_message
+      web_socket.on_close  = method :on_close
       @_sessions = {}
       @_last_id = 0
       @command_mutex = Mutex.new
       # Hash<Integer, { resolve: Method, reject: Method, method: String }>
       @_command_callbacks = {}
+      @_closed = false
     end
 
     # @param [Hash] command
@@ -69,7 +71,30 @@ module Chromiebara
       @_sessions.fetch session_id
     end
 
+    def dispose
+      web_socket.close
+    end
+
     private
+
+      def on_close
+        return if @_closed
+
+        @_closed = true
+
+        web_socket.on_message = nil
+        web_socket.on_close = nil
+
+        @command_mutex.synchronize do
+          @_command_callbacks.each { callback.reject.("Protocol error #{callback.method}: Target closed.") }
+          @_command_callbacks.clear
+        end
+
+        @_sessions.each { |_, session| session.send :on_close }
+        @_sessions.clear
+
+        emit :disconnected
+      end
 
       def next_command_id
         @_last_id += 1

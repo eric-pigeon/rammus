@@ -82,10 +82,9 @@ module Chromiebara
           response = await client.command Protocol::CSS.get_style_sheet_text(style_sheet_id: header["styleSheetId"])
           @_stylesheet_urls[header["styleSheetId"]] = header["sourceURL"]
           @_stylesheet_sources[header["styleSheetId"]] = response["text"]
-        rescue => _err
+        rescue => error
           # This might happen if the page has already navigated away.
-          # TODO
-          # debugError(e);
+          Util.debug_error error
         end
       end
   end

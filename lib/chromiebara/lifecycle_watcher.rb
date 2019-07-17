@@ -58,6 +58,7 @@ module Chromiebara
         end
 
       @termination_promise, @_termination_callback, _ = Promise.create
+      # TODO
       # check_lifecycle_complete(nil)
     end
 

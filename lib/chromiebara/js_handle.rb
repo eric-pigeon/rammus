@@ -103,13 +103,7 @@ module Chromiebara
       return if @_disposed
 
       @_disposed = true
-      if remote_object["objectId"]
-        await (client.command(Protocol::Runtime.release_object object_id: remote_object["objectId"]).catch do |error|
-          # Exceptions might happen in case of a page been navigated or closed.
-          # Swallow these since they are harmless and we don't leak anything in this case.
-          # TODO warn about this
-        end)
-      end
+      Util.release_object client, remote_object if remote_object["objectId"]
     end
 
     def disposed?
