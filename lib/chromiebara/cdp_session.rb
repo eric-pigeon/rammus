@@ -41,7 +41,7 @@ module Chromiebara
           ProtocolLogger.puts_command_response message
           @_command_callbacks.delete message["id"]
           if message["error"]
-            callback.reject.(create_protocol_error callback.method, message)
+            callback.reject.(ChromeClient.create_protocol_error callback.method, message)
           else
             callback.resolve.(message["result"])
           end
@@ -60,15 +60,6 @@ module Chromiebara
         end
         @client = nil
         emit :cdp_session_disconnected
-      end
-
-      # @param [String] method
-      # @param [Hash] object
-      #
-      def create_protocol_error(method, object)
-        message = "Protocol error (#{method}): #{object.dig("error", "message")}"
-        message += object.dig("error", "data").to_s
-        ProtocolError.new message
       end
   end
 end
