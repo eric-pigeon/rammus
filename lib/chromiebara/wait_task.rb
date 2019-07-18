@@ -32,9 +32,9 @@ module Chromiebara
       dom_world.wait_tasks << self
       @promise, @_resolve, @_reject = Promise.create
       @_terminated = false
-      # Since page navigation requires us to re-install the pageScript, we should track
+      # Since page navigation requires us to re-install the page script, we should track
       # timeout on our end.
-      if timeout
+      if timeout && timeout != 0
         @_timeout_timer = Concurrent::ScheduledTask.execute(timeout) do
           terminate TimeoutError.new "waiting for #{title} failed: timeout #{timeout}s exeeded"
         end
@@ -62,7 +62,7 @@ module Chromiebara
           @_polling,
           @_timeout * 1000, # javascript set timeout is in milliseconds
           *@_args
-        ), 120 # TODO need to track timeouts on this side
+        ), 0
       rescue => err
         error = err
       end

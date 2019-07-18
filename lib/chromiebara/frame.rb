@@ -128,7 +128,7 @@ module Chromiebara
     #  @return {!Promise<?Puppeteer.ElementHandle>}
     #
     def wait_for_selector(selector, visible: nil, hidden: nil, timeout: nil)
-      secondary_world.wait_for_selector(selector, visible: visible, hidden: hidden, timeout: nil).then do |handle|
+      secondary_world.wait_for_selector(selector, visible: visible, hidden: hidden, timeout: timeout).then do |handle|
         next nil if handle.nil?
 
         main_execution_context = main_world.execution_context

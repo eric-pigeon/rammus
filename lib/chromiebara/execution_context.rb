@@ -89,14 +89,14 @@ module Chromiebara
 
       def evaluate_internal(return_by_value, expression)
         expression = SOURCE_URL_REGEX.match?(expression) ? expression : "#{expression}\n#{SUFFIX}"
-        evaluate_promise = client.command Protocol::Runtime.evaluate(
+        evaluate_promise = client.command(Protocol::Runtime.evaluate(
           expression: expression,
           context_id: context_id,
           return_by_value: return_by_value,
           await_promise: true,
           user_gesture: true
-        )
-        # TODO catch and rewrite error
+        )).catch(method(:rewrite_error))
+
         evaluate_promise.then do |response|
           if response["exceptionDetails"]
             raise "Evaluation failed: #{Util.get_exception_message response["exceptionDetails"]}"
