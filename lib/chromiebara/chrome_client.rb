@@ -9,6 +9,15 @@ module Chromiebara
       session.client
     end
 
+    # @param [String] method
+    # @param [Hash] object
+    #
+    def self.create_protocol_error(method, object)
+      message = "Protocol error (#{method}): #{object.dig("error", "message")}"
+      message += object.dig("error", "data").to_s
+      ProtocolError.new message
+    end
+
     attr_reader :web_socket
 
     # @param [Chromiebara::WebSocketClient] web_socket
@@ -122,8 +131,7 @@ module Chromiebara
           ProtocolLogger.puts_command_response message
           if callback = @_command_callbacks.delete(message["id"])
             if message.has_key? "error"
-              # TODO create_protocol_error
-              callback.reject.(message["error"])
+              callback.reject.(ChromeClient.create_protocol_error callback.method, message)
             else
               callback.resolve.(message["result"])
             end
