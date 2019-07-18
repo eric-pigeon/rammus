@@ -529,7 +529,7 @@ module Chromiebara
           server.call text
           response = await navigation
           expect(response.frame).to eq frame
-          expect(response.text).to eq text
+          expect(await response.text).to eq text
         end
       end
     end

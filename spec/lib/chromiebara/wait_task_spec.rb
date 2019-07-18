@@ -94,24 +94,21 @@ module Chromiebara
           .to raise_error(TimeoutError, /waiting for function failed: timeout/)
       end
 
-      # TODO
-      xit 'should respect default timeout' do
-        #page.setDefaultTimeout(1);
-        #let error = null;
-        #await page.wait_for_function('false').catch(e => error = e);
-        #expect(error).to eqInstanceOf(puppeteer.errors.TimeoutError);
-        #expect(error.message).toContain('waiting for function failed: timeout');
+      it 'should respect default timeout' do
+        page.set_default_timeout 0.1
+
+        expect { await page.wait_for_function 'false', timeout: 0.1 }
+          .to raise_error(TimeoutError, /waiting for function failed: timeout/)
       end
 
-      # TODO
-      xit 'should disable timeout when its set to 0' do
-        #watchdog = page.wait_for_function(() => {
-        #  window.__counter = (window.__counter || 0) + 1;
-        #  return window.__injected;
-        #}, {timeout: 0, polling: 10});
-        #await page.wait_for_function(() => window.__counter > 10);
-        #await page.evaluate(() => window.__injected = true);
-        #await watchdog;
+      it 'should disable timeout when its set to 0' do
+        watchdog = page.wait_for_function("() => {
+          window.__counter = (window.__counter || 0) + 1;
+          return window.__injected;
+        }", timeout: 0, polling: 10)
+        await page.wait_for_function("() => window.__counter > 10")
+        await page.evaluate_function "() => window.__injected = true"
+        await watchdog
       end
 
       it 'should survive cross-process navigation' do
@@ -283,13 +280,10 @@ module Chromiebara
         expect(handle).to eq nil
       end
 
-      #it 'should respect timeout' do
-      #  let error = null;
-      #  await page.wait_for_selector('div', {timeout: 10}).catch(e => error = e);
-      #  expect(error).to eqTruthy();
-      #  expect(error.message).toContain('waiting for selector "div" failed: timeout');
-      #  expect(error).to eqInstanceOf(puppeteer.errors.TimeoutError);
-      #end
+      it 'should respect timeout' do
+        expect { await page.wait_for_selector('div', timeout: 0.1) }
+          .to raise_error TimeoutError, /waiting for selector "div" failed: timeout/
+      end
 
       it 'should have an error message specifically for awaiting an element to be hidden' do
         pending 'broken'
@@ -333,14 +327,10 @@ module Chromiebara
         expect(await page.evaluate_function("x => x.textContent", (await wait_for_xpath))).to eq 'hello  world  '
       end
 
-      # TODO
-      #it 'should respect timeout' do
-      #  let error = null;
-      #  await page.wait_for_xpath('//div', {timeout: 10}).catch(e => error = e);
-      #  expect(error).to eqTruthy();
-      #  expect(error.message).toContain('waiting for XPath "//div" failed: timeout');
-      #  expect(error).to eqInstanceOf(puppeteer.errors.TimeoutError);
-      #end
+      it 'should respect timeout' do
+        expect { await page.wait_for_xpath('//div', timeout: 0.1) }
+          .to raise_error TimeoutError, %r{waiting for XPath "//div" failed: timeout}
+      end
 
       it 'should run in specified frame' do
         attach_frame page, 'frame1', server.empty_page

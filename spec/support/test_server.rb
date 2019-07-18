@@ -248,5 +248,52 @@ class TestServer
   end
 
   class Response < Rack::Response
+    def initialize
+      super
+      @_chunked_queue = nil
+    end
+
+    def set_chunked_response!
+      @_chunked_queue = Queue.new
+      set_header Rack::TRANSFER_ENCODING, CHUNKED
+      [ChunkedBodyWriter.new(@_chunked_queue), [status.to_i, header, ChunkedBodyProxy.new(@_chunked_queue)]]
+
+    end
+  end
+
+  class ChunkedBodyWriter
+    def initialize(queue)
+      @queue = queue
+    end
+
+    def write(chunk)
+      @queue << chunk
+    end
+    alias :<< :write
+
+    def finish
+      @queue.close
+    end
+    alias :end :finish
+  end
+
+  class ChunkedBodyProxy
+    TERM = "\r\n"
+    TAIL = "0#{TERM}#{TERM}"
+
+    def initialize(queue)
+      @queue = queue
+    end
+
+    def each
+      while chunk = @queue.pop
+        size = chunk.bytesize
+        next if size == 0
+
+        chunk = chunk.b
+        yield [size.to_s(16), TERM, chunk, TERM].join
+      end
+      yield TAIL
+    end
   end
 end

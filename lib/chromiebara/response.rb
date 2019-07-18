@@ -46,24 +46,22 @@ module Chromiebara
     #}
 
     def buffer
-      @_buffer ||= await(@_body_loaded_promise.then do |error|
+      @_buffer ||= @_body_loaded_promise.then do |error|
         raise error if error
 
-        response = await client.command Protocol::Network.get_response_body(request_id: request.request_id)
+        response = await client.command(Protocol::Network.get_response_body(request_id: request.request_id)), 0
         if response["base64Encoded"]
           Base64.decode64 response["body"]
         else
           response["body"]
         end
-      end)
+      end
     end
+    alias text buffer
 
-    def text
-      buffer
-    end
 
     def json
-      JSON.parse(text)
+      text.then { |content| JSON.parse content }
     end
 
     # @return [Boolean]

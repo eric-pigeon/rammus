@@ -148,12 +148,10 @@ RSpec.configure do |config|
   config.include MatchScreenshot
 
   config.before(:suite) do
-    #Thread.new { TestApp.run! }
     Thread.new { TestServer.start! }
   end
 
   config.after(:suite) do
-    #TestApp.stop!
     TestServer.stop!
   end
   # rspec-expectations config goes here. You can use an alternate

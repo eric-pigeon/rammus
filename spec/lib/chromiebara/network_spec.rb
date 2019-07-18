@@ -165,14 +165,14 @@ module Chromiebara
     describe 'Response#text' do
       it 'should work' do
         response = await page.goto server.domain + 'simple.json'
-        expect(response.text).to eq "{\"foo\": \"bar\"}\n"
+        expect(await response.text).to eq "{\"foo\": \"bar\"}\n"
       end
 
       it 'should return uncompressed text' do
         server.enable_gzip '/simple.json'
         response = await page.goto server.domain + 'simple.json'
         expect(response.headers['content-encoding']).to eq 'gzip'
-        expect(response.text).to eq "{\"foo\": \"bar\"}\n"
+        expect(await response.text).to eq "{\"foo\": \"bar\"}\n"
       end
 
       it 'should throw when requesting body of redirected response' do
@@ -183,68 +183,71 @@ module Chromiebara
         redirected = redirect_chain[0].response
         expect(redirected.status).to eq 302
 
-        expect { redirected.text }
+        expect { await redirected.text }
           .to raise_error(/Response body is unavailable for redirect responses/)
       end
 
-      # TODO
-      xit 'should wait until response completes' do
+      it 'should wait until response completes' do
         await page.goto server.empty_page
         # Setup server to trap request.
         server_response = nil
         server.set_route '/get' do |req, res|
-          server_response = res
           # In Firefox, |fetch| will be hanging until it receives |Content-Type| header
           # from server.
-          #res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-          #res.write('hello ');
+          res.header['Content-Type'] = 'text/plain; charset=utf-8'
+          server_response, rack_response = res.set_chunked_response!
+          server_response << "hello "
+          rack_response
         end
         # Setup page to trap response.
-        _request_finished = false
-        #page.on('requestfinished', r => requestFinished = requestFinished || r.url().includes('/get'));
-        #// send request and wait for server response
-        #const [pageResponse] = await Promise.all([
-        #  page.waitForResponse(r => !utils.isFavicon(r.request())),
-        #  await page.evaluate(() => fetch('./get', { method: 'GET'})),
-        #  server.waitForRequest('/get'),
-        #]);
+        request_finished = false
+        page.on :request_Finished, -> (r) { request_finished = request_finished || r.url.include?('/get') }
+        # send request and wait for server response
+        page_response, _ = await Promise.all(
+          page.wait_for_response { |r| !is_favicon r.request },
+          page.evaluate_function("() => fetch('./get', { method: 'GET'})"),
+          server.wait_for_request('/get')
+        )
 
-        #expect(serverResponse).toBeTruthy();
-        #expect(pageResponse).toBeTruthy();
-        #expect(pageResponse.status()).toBe(200);
-        #expect(requestFinished).toBe(false);
+        expect(server_response).not_to be_nil
+        expect(page_response).not_to be_nil
+        expect(page_response.status).to eq 200
+        expect(request_finished).to eq false
 
-        #const responseText = pageResponse.text();
-        #// Write part of the response and wait for it to be flushed.
-        #await new Promise(x => serverResponse.write('wor', x));
-        #// Finish response.
-        #await new Promise(x => serverResponse.end('ld!', x));
-        #expect(await responseText).toBe('hello world!');
+        response_text = page_response.text
+        # Write part of the response
+        server_response << "wor"
+        # Finish response
+        server_response << "ld!"
+        server_response.finish
+        expect(await response_text).to eq 'hello world!'
       end
     end
 
     describe 'Response#json' do
       it 'should work' do
         response = await page.goto server.domain + 'simple.json'
-        expect(response.json).to eq 'foo' => 'bar'
+        expect(await response.json).to eq 'foo' => 'bar'
       end
     end
 
     describe 'Response#buffer' do
-      # TODO
-      xit 'should work' do
-      #  const response = await page.goto(server.PREFIX + '/pptr.png');
-      #  const imageBuffer = fs.readFileSync(path.join(__dirname, 'assets', 'pptr.png'));
-      #  const responseBuffer = await response.buffer();
-      #  expect(responseBuffer.equals(imageBuffer)).toBe(true);
+      it 'should work' do
+        response = await page.goto server.domain + 'pptr.png'
+        path = File.expand_path("../../support/public/pptr.png", File.dirname(__FILE__))
+        image_buffer = IO.binread(path)
+        response_buffer = await response.buffer
+        expect(response_buffer).to eq image_buffer
       end
-      xit 'should work with compression' do
-      #  server.enableGzip('/pptr.png');
-      #  const response = await page.goto(server.PREFIX + '/pptr.png');
-      #  const imageBuffer = fs.readFileSync(path.join(__dirname, 'assets', 'pptr.png'));
-      #  const responseBuffer = await response.buffer();
-      #  expect(responseBuffer.equals(imageBuffer)).toBe(true);
-      end;
+
+      it 'should work with compression' do
+        server.enable_gzip '/pptr.png'
+        response = await page.goto server.domain + 'pptr.png'
+        path = File.expand_path("../../support/public/pptr.png", File.dirname(__FILE__))
+        image_buffer = IO.binread(path)
+        response_buffer = await response.buffer
+        expect(response_buffer).to eq image_buffer
+      end
     end
 
     describe 'Response#status_text' do
