@@ -12,12 +12,6 @@ module Chromiebara
         expect(result).to eq 21
       end
 
-      # TODO
-      #(bigint ? it : xit)('should transfer BigInt' do
-      #  result = await page.evaluate_function(a => a, BigInt(42));
-      #  expect(result).to eq BigInt(42)
-      #end
-
       it 'should transfer NAN' do
         result = await page.evaluate_function "a => a", Float::NAN
         expect(result).to be_a Float

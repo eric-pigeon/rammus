@@ -61,7 +61,6 @@ module Chromiebara
       execution_context.evaluate_function function, *args
     end
 
-    # TODO
     def evaluate_handle_function(function, *args)
       execution_context.evaluate_handle_function function, *args
     end
