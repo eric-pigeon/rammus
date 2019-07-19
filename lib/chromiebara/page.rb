@@ -578,14 +578,13 @@ module Chromiebara
       buffer
     end
 
-    # TODO DOCUMENT
     def close(run_before_unload: false)
-      #  assert(!!this._client._connection, 'Protocol error: Connection closed. Most likely the page has been closed.');
+      raise 'Protocol error: Connection closed. Most likely the page has been closed.' if client.client.closed?
       if run_before_unload
         await client.command Protocol::Page.close
       else
         await client.client.command Protocol::Target.close_target target_id: target.target_id
-        # await this._target._isClosedPromise;
+        await target.is_closed_promise
       end
     end
 

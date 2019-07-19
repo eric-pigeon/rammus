@@ -668,7 +668,7 @@ module Chromiebara
         server.set_route("/#{img_path}") { |req, res| await Promise.new, 0 }
         expect do
           await page.set_content("<img src='#{server.domain + img_path}'></img>", timeout: 0.01)
-        end.to raise_error(Timeout::Error, /Navigation Timeout Exceeded/) # TODO better error message
+        end.to raise_error(Timeout::Error, /Navigation Timeout Exceeded/)
       end
 
       it 'should respect default navigation timeout' do
@@ -677,7 +677,7 @@ module Chromiebara
         # stall for image
         server.set_route("/#{img_path}") { |req, res| await Promise.new, 0 }
         expect { await page.set_content("<img src='#{server.domain + img_path}'></img>") }
-          .to raise_error(Timeout::Error, /Navigation Timeout Exceeded/) # TODO better error message
+          .to raise_error(Timeout::Error, /Navigation Timeout Exceeded/)
       end
 
       it 'should await resources to load' do

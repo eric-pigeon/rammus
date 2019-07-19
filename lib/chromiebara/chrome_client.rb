@@ -84,6 +84,10 @@ module Chromiebara
       web_socket.close
     end
 
+    def closed?
+      @_closed
+    end
+
     private
 
       def on_close

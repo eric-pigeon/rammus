@@ -68,8 +68,6 @@ module Chromiebara
     # @param {{delay: (number|undefined)}=} options
     #
     def type(text, delay: 0)
-      # TODO can we use promise.all here and only wait once instead of waiting
-      # for each character
       text.chars.each do |char|
         if KEY_DEFINITIONS[char]
           press char, { delay: delay }
