@@ -1,10 +1,10 @@
 if ENV['TRAVIS']
   require 'coveralls'
   Coveralls.wear! do
-    add_filter %r{/lib/chromiebara/protocol*}
+    add_filter %r{/lib/rammus/protocol*}
   end
 end
-require 'chromiebara'
+require 'rammus'
 require 'support/test_server'
 require 'support/match_screenshot'
 require 'support/test_emitter'
@@ -99,7 +99,7 @@ module SeverHelper
   def wait_event(emitter, event_name, predicate = nil, &block)
     predicate ||= block || ->(_) { true }
 
-    Chromiebara::Promise.new do |resolve, _|
+    Rammus::Promise.new do |resolve, _|
       listener = -> (event) do
         next unless predicate.(event)
 
@@ -113,9 +113,9 @@ module SeverHelper
   after(:each) { server.reset }
 
   shared_context 'browser', browser: true do
-    include Chromiebara::Promise::Await
+    include Rammus::Promise::Await
 
-    before(:context) { @_browser = Chromiebara::Launcher.launch }
+    before(:context) { @_browser = Rammus::Launcher.launch }
 
     let(:browser) { @_browser }
 
@@ -123,9 +123,9 @@ module SeverHelper
   end
 
   shared_context 'page', page: true do
-    include Chromiebara::Promise::Await
+    include Rammus::Promise::Await
 
-    before(:context) { @_browser = Chromiebara.launch }
+    before(:context) { @_browser = Rammus.launch }
     before { @_context = browser.create_context }
 
     let(:browser) { @_browser }

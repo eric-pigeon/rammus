@@ -7,7 +7,7 @@ require "fileutils"
 descriptions = JSON.parse(File.read("./device_descriptors.json"))
 
 template = <<-RUBY
-module Chromiebara
+module Rammus
   DEVICE_DESCRIPTORS = {
 <% descriptions.each.with_index do |description, i| -%>
     "<%= description["name"] %>" => {
@@ -32,6 +32,6 @@ def underscore(word)
     .downcase
 end
 
-File.open("lib/chromiebara/device_descriptors.rb", "w") do |descriptors_file|
+File.open("lib/rammus/device_descriptors.rb", "w") do |descriptors_file|
   descriptors_file.write ERB.new(template, trim_mode: "-<>").result(binding)
 end

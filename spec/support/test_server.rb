@@ -2,7 +2,7 @@ require 'rack'
 require "zlib"
 
 class TestServer
-  include Chromiebara::Promise::Await
+  include Rammus::Promise::Await
   HANDLER = Rack::Handler.get('puma')
   HANDLER_NAME = "puma"
   SERVER_SETTINGS = {:Port=>4567, :Host=>"localhost"}
@@ -88,7 +88,7 @@ class TestServer
 
     return promise unless promise.nil?
 
-    subscriber = RequestSubscriber.new(*Chromiebara::Promise.create)
+    subscriber = RequestSubscriber.new(*Rammus::Promise.create)
 
     @_request_subscribers[path] = subscriber
 
@@ -100,7 +100,7 @@ class TestServer
   end
 
   def hang_route(path)
-    promise, resolve, _reject = Chromiebara::Promise.create
+    promise, resolve, _reject = Rammus::Promise.create
 
     @_routes[path] = ->(req, res) do
       await promise.then { |response| res.finish }, 0

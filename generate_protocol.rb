@@ -5,7 +5,7 @@ require "erb"
 require "fileutils"
 
 template = <<-RUBY
-module Chromiebara
+module Rammus
   module Protocol
     module <%= domain.name %>
       extend self\
@@ -43,9 +43,9 @@ end
 RUBY
 
 protocol_template = <<-RUBY
-module Chromiebara
+module Rammus
   module Protocol<% protocol.domains.each do |domain| %>
-      autoload :<%= domain.name %>, "chromiebara/protocol/<%= underscore(domain.name)%>.rb"<% end %>
+      autoload :<%= domain.name %>, "rammus/protocol/<%= underscore(domain.name)%>.rb"<% end %>
   end
 end
 RUBY
@@ -160,11 +160,11 @@ def underscore(word)
     .downcase
 end
 
-path = "lib/chromiebara/protocol/"
+path = "lib/rammus/protocol/"
 FileUtils.mkdir_p path
 protocol = Protocol.from_json(JSON.parse(File.read("./protocol.json")))
 
-File.open("lib/chromiebara/protocol.rb", "w") do |protocol_file|
+File.open("lib/rammus/protocol.rb", "w") do |protocol_file|
   protocol_file.write ERB.new(protocol_template).result(binding)
 end
 

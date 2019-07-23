@@ -1,5 +1,5 @@
 class TestEmitter
-  include Chromiebara::EventEmitter
+  include Rammus::EventEmitter
 
   def initialize
     super
