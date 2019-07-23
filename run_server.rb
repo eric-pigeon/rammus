@@ -4,8 +4,10 @@ require 'concurrent'
 require 'chromiebara/promise'
 require 'support/test_server'
 require 'byebug'
-TestServer.start!
 
-TestServer.set_content_security_policy('/empty.html', 'script-src http://localhost:4567')
-#require 'support/test_app'
-#TestApp.start!
+#TestServer.instance.set_route '/empty.html' do |req, res|
+#  res.status = 204
+#  res.finish
+#end
+
+TestServer.start_ssl!

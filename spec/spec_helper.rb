@@ -8,6 +8,7 @@ require 'chromiebara'
 require 'support/test_server'
 require 'support/match_screenshot'
 require 'support/test_emitter'
+require 'support/ssl_cert'
 if RUBY_ENGINE != "jruby"
   require 'byebug'
 end
@@ -148,11 +149,13 @@ RSpec.configure do |config|
   config.include MatchScreenshot
 
   config.before(:suite) do
-    Thread.new { TestServer.start! }
+    Thread.new { TestServer.start! }.abort_on_exception = true
+    Thread.new { TestServer.start_ssl! }.abort_on_exception = true
   end
 
   config.after(:suite) do
     TestServer.stop!
+    TestServer.stop_ssl!
   end
   # rspec-expectations config goes here. You can use an alternate
   # assertion/expectation library such as wrong or the stdlib/minitest

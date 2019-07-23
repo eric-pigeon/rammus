@@ -1,16 +1,22 @@
 require 'rack'
 require "zlib"
+require 'puma'
+require 'support/ssl_cert'
 
 class TestServer
   include Chromiebara::Promise::Await
   HANDLER = Rack::Handler.get('puma')
   HANDLER_NAME = "puma"
-  SERVER_SETTINGS = {:Port=>4567, :Host=>"localhost"}
+  SERVER_SETTINGS = { Port: 4567, Host: "localhost" }
+  SSL_SERVER_SETTINGS = { Port: 4568 }
   STATIC_PATH = File.dirname(__FILE__) + "/public"
   CONTENT_SECURITY_POLICY = 'Content-Security-Policy'.freeze
   LAST_MODIFIED = 'Last-Modified'.freeze
 
   RequestSubscriber = Struct.new(:promise, :resolve, :reject)
+
+  @running_server = nil
+  @running_ssl_server = nil
 
   def self.running_server
     @running_server
@@ -18,6 +24,14 @@ class TestServer
 
   def self.running_server=(server)
     @running_server = server
+  end
+
+  def self.running_ssl_server
+    @running_ssl_server
+  end
+
+  def self.running_ssl_server=(server)
+    @running_ssl_server = server
   end
 
   def self.instance
@@ -33,6 +47,30 @@ class TestServer
     end
   end
 
+  def self.ssl_instance
+    @_ssl_instance ||= new
+  end
+
+  def self.start_ssl!
+    cert, key = SslCert.generate
+    dir = File.expand_path("../tmp", File.dirname(__FILE__))
+    key_path = "#{dir}/key.pem"
+    cert_path = "#{dir}/cert.pem"
+    File.write key_path, key
+    File.write cert_path, cert
+
+    settings = SSL_SERVER_SETTINGS.merge(
+      Host: "ssl://localhost:4568?key=#{key_path}&cert=#{cert_path}"
+    )
+
+    HANDLER.run instance, settings do |server|
+      port = SSL_SERVER_SETTINGS[:Port]
+      $stderr.puts "== SSL TestServer running on port #{port}"
+
+      self.running_ssl_server = server
+    end
+  end
+
   def self.stop!
     return if running_server.nil?
 
@@ -40,6 +78,15 @@ class TestServer
     $stderr.puts "Test server done"
 
     self.running_server = nil
+  end
+
+  def self.stop_ssl!
+    return if running_ssl_server.nil?
+
+    running_ssl_server.respond_to?(:stop!) ? running_ssl_server.stop! : running_ssl_server.stop
+    $stderr.puts "Test ssl server done"
+
+    self.running_ssl_server = nil
   end
 
   def self.set_content_security_policy(path, policy)
