@@ -74,7 +74,7 @@ module Rammus
     end
 
     def focus
-      execution_context.evaluate_function 'element => element.focus()', self
+      await execution_context.evaluate_function 'element => element.focus()', self
     end
 
     # @param {string} text
