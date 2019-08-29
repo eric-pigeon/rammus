@@ -15,11 +15,11 @@ module Rammus
     include Promise::Await
     attr_reader :page, :frame_manager
 
-    # @param [Rammus::ExecutionContext] context
-    # @param [Rammus::CDPSession] client
-    # @param [Protocol.Runtime.RemoteObject] remote_object
-    # @param [Rammus::Page] page
-    # @param [Rammus::FrameManager] frame_manager
+    # @param context [Rammus::ExecutionContext]
+    # @param client [Rammus::CDPSession]
+    # @param remote_object [Protocol.Runtime.RemoteObject]
+    # @param page [Rammus::Page]
+    # @param frame_manager [Rammus::FrameManager]
     #
     def initialize(context, client, remote_object, page, frame_manager)
       super context, client, remote_object
@@ -27,14 +27,16 @@ module Rammus
       @frame_manager = frame_manager
     end
 
-    # * @override
-    # * @return {?ElementHandle}
+    # @return [Rammus::ElementHandle]
     #
     def as_element
       self
     end
 
-    # @return {!Promise<?Puppeteer.Frame>}
+    # Resolves to the content frame for element handles referencing iframe
+    # nodes, or null otherwise
+    #
+    # @return [Rammus::Frame, nil]
     #
     def content_frame
       node_info = await client.command Protocol::DOM.describe_node(
@@ -45,21 +47,31 @@ module Rammus
       frame_manager.frame node_info.dig("node", "frameId")
     end
 
-    def hover()
+    # This method scrolls element into view if needed, and then uses
+    # {Page#mouse} to hover over the center of the element. If the element is
+    # detached from DOM, the method throws an error.
+    #
+    def hover
       scroll_into_view_if_needed
       point = clickable_point
       page.mouse.move point[:x], point[:y]
     end
 
-    # * @param {!{delay?: number, button?: "left"|"right"|"middle", clickCount?: number}=} options
+    # This method scrolls element into view if needed, and then uses {Page#mouse}
+    # to click in the center of the element. If the element is detached from DOM,
+    # the method throws an error.
     #
-    def click(options = {})
+    # @param delay [Integer] Time to wait between mousedown and mouseup in milliseconds. Defaults to 0.
+    # @param button [String] Mouse button "left", "right" or "middle" defaults to "left"
+    # @param click_count [Integer] number of times to click
+    #
+    def click(delay: nil, button: nil, click_count: nil)
       scroll_into_view_if_needed
       point = clickable_point
       page.mouse.click(point[:x], point[:y], options)
     end
 
-    # @param {!Array<string>} file_paths
+    # @param file_paths [Array<String>] paths to files to upload
     #
     def upload_file(*file_paths)
       files = file_paths.map { |file_path| File.expand_path file_path }
@@ -67,6 +79,10 @@ module Rammus
       await client.command Protocol::DOM.set_file_input_files(object_id: object_id, files: files)
     end
 
+    # This method scrolls element into view if needed, and then uses
+    # {Touchscreen#tap} to tap in the center of the element. If the element is
+    # detached from DOM, the method throws an error.
+    #
     def tap
       scroll_into_view_if_needed
       point = clickable_point
@@ -77,16 +93,36 @@ module Rammus
       await execution_context.evaluate_function 'element => element.focus()', self
     end
 
-    # @param {string} text
-    # @param {{delay: (number|undefined)}=} options
+    # Focuses the element, and then sends a `keydown`, `keypress/input`, and
+    # `keyup` event for each character in the text. To press a special key, like
+    # `Control` or `ArrowDown`, use {press}.
+    #
+    # @example Types instantly
+    #    element_handle.type 'Hello'
+    #
+    # @example Types slower, like a user
+    #    element_handle.type 'World', delay: 100
+    #
+    # @param text [String]
+    # @param delay [Integer]
     #
     def type(text, delay: nil)
       focus
       page.keyboard.type text, delay: delay
     end
 
-    # @param {string} key
-    # @param {!{delay?: number, text?: string}=} options
+    # Focuses the element, and then uses keyboard.down and keyboard.up.
+    #
+    # If key is a single character and no modifier keys besides Shift are being
+    # held down, a keypress/input event will also be generated. The text option
+    # can be specified to force an input event to be generated.
+    #
+    # NOTE Modifier keys DO effect element_handle#press. Holding down Shift will
+    # type the text in upper case.
+    #
+    # @param key [String] Name of key to press, such as ArrowLeft. See Keyboard for a list of all key names.
+    # @param delay [Integer, nil] If specified, generates an input event with this text.
+    # @param text [String, nil] Time to wait between keydown and keyup in milliseconds. Defaults to 0.
     #
     def press(key, delay: nil, text: nil)
       focus
