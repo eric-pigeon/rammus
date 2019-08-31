@@ -65,10 +65,10 @@ module Rammus
     # @param button [String] Mouse button "left", "right" or "middle" defaults to "left"
     # @param click_count [Integer] number of times to click
     #
-    def click(delay: nil, button: nil, click_count: nil)
+    def click(delay: nil, button: Mouse::Button::LEFT, click_count: 1)
       scroll_into_view_if_needed
       point = clickable_point
-      page.mouse.click(point[:x], point[:y], options)
+      page.mouse.click point[:x], point[:y], delay: delay, button: button, click_count: click_count
     end
 
     # @param file_paths [Array<String>] paths to files to upload

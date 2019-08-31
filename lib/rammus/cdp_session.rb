@@ -1,11 +1,22 @@
 module Rammus
+  # The CDPSession instances are used to talk raw Chrome Devtools Protocol:
+  #
+  # protocol methods can be called with {CDPSession#command} method.
+  # protocol events can be subscribed to with {CDPSession#on} method.
+  #
   class CDPSession
     include EventEmitter
 
+    # @!visibility private
+    #
     CommandCallback = Struct.new(:resolve, :reject, :method)
 
+    # @!visibility private
+    #
     attr_reader :client, :target_type, :session_id
 
+    # @!visibility private
+    #
     def initialize(client, target_type, session_id)
       super()
       @client = client

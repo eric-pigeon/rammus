@@ -1,11 +1,13 @@
 module Rammus
+  # ConsoleMessage objects are dispatched by page via the 'console' event.
+  #
   class ConsoleMessage
     attr_reader :type, :text, :args, :location
 
-    # @param {string} type
-    # @param {string} text
-    # @param {!Array<!Puppeteer.JSHandle>} args
-    # @param {ConsoleMessage.Location} location
+    # @param type [String]
+    # @param text [String]
+    # @param args [Array<Rammus::JSHandle>]
+    # @param location [Hash]
     #
     def initialize(type, text, args, location = {})
       @type = type

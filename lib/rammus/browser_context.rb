@@ -1,4 +1,26 @@
 module Rammus
+  # BrowserContexts provide a way to operate multiple independent browser
+  # sessions. When a browser is launched, it has a single BrowserContext used
+  # by default. The method {Browser#new_page} creates a page in the default
+  # browser context.
+  #
+  # If a page opens another page, e.g. with a window.open call, the popup will
+  # belong to the parent page's browser context.
+  #
+  # Rammus allows creation of "incognito" browser contexts with
+  # {Browser#create_context} method. "Incognito" browser contexts don't write
+  # any browsing data to disk.
+  #
+  # @example Create a new incognito browser context
+  #   context = browser.create_context
+  #
+  # @example Create a new page inside context.
+  #   page = context.new_page
+  #   await page.goto 'https://example.com'
+  #
+  # @example Dispose context once it's no longer needed.
+  #    context.close
+  #
   class BrowserContext
     include Promise::Await
     include EventEmitter
@@ -6,6 +28,8 @@ module Rammus
 
     attr_reader :id, :browser, :client
 
+    # @!visibility private
+    #
     def initialize(browser:, client:, id: nil)
       super()
       @id = id
@@ -50,6 +74,15 @@ module Rammus
       browser.targets.select { |target| target.browser_context == self }
     end
 
+    # Override browser permissions
+    #
+    # @param origin [String] The origin to grant permissions to, e.g. "https://example.com".
+    # @param permissions [Array<String>] An array of permissions to grant. All permissions that are not listed here will be automatically denied. Permissions can be one of the following values: ['geolocation' 'midi' 'midi-sysex' (system-exclusive midi) 'notifications' 'push' 'camera' 'microphone' 'background-sync' 'ambient-light-sensor' 'accelerometer' 'gyroscope' 'magnetometer' 'accessibility-events' 'clipboard-read' 'clipboard-write' 'payment-handler']
+    #
+    # @example Allowing geolocation
+    #   context = browser.default_context
+    #   context.override_permissions 'https://html5demos.com', ['geolocation']
+    #
     def override_permissions(origin, permissions)
       permissions = permissions.map do |permission|
         protocol_permission = WEB_PERMISSION_TO_PROTOCOL[permission]
@@ -59,10 +92,29 @@ module Rammus
       await client.command Protocol::Browser.grant_permissions origin: origin, browser_context_id: id || nil, permissions: permissions
     end
 
+    # Clears all permission overrides for the browser context.
+    #
+    # @example Clearing permission overrides
+    #    context = browser.default_context
+    #    context.override_permissions 'https://example.com', ['clipboard-read']
+    #    context.clear_permission_overrides
+    #
     def clear_permission_overrides
       await client.command Protocol::Browser.reset_permissions browser_context_id: id || nil
     end
 
+    # Search for a target in this context
+    #
+    # @overload wait_for_target(timeout: 2, predicate:)
+    #   @param timeout [Integer] Maximum wait time in milliseconds. Pass 0 to disable the timeout. Defaults to 2 seconds.
+    #   @param predicate [#call:Boolean] A callable to be run for every target
+    #
+    # @overload wait_for_target(timeout: 2, &block)
+    #   @param timeout [Integer] Maximum wait time in milliseconds. Pass 0 to disable the timeout. Defaults to 2 seconds.
+    #   @yield [Rammus::Target] A block to detect the target
+    #
+    # @return [Promise<Target>]
+    #
     def wait_for_target(timeout: 2, predicate: nil, &block)
       predicate ||= block
       browser.wait_for_target(timeout: timeout) { |target| target.browser_context == self && predicate.(target) }

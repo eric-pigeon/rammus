@@ -1,4 +1,6 @@
 module Rammus
+  # @!visibility private
+  #
   module EventEmitter
     EVENT_QUEUE = Queue.new
     EXECUTOR = Thread.new do

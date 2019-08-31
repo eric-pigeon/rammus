@@ -1,19 +1,40 @@
 require 'rammus/ax_node'
 
 module Rammus
+  # The Accessibility class provides methods for inspecting Chromium's
+  # accessibility tree. The accessibility tree is used by assistive technology
+  # such as screen readers or switches.
+  #
+  # Accessibility is a very platform-specific thing. On different platforms,
+  # there are different screen readers that might have wildly different output.
+  #
+  # Blink - Chrome's rendering engine - has a concept of "accessibility tree",
+  # which is than translated into different platform-specific APIs. Accessibility
+  # namespace gives users access to the Blink Accessibility Tree.
+  #
+  # Most of the accessibility tree gets filtered out when converting from
+  # Blink AX Tree to Platform-specific AX-Tree or by assistive technologies
+  # themselves. By default, Rammus tries to approximate this filtering,
+  # exposing only the "interesting" nodes of the tree.
+  #
   class Accessibility
     include Promise::Await
 
     attr_reader :client
 
-    # @param [Rammus::CDPSession] client
+    # @param client [Rammus::CDPSession]
     #
     def initialize(client)
       @client = client
     end
 
-    # @param {{interestingOnly?: boolean, root?: ?Puppeteer.ElementHandle}=} options
-    # @return {!Promise<!SerializedAXNode>}
+    # Captures the current state of the accessibility tree. The returned object
+    # represents the root accessible node of the page.
+    #
+    # @param root [Rammus::ElementHandle, nil] The root DOM element for the snapshot. Defaults to the whole page.
+    # @param interesting_only [Boolean] Prune uninteresting nodes from the tree. Defaults to true.
+    #
+    # @return [Hash]
     #
     def snapshot(root: nil, interesting_only: true)
       nodes = (await client.command Protocol::Accessibility.get_full_ax_tree)["nodes"]
@@ -43,9 +64,10 @@ module Rammus
 
     private
 
-      # @param {!AXNode} node
-      # @param {!Set<!AXNode>=} whitelistedNodes
-      # @return {!Array<!SerializedAXNode>}
+      # @param node [Rammus::AXNode]
+      # @param whitelisted_nodes [Set<AXNode>]
+      #
+      # @return [Array<SerializedAXNode>]
       #
       def self.serialize_tree(node, whitelisted_nodes = nil)
         # @type {!Array<!SerializedAXNode>}

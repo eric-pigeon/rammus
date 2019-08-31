@@ -1,8 +1,6 @@
 module Rammus
+  # @!visibility private
   class AXNode
-    # @param {!Array<!Protocol.Accessibility.AXNode>} payloads
-    # @return {!AXNode}
-    #
     def self.create_tree(payloads)
       node_by_id = payloads.each_with_object({}) do |payload, memo|
         memo[payload["nodeId"]] = AXNode.new payload;
@@ -19,8 +17,6 @@ module Rammus
 
     attr_reader :payload, :children, :focusable
 
-    # @param {!Protocol.Accessibility.AXNode} payload
-    #
     def initialize(payload)
       @payload = payload
 
@@ -48,9 +44,6 @@ module Rammus
       end
     end
 
-    # @param {function(AXNode):boolean} predicate
-    # @return {?AXNode}
-    #
     def find(&predicate)
       return self if predicate.(self)
 
@@ -62,8 +55,6 @@ module Rammus
       nil
     end
 
-    # @return {boolean}
-    #
     def is_leaf_node
       return true if children.length.zero?
 
@@ -86,8 +77,6 @@ module Rammus
       false
     end
 
-    # @return {boolean}
-    #
     def is_control
       control_roles =  [
         'button', 'checkbox', 'ColorWell', 'combobox', 'DisclosureTriangle',
@@ -99,9 +88,6 @@ module Rammus
       control_roles.include? @_role
     end
 
-    # @param {boolean} insideControl
-    # @return {boolean}
-    #
     def is_interesting(inside_control)
       return false if @_role == 'Ignored'
 
@@ -116,8 +102,6 @@ module Rammus
       is_leaf_node && !!@_name
     end
 
-    # @return {!SerializedAXNode}
-    #
     def serialize
       properties = payload.fetch("properties", []).each_with_object({}) do |property, memo|
         memo[property["name"].downcase] = property.dig "value", "value"
@@ -174,8 +158,6 @@ module Rammus
       node
     end
 
-    # @return {boolean}
-    #
     def has_focusable_child?
       @_has_focusable_child ||= children.any? { |child| child.focusable || child.has_focusable_child? }
     end
@@ -209,16 +191,12 @@ module Rammus
 
       TOKEN_PROPERTIES = ['autocomplete', 'haspopup', 'invalid', 'orientation']
 
-      # @return {boolean}
-      #
       def plain_text_field?
         return false if @_richly_editable
         return true if @_editable
         ['textbox', 'ComboBox', 'searchbox'].include? @_role
       end
 
-      # @return {boolean}
-      #
       def text_only_object?
         ['LineBreak', 'text', 'InlineTextBox'].include? @_role
       end

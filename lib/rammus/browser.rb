@@ -1,14 +1,21 @@
 require 'forwardable'
 
 module Rammus
+  # A Browser is created when Rammus connects to a Chromium instance, either
+  # through {Rammus.launch} or {Rammus.connect}.
+  #
   class Browser
     include Promise::Await
     include EventEmitter
     extend Forwardable
     attr_reader :client, :default_context
 
+    # @!method new_page
+    #   (see Rammus::BrowserContext#new_page)
     delegate [:new_page] => :default_context
 
+    # @!visibility private
+    #
     def initialize(client:, close_callback: nil, ignore_https_errors: false, default_viewport: nil)
       super()
       @client = client
@@ -39,18 +46,12 @@ module Rammus
     end
 
     # Returns an array of all open browser contexts. In a newly created browser,
-    # this will return a single instance of BrowserContext.
+    # this will return a single instance of {BrowserContext}.
     #
     # @return [Array<Rammus::BrowserContext>]
     #
     def browser_contexts
       [default_context, *@contexts.values]
-    end
-
-    def delete_context(context)
-      _response = await client.command(Protocol::Target.dispose_browser_context(browser_context_id: context.id))
-      @contexts.delete(context.id)
-      true
     end
 
     # An array of all pages inside the Browser. In case of multiple browser
@@ -82,20 +83,17 @@ module Rammus
       targets.detect { |target| target.type == "browser" }
     end
 
-    # Creates a new page in the browser context
+    # Search for a target in all contexts.
     #
-    # @return [Rammus::Page]
+    # @overload wait_for_target(timeout: 2, predicate:)
+    #   @param timeout [Integer] Maximum wait time in milliseconds. Pass 0 to disable the timeout. Defaults to 2 seconds.
+    #   @param predicate [#call:Boolean] A callable to be run for every target
     #
-    def create_page_in_context(context_id)
-      response = await client.command(Protocol::Target.create_target(url: 'about:blank', browser_context_id: context_id))
-      target_id = response["targetId"]
-      target = await wait_for_target { |t| t.target_id == target_id }
-      target.page
-    end
-
-    # @param {function(!Target):boolean} predicate
-    # @param {{timeout?: number}=} options
-    # @return {!Promise<!Target>}
+    # @overload wait_for_target(timeout: 2, &block)
+    #   @param timeout [Integer] Maximum wait time in milliseconds. Pass 0 to disable the timeout. Defaults to 2 seconds.
+    #   @yield [Rammus::Target] A block to detect the target
+    #
+    # @return [Promise<Target>]
     #
     def wait_for_target(timeout: 2, predicate: nil, &block)
       predicate ||= block
@@ -136,9 +134,35 @@ module Rammus
       disconnect
     end
 
+    # Disconnects Rammus from the browser, but leaves the Chromium process
+    # running. After calling disconnect, the Browser object is considered
+    # disposed and cannot be used anymore.
+    #
     def disconnect
       client.dispose
     end
+
+    # @!visibility private
+    #
+    def delete_context(context)
+      _response = await client.command(Protocol::Target.dispose_browser_context(browser_context_id: context.id))
+      @contexts.delete(context.id)
+      true
+    end
+
+    # Creates a new page in the browser context
+    #
+    # @return [Rammus::Page]
+    #
+    # @!visibility private
+    #
+    def create_page_in_context(context_id)
+      response = await client.command(Protocol::Target.create_target(url: 'about:blank', browser_context_id: context_id))
+      target_id = response["targetId"]
+      target = await wait_for_target { |t| t.target_id == target_id }
+      target.page
+    end
+
 
     private
 

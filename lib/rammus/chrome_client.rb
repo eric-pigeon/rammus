@@ -1,4 +1,5 @@
 module Rammus
+  # @!visibility private
   class ChromeClient
     include Promise::Await
     include EventEmitter

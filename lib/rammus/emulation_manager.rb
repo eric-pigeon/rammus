@@ -1,10 +1,12 @@
 module Rammus
+  # @!visibility private
+  #
   class EmulationManager
     include Promise::Await
 
     attr_reader :client
 
-    # @param [Rammus::CDPSession] client
+    # @param client [Rammus::CDPSession]
     #
     def initialize(client)
       @client = client;

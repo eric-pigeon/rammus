@@ -5,9 +5,7 @@ module Rammus
   # The class represents a context for JavaScript execution. A Page might hav
   # many execution contexts:
   #
-  # * each frame has "default" execution context that is always created after
-  # frame is attached to DOM. This context is returned by the
-  # frame.execution_context method.
+  # * each frame has "default" execution context that is always created after frame is attached to DOM. This context is returned by the frame.execution_context method.
   #
   # * Extensions's content scripts create additional execution contexts.
   #
@@ -16,15 +14,23 @@ module Rammus
   class ExecutionContext
     include Promise::Await
 
+    # @!visibility private
+    #
     EVALUATION_SCRIPT_URL = '__puppeteer_evaluation_script__';
+    # @!visibility private
+    #
     SOURCE_URL_REGEX = /^[\040\t]*\/\/[@#] sourceURL=\s*(\S*?)\s*$/m;
+    # @!visibility private
+    #
     SUFFIX = "//# sourceURL=#{EVALUATION_SCRIPT_URL}"
 
     attr_reader :client, :world, :context_id
 
-    # @param [Rammus::CDPSession] client
-    # @param [Protocol::Runtime::ExecutionContextDescription] context_payload
-    # @param [Rammus::DOMWorld] world
+    # @!visibility private
+    #
+    # @param client [Rammus::CDPSession]
+    # @param context_payload [Protocol::Runtime::ExecutionContextDescription]
+    # @param world [Rammus::DOMWorld]
     #
     def initialize(client, context_payload, world)
       @client = client
@@ -32,18 +38,23 @@ module Rammus
       @context_id = context_payload["id"]
     end
 
+    # Frame associated with this execution context.
+    #
+    # Not every execution context is associated with a frame. For example,
+    # workers and extensions have execution contexts that are not associated with frames.
+    #
     # @return [Rammus::Frame, nil]
     #
     def frame
       world.nil? ? nil : world.frame
     end
 
-    # @param [String] page_function
+    # @param javascript [String]
     #
     # @return [Promise<Object,nil>]
     #
-    def evaluate(page_function)
-      evaluate_internal true, page_function
+    def evaluate(javascript)
+      evaluate_internal true, javascript
     end
 
     def evaluate_function(page_function, *args)
@@ -73,7 +84,9 @@ module Rammus
       JSHandle.create_js_handle self, response["objects"]
     end
 
-    # @param [Rammus::ElementHandle] element_handle
+    # @!visibility private
+    #
+    # @param element_handle [Rammus::ElementHandle]
     #
     # @return [Rammus::ElementHandle]
     #

@@ -1,24 +1,30 @@
 module Rammus
   class Mouse
+    module Button
+      LEFT = 'left'
+      RIGHT = 'right'
+      MIDDLE = 'middle'
+    end
+
     include Promise::Await
 
     attr_reader :client, :keyboard
 
-    # @param {Puppeteer.CDPSession} client
-    # @param {!Keyboard} keyboard
+    # @param client [Rammus::CDPSession]
+    # @param keyboard [Rammus::Keyboard]
     #
     def initialize(client, keyboard)
       @client = client
       @keyboard = keyboard
       @_x = 0
       @_y = 0
-      # /** @type {'none'|'left'|'right'|'middle'} */
+      # @type {'none'|'left'|'right'|'middle'}
       @_button = 'none'
     end
 
-    # @param {number} x
-    # @param {number} y
-    # @param {!{steps?: number}=} options
+    # @param x [Integer]
+    # @param y [Integer]
+    # @param steps [Integer]
     #
     def move(x, y, steps: 1)
       from_x = @_x
@@ -36,22 +42,24 @@ module Rammus
       end
     end
 
-    # @param {number} x
-    # @param {number} y
-    # @param {!{delay?: number, button?: "left"|"right"|"middle", clickCount?: number}=} options
+    # @param x [Integer]
+    # @param y [Integer]
+    # @param delay [Integer] Time to wait between mousedown and mouseup in milliseconds. Defaults to 0.
+    # @param button [String] Mouse button "left", "right" or "middle" defaults to "left"
+    # @param click_count [Integer] number of times to click
     #
-    def click(x, y, options = {})
-      # delay = options[:delay]
+    def click(x, y, delay: nil, button: Button::LEFT, click_count: 1)
       move x, y
-      down options
-      # if (delay !== null)
-      #   await new Promise(f => setTimeout(f, delay));
-      up options
+
+      down button: button, click_count: click_count
+      sleep delay unless delay.nil?
+      up button: button, click_count: click_count
     end
 
-    # @param {!{button?: "left"|"right"|"middle", clickCount?: number}=} options
+    # @param button [String] Mouse button "left", "right" or "middle" defaults to "left"
+    # @param click_count [Integer] number of times to click
     #
-    def down(button: 'left', click_count: 1)
+    def down(button: Button::LEFT, click_count: 1)
       @_button = button
       await client.command Protocol::Input.dispatch_mouse_event(
         type: 'mousePressed',
@@ -63,9 +71,10 @@ module Rammus
       )
     end
 
-    # @param {!{button?: "left"|"right"|"middle", clickCount?: number}=} options
+    # @param button [String] Mouse button "left", "right" or "middle" defaults to "left"
+    # @param click_count [Integer] number of times to click
     #
-    def up(button: 'left', click_count: 1)
+    def up(button: Button::LEFT, click_count: 1)
       @_button = 'none'
       await client.command Protocol::Input.dispatch_mouse_event(
         type: 'mouseReleased',

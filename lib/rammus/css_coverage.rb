@@ -1,9 +1,10 @@
 module Rammus
+  # @!visibility private
   class CSSCoverage
     include Promise::Await
     attr_reader :client
 
-    # @param {!Puppeteer.CDPSession} client
+    # @param client [Rammus::CDPSession]
     #
     def initialize(client)
       @client = client
@@ -31,7 +32,7 @@ module Rammus
       )
     end
 
-    # @return {!Promise<!Array<!CoverageEntry>>}
+    # @return [Array<Hash>]
     #
     def stop
       raise 'CSSCoverage is not enabled' unless @_enabled
@@ -72,8 +73,6 @@ module Rammus
         @_stylesheet_sources.clear
       end
 
-      # @param {!Protocol.CSS.styleSheetAddedPayload} event
-      #
       def on_style_sheet(event)
         header = event["header"]
         # Ignore anonymous scripts
