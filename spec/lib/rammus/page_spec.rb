@@ -249,7 +249,6 @@ module Rammus
       end
 
       it 'should work for non-blank page' do
-        pending 'page crashes on chrome'
         await page.goto server.empty_page
         await page.evaluate_function "() => window.set = new Set(['hello', 'world'])"
         prototype_handle = await page.evaluate_handle_function "() => Set.prototype"
