@@ -8,8 +8,8 @@ module Rammus
   # handle is disposed. ElementHandles are auto-disposed when their origin
   # frame gets navigated.
   #
-  # ElementHandle instances can be used as arguments in page.$eval() and
-  # page.evaluate() methods.
+  # ElementHandle instances can be used as arguments in {Page.query_selector_evaluate_function} and
+  # {Page#evaluate_function} methods.
   #
   class ElementHandle < JSHandle
     include Promise::Await

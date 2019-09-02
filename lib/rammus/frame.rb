@@ -1,10 +1,49 @@
 module Rammus
+  # At every point of time, page exposes its current frame tree via the
+  # {Page#main_frame} and {Frame#child_frames} methods.
+  #
+  # Frame object's lifecycle is controlled by three events, dispatched on the page object:
+  #
+  # * frameattached - fired when the frame gets attached to the page. A Frame can be attached to the page only once.
+  # * framenavigated - fired when the frame commits navigation to a different URL.
+  # * framedetached - fired when the frame gets detached from the page. A Frame can be detached from the page only once.
+  #
   class Frame
     extend Forwardable
     include Promise::Await
 
-    attr_reader :id, :frame_manager, :parent_frame, :loader_id, :main_world, :secondary_world
+    # @!visibility private
+    #
+    attr_reader :id, :frame_manager, :loader_id, :main_world, :secondary_world
 
+    # The frame's parent frame if any.  Detached Frames and main frames return
+    # nil.
+    #
+    # @return [Rammus::Frame, nil]
+    #
+    attr_reader :parent_frame
+
+    # @!method query_selector(selector)
+    #   (see Rammus::DOMWorld#query_selector)
+    #
+    # @!method query_selector_all(selector)
+    #    (see Rammus::DOMWorld#query_selector_all)
+    #
+    # @!method query_selector_all_evaluate_function(selector, page_function, *args)
+    #    (see Rammus::DOMWorld#query_selector_all_evaluate_function)
+    #
+    # @!method query_selector_evaluate_function(selector, page_function, *args)
+    #    (see Rammus::DOMWorld#query_selector_evaluate_function)
+    #
+    # @!method xpath(expression)
+    #    (see Rammus::DOMWorld#xpath)
+    #
+    # @!method add_script_tag(url: nil, path: nil, content: type: '' )
+    #    (see Rammus::DOMWorld#add_script_tag)
+    #
+    # @!method add_style_tag(url: nil, path: nil, content: nil)
+    #    (see Rammus::DOMWorld#add_style_tag)
+    #
     delegate [
       :add_script_tag,
       :add_style_tag,
@@ -30,10 +69,12 @@ module Rammus
       :type
     ] => :secondary_world
 
-    # @param [Rammus::FrameManager] frame_manager
-    # @param [Rammus::CPDSession] client
-    # @param [Rammus::Frame, nil] parent_frame
-    # @param [Integer] id
+    # @!visibility private
+    #
+    # @param frame_manager [Rammus::FrameManager]
+    # @param client [Rammus::CPDSession]
+    # @param parent_frame [Rammus::Frame, nil]
+    # @param id [Integer]
     #
     def initialize(frame_manager, client, parent_frame, id)
       @frame_manager = frame_manager
@@ -104,7 +145,7 @@ module Rammus
       @_url
     end
 
-    # @return {!Array.<!Frame>}
+    # @return [Array<Frame>]
     #
     def child_frames
       @child_frames.to_a
@@ -151,6 +192,8 @@ module Rammus
       end
     end
 
+    # @!visibility private
+    #
     def _detach
       @_detached = true
       main_world._detach
@@ -160,7 +203,9 @@ module Rammus
       @parent_frame = nil
     end
 
-    # @param {string} url
+    # @!visibility private
+    #
+    # @param url [String]
     #
     def _navigated_within_document(url)
       @_url = url

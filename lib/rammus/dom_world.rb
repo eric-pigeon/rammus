@@ -1,15 +1,17 @@
 require 'rammus/wait_task'
 
 module Rammus
+  # @!visibility private
+  #
   class DOMWorld
     extend Forwardable
     include Promise::Await
 
     attr_reader :frame_manager, :frame, :timeout_settings, :wait_tasks
 
-    # @param [Rammus::FrameManager] frame_manager
-    # @param [Rammus::Frame] frame
-    # @param {!Puppeteer.TimeoutSettings} timeoutSettings
+    # @param frame_manager [Rammus::FrameManager]
+    # @param frame [Rammus::Frame]
+    # @param timeout_settings [Rammus::TimeoutSettings]
     #
     def initialize(frame_manager, frame, timeout_settings)
       @frame_manager = frame_manager
@@ -28,51 +30,54 @@ module Rammus
       @_detached = false
     end
 
-    # @return {boolean}
+    # @return [boolean]
     #
     def has_context?
       @_context_resolve_callback.nil?
     end
 
-    # @return {!Promise<!Puppeteer.ExecutionContext>}
+    # @return [Rammus::ExecutionContext]
     #
     def execution_context
       raise "Execution Context is not available in detached frame \"#{frame.url}\" (are you trying to evaluate?)" if @_detached
       await @_context_promise
     end
 
-    # @param {Function|string} pageFunction
-    # @param {!Array<*>} args
-    # @return {!Promise<!Puppeteer.JSHandle>}
+    # (see Rammus::ExecutionContext#evaluate_handle)
     #
     def evaluate_handle(page_function, *args)
       execution_context.evaluate_handle page_function, *args
     end
 
-    # @param {Function|string} pageFunction
-    # @param {!Array<*>} args
-    # @return {!Promise<*>}
+    # (see Rammus::ExecutionContext#evaluate)
     #
     def evaluate(function, *args)
       execution_context.evaluate function, *args
     end
 
+    # (see Rammus::ExecutionContext#evaluate_function)
+    #
     def evaluate_function(function, *args)
       execution_context.evaluate_function function, *args
     end
 
+    # (see Rammus::ExecutionContext#evaluate_handle_function)
+    #
     def evaluate_handle_function(function, *args)
       execution_context.evaluate_handle_function function, *args
     end
 
-    # @param {string} selector
-    # @return {!Promise<?Puppeteer.ElementHandle>}
+    # The method queries frame for the selector. If there's no such element
+    # within the frame, the method will resolve to null.
+    #
+    # @param selector [String] A selector to query frame for
+    # @return [Rammus::ElementHandle]
     #
     def query_selector(selector)
       document.query_selector selector
     end
 
-    # @return {!Promise<!Puppeteer.ElementHandle>}
+    # @return [Rammus::ElementHandle]
     #
     def document
       (await execution_context.evaluate_handle('document')).as_element
@@ -85,39 +90,69 @@ module Rammus
       # return this._documentPromise;
     end
 
-    # @param {string} expression
-    # @return {!Promise<!Array<!Puppeteer.ElementHandle>>}
+    # The method evaluates the XPath expression.
+    #
+    # @param expression [String] Expression to evaluate.
+    # @return [Promise<Array<ElementHandle>>]
     #
     def xpath(expression)
       document.xpath expression
     end
 
-    # @param {string} selector
-    # @param {Function|string} pageFunction
-    # @param {!Array<*>} args
-    # @return {!Promise<(!Object|undefined)>}
+    # This method runs document.querySelector within the frame and passes it
+    # as the first argument to page_function. If there's no element matching
+    # selector, the method throws an error.
+    #
+    # If page_function returns a Promise, then
+    # {query_selector_evaluate_function} would wait for the promise to resolve
+    # and return its value.
+    #
+    # @example
+    #    search_value = await frame.query_selector_evaluate_function '#search', 'el => el.value'
+    #    preload_href = await frame.query_selector_evaluate_function 'link[rel=preload]', 'el => el.href'
+    #    html = await frame.query_selector_evaluate_function '.main-container', 'e => e.outerHTML'
+    #
+    # @param selector [String] A selector to query frame for
+    # @param page_function [String] function(Array<Element>) Function to be evaluated in browser context
+    # @param *args [Serializable,JSHandle] Arguments to pass to page_function
+    #
+    # @return [Promise<Object>]
     #
     def query_selector_evaluate_function(selector, page_function, *args)
       document.query_selector_evaluate_function selector, page_function, *args
     end
 
-    # @param {string} selector
-    # @param {Function|string} pageFunction
-    # @param {!Array<*>} args
-    # @return {!Promise<(!Object|undefined)>}
+    # This method runs Array.from(document.querySelectorAll(selector)) within
+    # the frame and passes it as the first argument to page_function.
+    #
+    # If page_function returns a Promise, then
+    # {query_selector_all_evaluate_function} would wait for the promise to
+    # resolve and return its value
+    #
+    # @example
+    #    divs_counts = await frame.query_selector_all_evaluate_function 'div', 'divs => divs.length'
+    #
+    # @param selector [String] A selector to query frame for
+    # @param page_function [String] function(Array<Element>) Function to be evaluated in browser context
+    # @param *args [Serializable,JSHandle] Arguments to pass to page_function
+    #
+    # @return [Promise<Object>]
     #
     def query_selector_all_evaluate_function(selector, page_function, *args)
       document.query_selector_all_evaluate_function selector, page_function, *args
     end
 
-    # @param {string} selector
-    # @return {!Promise<!Array<!Puppeteer.ElementHandle>>}
+    # The method runs document.querySelectorAll within the frame. If no
+    # elements match the selector, the return value resolves to [].
+    #
+    # @param selector [String] A selector to query frame for
+    # @return [Array<Rammus::ElementHandle>]
     #
     def query_selector_all(selector)
       document.query_selector_all selector
     end
 
-    # @return {!Promise<String>}
+    # @return [String]
     #
     def content
       function = <<~JAVASCRIPT
@@ -162,13 +197,19 @@ module Rammus
       end
     end
 
-    # @param {!{url?: string, path?: string, content?: string, type?: string}} options
-    # @return {!Promise<!Puppeteer.ElementHandle>}
+    # Adds a <script> tag into the page with the desired url or content.
+    #
+    # @param url [String] URL of a script to be added.
+    # @param path [String] Path to the JavaScript file to be injected into frame. If path is a relative path, then it is resolved relative to current working directory.
+    # @param content [String] Raw JavaScript content to be injected into frame.
+    # @param type [String] Script type. Use 'module' in order to load a Javascript ES6 module.
+    # @return [ElementHandle] which resolves to the added tag when the script's onload fires or when the script content was injected into frame.
     #
     def add_script_tag(url: nil, path: nil, content: nil, type: '')
-      # @param {string} url
-      # @param {string} type
-      # @return {!Promise<!HTMLElement>}
+      # @param url [String]
+      # @param type [String]
+      #
+      # @return [Promise<HTMLElement>]
       #
       add_script_url = <<~JAVASCRIPT
       async function addScriptUrl(url, type) {
@@ -194,9 +235,10 @@ module Rammus
         end
       end
 
-      # @param {string} content
-      # @param {string} type
-      # @return {!HTMLElement}
+      # @param content [String]
+      # @param type [string]
+      #
+      # @return [HTMLElement]
       #
       add_script_content = <<~JAVASCRIPT
       function addScriptContent(content, type = 'text/javascript') {
@@ -225,12 +267,19 @@ module Rammus
       raise 'Provide an object with a `url`, `path` or `content` property'
     end
 
-    # @param {!{url?: string, path?: string, content?: string}} options
-    # @return {!Promise<!Puppeteer.ElementHandle>}
+    # Adds a <link rel="stylesheet"> tag into the page with the desired url or
+    # a <style type="text/css"> tag with the content.
+    #
+    # @param url [String] URL of the <link> tag.
+    # @param path [String] Path to the CSS file to be injected into frame. If path is a relative path, then it is resolved relative to current working directory.
+    # @param content [String] Raw CSS content to be injected into frame.
+    #
+    # @return [ElementHandle] which resolves to the added tag when the stylesheet's onload fires or when the CSS content was injected into frame.
     #
     def add_style_tag(url: nil, path: nil, content: nil)
-      # @param {string} url
-      # @return {!Promise<!HTMLElement>}
+      # @param url [String]
+      #
+      # @return [Promise<HTMLElement>]
       #
       add_style_url = <<~JAVASCRIPT
       async function addStyleUrl(url) {
@@ -247,8 +296,9 @@ module Rammus
       }
       JAVASCRIPT
 
-      # @param {string} content
-      # @return {!Promise<!HTMLElement>}
+      # @param content [String]
+      #
+      # @return [Promise<HTMLElement>]
       #
       add_style_content = <<~JAVASCRIPT
       async function addStyleContent(content) {

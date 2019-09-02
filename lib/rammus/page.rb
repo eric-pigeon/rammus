@@ -28,6 +28,13 @@ module Rammus
       :touchscreen, :accessibility, :coverage, :tracing
 
     delegate [:browser, :browser_context] => :target
+    # @!method main_frame
+    #
+    # Page is guaranteed to have a main frame which persists during navigations.
+    #
+    #
+    # @return [Rammus::Frame]
+    #
     delegate [:frames, :main_frame, :network_manager] => :frame_manager
     delegate [
       :authenticate,

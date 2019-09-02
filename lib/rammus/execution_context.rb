@@ -49,6 +49,9 @@ module Rammus
       world.nil? ? nil : world.frame
     end
 
+    # Evaluates the string and returns the result.  If the javascript is a
+    # function call use {evaluate_function} instead.
+    #
     # @param javascript [String]
     #
     # @return [Promise<Object,nil>]
@@ -57,23 +60,77 @@ module Rammus
       evaluate_internal true, javascript
     end
 
+    # Evaluates the javascript function call and returns the results.
+    # If the function passed to the {evaluate_function} returns a Promise,
+    # then {evaluate_function} would wait for the promise to resolve and return
+    # its value.
+    #
+    # If the function passed to the {evaluate} returns a non-Serializable value,
+    # then {evaluate} resolves to undefined. DevTools Protocol also supports
+    # transferring some additional values that are not serializable by
+    # JSON: -0, NaN, Infinity, -Infinity, and bigint literals.
+    #
+    # @param page_function [String] Function to be evaluated in the page context
+    # @param *args [Serializable,JsHandle] Arguments to pass to page_function
+    #
+    # @return [Promise<Object,nil>]
+    #
     def evaluate_function(page_function, *args)
       evaluate_function_internal true, page_function, *args
     end
 
-    # @param [String] page_function
+    # Evaluates the string and returns the result.  The only difference between
+    # {evaluate} and {evaluate_handle} is that {evaluate_handle} returns an
+    # in-page object({Rammus::JsHandle}.
     #
-    # @return [Rammus::JSHandle]
+    # If the javascript is a function call use {evaluate_handle_function} instead.
     #
-    def evaluate_handle(page_function)
-      evaluate_internal false, page_function
+    # @param javascript [String]
+    #
+    # @return [Promise<Rammus::JSHandle>]
+    #
+    def evaluate_handle(javascript)
+      evaluate_internal false, javascript
     end
 
+    # Evaluates the javascript function call and returns the results.
+    # If the function passed to the {evaluate_function} returns a Promise,
+    # then {evaluate_function} would wait for the promise to resolve and return
+    # its value.
+    #
+    # If the function passed to the {evaluate} returns a non-Serializable value,
+    # then {evaluate} resolves to undefined. DevTools Protocol also supports
+    # transferring some additional values that are not serializable by
+    # JSON: -0, NaN, Infinity, -Infinity, and bigint literals.
+    #
+    # The only difference between {evaluate_function} and
+    # {evaluate_handle_function} is that {evaluate_handle_function} returns an
+    # in-page object({Rammus::JsHandle}.
+    #
+    # @param page_function [String] Function to be evaluated in the page context
+    # @param *args [Serializable,JsHandle] Arguments to pass to page_function
+    #
+    # @return [Promise<Rammus::JSHandle>]
+    #
     def evaluate_handle_function(page_function, *args)
       evaluate_function_internal false, page_function, *args
     end
 
-    # @param [Rammus::JSHandle] prototype_handle
+    # The method iterates the JavaScript heap and finds all the objects with
+    # the given prototype.
+    #
+    # @example
+    #   await page.evaluate_function "() => window.map = new Map()"
+    #   # Get a handle to the Map object prototype
+    #   map_prototype = await page.evaluate_handle_function "() => Map.prototype"
+    #   # Query all map instances into an array
+    #   map_instances = await page.query_objects map_prototype
+    #   # Count amount of map objects in heap
+    #   count = await page.evaluate_function "maps => maps.length", map_instances
+    #   await map_instances.dispose
+    #   await map_prototype.dispose
+    #
+    # @param prototype_handle [Rammus::JSHandle]
     #
     # @return [Rammus::JSHandle]
     #
