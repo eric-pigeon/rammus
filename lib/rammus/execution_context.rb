@@ -71,7 +71,7 @@ module Rammus
     # JSON: -0, NaN, Infinity, -Infinity, and bigint literals.
     #
     # @param page_function [String] Function to be evaluated in the page context
-    # @param *args [Serializable,JsHandle] Arguments to pass to page_function
+    # @param args [Array<Serializable,JsHandle>] Arguments to pass to page_function
     #
     # @return [Promise<Object,nil>]
     #
@@ -108,7 +108,7 @@ module Rammus
     # in-page object({Rammus::JsHandle}.
     #
     # @param page_function [String] Function to be evaluated in the page context
-    # @param *args [Serializable,JsHandle] Arguments to pass to page_function
+    # @param args [Array<Serializable,JsHandle>] Arguments to pass to page_function
     #
     # @return [Promise<Rammus::JSHandle>]
     #

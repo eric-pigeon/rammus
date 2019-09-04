@@ -38,11 +38,29 @@ module Rammus
     # @!method xpath(expression)
     #    (see Rammus::DOMWorld#xpath)
     #
-    # @!method add_script_tag(url: nil, path: nil, content: type: '' )
+    # @!method add_script_tag(url: nil, path: nil, content: nil, type: '' )
     #    (see Rammus::DOMWorld#add_script_tag)
     #
     # @!method add_style_tag(url: nil, path: nil, content: nil)
     #    (see Rammus::DOMWorld#add_style_tag)
+    #
+    # @!method evaluate(javascript)
+    #    (see Rammus::DOMWorld#evaluate)
+    #
+    # @!method evaluate_function(page_function, *args)
+    #    (see Rammus::DOMWorld#evaluate_function)
+    #
+    # @!method evaluate_handle(javascript)
+    #    (see Rammus::DOMWorld#evaluate_handle)
+    #
+    # @!method evaluate_handle_function(page_function, *args)
+    #    (see Rammus::DOMWorld#evaluate_handle_function)
+    #
+    # @!method execution_context
+    #    (see Rammus::DOMWorld#execution_context)
+    #
+    # @!method wait_for_function(page_function, *args, polling: 'raf', timeout: nil)
+    #    (see Rammus::DOMWorld#wait_for_function)
     #
     delegate [
       :add_script_tag,
@@ -60,7 +78,29 @@ module Rammus
       :xpath
     ] => :main_world
 
+    # @!method click(selector, button: Mouse::Button::LEFT, click_count: 1, delay: 0)
+    #   (see Rammus::DOMWorld#click)
+    #
+    # @!method focus(selector)
+    #   (see Rammus::DOMWorld#focus)
+    #
+    # @!method hover(selector)
+    #   (see Rammus::DOMWorld#hover)
+    #
+    # @!method select(selector, *values)
+    #   (see Rammus::DOMWorld#select)
+    #
+    # @!method touchscreen_tap(selector)
+    #   (see Rammus::DOMWorld#touchscreen_tap)
+    #
+    # @!method title
+    #   (see Rammus::DOMWorld#title)
+    #
+    # @!method type(selector, text, delay: nil)
+    #   (see Rammus::DOMWorld#type)
+    #
     delegate [
+      :click,
       :focus,
       :hover,
       :select,
@@ -101,38 +141,98 @@ module Rammus
       end
     end
 
-    # TODO
+    # {goto} will throw an error if:
+    # * there's an SSL error (e.g. in case of self-signed certificates).
+    # * target URL is invalid.
+    # * the timeout is exceeded during navigation.
+    # * the remote server does not respond or is unreachable.
+    # * the main resource failed to load.
     #
-    def lifecycle_events
-      @_lifecycle_events.dup
-    end
-
-    # @param [String] url
+    # {goto} will not throw an error when any valid HTTP status code is
+    # returned by the remote server, including 404 "Not Found" and 500
+    # "Internal Server Error". The status code for such responses can be
+    # retrieved by calling {Response#status}.
+    #
+    # @note {goto} either throws an error or returns a main resource response.
+    #   The only exceptions are navigation to about:blank or navigation to the
+    #   same URL with a different hash, which would succeed and return null.
+    #
+    # @param url [String] URL to navigate frame to. The url should include scheme, e.g. https://.
+    # @param timeout [Integer] Maximum navigation time in seconds, defaults to
+    #   2 seconds, pass 0 to disable timeout. The default value can be changed
+    #   by using the {Page.set_default_navigation_timeout(timeout)} or
+    #   {Page.set_default_timeout(timeout)} methods.
+    # @param wait_until [Array<Symbol>, Symbol] When to consider navigation
+    #   succeeded, defaults to load. Given an array of event strings, navigation
+    #   is considered to be successful after all events have been fired. Event
+    #   can be either:
+    #   * :load - consider navigation to be finished when the load event is fired.
+    #   * :domcontentloaded - consider navigation to be finished when the DOMContentLoaded event is fired.
+    #   * :networkidle0 - consider navigation to be finished when there are no more than 0 network connections for at least 500 ms.
+    #   * :networkidle2 - consider navigation to be finished when there are no more than 2 network connections for at least 500 ms.
+    # @param referer [String] Referer header value. If provided it will take
+    #   preference over the referer header value set by {Page#set_extra_http_headers}
+    #
+    # @return [Promise<Response, nil>] Promise which resolves to the main
+    #   resource response. In case of multiple redirects, the navigation will
+    #   resolve with the response of the last redirect.
     #
     def goto(url, referer: nil, timeout: nil, wait_until: nil)
       frame_manager.navigate_frame self, url, referer: referer, timeout: timeout, wait_until: wait_until
     end
 
-    # @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
-    # @return {!Promise<?Puppeteer.Response>}
+    # This resolves when the frame navigates to a new URL. It is useful for
+    # when you run code which will indirectly cause the frame to navigate.
+    #
+    # @example
+    #   response, _ = await Rammus::Promise.all(
+    #     frame.wait_for_navigation, # The navigation promise resolves after navigation has finished
+    #     frame.click('a.my-link') # Clicking the link will indirectly cause a navigation
+    #   )
+    # @note Usage of the History API to change the URL is considered a navigation.
+    #
+    # @param timeout [Integer] Maximum navigation time in seconds, defaults to
+    #   2 seconds, pass 0 to disable timeout. The default value can be changed
+    #   by using the {Page.set_default_navigation_timeout(timeout)} or
+    #   {Page.set_default_timeout(timeout)} methods.
+    # @param wait_until [Array<Symbol>, Symbol] When to consider navigation
+    #   succeeded, defaults to load. Given an array of event strings,
+    #   navigation is considered to be successful after all events have been
+    #   fired. Events can be either:
+    #   * :load - consider navigation to be finished when the load event is fired.
+    #   * :domcontentloaded - consider navigation to be finished when the DOMContentLoaded event is fired.
+    #   * :networkidle0 - consider navigation to be finished when there are no more than 0 network connections for at least 500 ms.
+    #   * :networkidle2 - consider navigation to be finished when there are no more than 2 network connections for at least 500 ms.
+    #
+    # @return [Promise<Rammus::Response, nil>] Promise which resolves to the
+    #   main resource response. In case of multiple redirects, the navigation
+    #   will resolve with the response of the last redirect. In case of
+    #   navigation to a different anchor or navigation due to History API usage,
+    #   the navigation will resolve with nil.
     #
     def wait_for_navigation(timeout: nil, wait_until: nil)
       frame_manager.wait_for_frame_navigation self, timeout: timeout, wait_until: wait_until
     end
 
-    #  @return {!Promise<String>}
+    # (see Rammus::DOMWorld#content)
     #
     def content
-      return secondary_world.content
+      secondary_world.content
     end
 
-    # @param {string} html
-    # @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
+    # (see Rammus::DOMWorld#set_content)
     #
     def set_content(html, timeout: nil, wait_until: nil)
       secondary_world.set_content html, timeout: timeout, wait_until: wait_until
     end
 
+    # Returns frame's name attribute as specified in the tag.
+    #
+    # @note This value is calculated once when the frame is created, and will
+    #   not update if the attribute is changed later.
+    #
+    # @return [String]
+    #
     def name
       @_name || ''
     end
@@ -145,28 +245,53 @@ module Rammus
       @_url
     end
 
+    # The frame's child frames
+    #
     # @return [Array<Frame>]
     #
     def child_frames
       @child_frames.to_a
     end
 
-    # @return {boolean}
+    # Returns true if the frame has been detached, or false otherwise.
+    #
+    # @return [Boolean]
     #
     def is_detached?
       @_detached
     end
 
-    # @param {string} selector
-    # @param {!{delay?: number, button?: "left"|"right"|"middle", clickCount?: number}=} options
+    # Wait for the selector to appear in page. If at the moment of calling th
+    # method the selector already exists, the method will return immediately.
+    # If the selector doesn't appear after the timeout seconds of waiting, the
+    # function will throw.
     #
-    def click(selector, options = {})
-      secondary_world.click selector, options
-    end
-
-    #  @param {string} selector
-    #  @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
-    #  @return {!Promise<?Puppeteer.ElementHandle>}
+    # TODO verify this
+    # @example waiting across navigations
+    #   page = browser.new_page
+    #   current_url = nil
+    #   page.main_frame
+    #     .wait_for_selector('img')
+    #     .then { puts "First URL with image: #{current_url}" }
+    #   ['https://example.com', 'https://google.com', 'https://bbc.com'].each do |url|
+    #     current_url = url
+    #     await page.goto current_url
+    #   end
+    #
+    # @param selector [String] A selector of an element to wait for
+    # @param visible [Boolean] wait for element to be present in DOM and to be
+    #   visible, i.e. to not have display: none or visibility: hidden CSS
+    #   properties. Defaults to false.
+    # @param hidden [Boolean] wait for element to not be found in the DOM or to
+    #   be hidden, i.e. have display: none or visibility: hidden CSS properties.
+    #   Defaults to false.
+    # @param timeout [Integer] maximum time to wait for in seconds. Defaults to
+    #   2 seconds . Pass 0 to disable timeout. The default value can be changed
+    #   by using the {Page.set_default_timeout(timeout)} method.
+    #
+    # @return [Promise<ElementHandle>] Promise which resolves when element
+    #   specified by selector string is added to DOM. Resolves to null if
+    #   waiting for hidden: true and selector is not found in DOM.
     #
     def wait_for_selector(selector, visible: nil, hidden: nil, timeout: nil)
       secondary_world.wait_for_selector(selector, visible: visible, hidden: hidden, timeout: timeout).then do |handle|
@@ -179,9 +304,37 @@ module Rammus
       end
     end
 
-    # @param {string} xpath
-    # @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
-    # @return {!Promise<?Puppeteer.ElementHandle>}
+    # Wait for the xpath to appear in page. If at the moment of calling the
+    # method the xpath already exists, the method will return immediately. If
+    # the xpath doesn't appear after the timeout seconds of waiting, the
+    # function will throw.
+    #
+    # # TODO verify this
+    # @example waiting across navigation
+    #   page = browser.new_page
+    #   current_url = nil
+    #   page.main_frame
+    #     .wait_for_xpath('//img')
+    #     .then { puts "First URL with image: #{current_url}" }
+    #   ['https://example.com', 'https://google.com', 'https://bbc.com'].each do |url|
+    #     current_url = url
+    #     await page.goto current_url
+    #   end
+    #
+    # @param xpath [String] A xpath of an element to wait for
+    # @param visible [Boolean] wait for element to be present in DOM and to be
+    #   visible, i.e. to not have display: none or visibility: hidden CSS
+    #   properties. Defaults to false.
+    # @param hidden [Boolean] wait for element to not be found in the DOM or to
+    #   be hidden, i.e. have display: none or visibility: hidden CSS properties.
+    #   Defaults to false.
+    # @param timeout [Integer] maximum time to wait for in seconds. Defaults to
+    #   2 seconds . Pass 0 to disable timeout. The default value can be changed
+    #   by using the {Page.set_default_timeout(timeout)} method.
+    #
+    # @return [Promise<ElementHandle>] Promise which resolves when element
+    #   specified by xpath string is added to DOM. Resolves to null if waiting
+    #   for hidden: true and xpath is not found in DOM.
     #
     def wait_for_xpath(xpath, visible: nil, hidden: nil, timeout: nil)
       secondary_world.wait_for_xpath(xpath, visible: visible, hidden: hidden, timeout: timeout).then do |handle|
@@ -209,6 +362,12 @@ module Rammus
     #
     def _navigated_within_document(url)
       @_url = url
+    end
+
+    # @!visibility private
+    #
+    def lifecycle_events
+      @_lifecycle_events.dup
     end
 
     private

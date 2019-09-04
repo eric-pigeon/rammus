@@ -2,6 +2,8 @@ require 'rammus/execution_context'
 require 'rammus/network_manager'
 
 module Rammus
+  # @!visibility private
+  #
   class FrameManager
     include Promise::Await
     include EventEmitter
@@ -14,8 +16,8 @@ module Rammus
 
     attr_reader :client, :page, :network_manager, :timeout_settings
 
-    # @param [Rammus::CDPSession] client
-    # @param [Rammus::Page] page
+    # @param client [Rammus::CDPSession]
+    # @param page [Rammus::Page]
     #
     def initialize(client, page, ignore_https_errors, timeout_settings)
       super()
@@ -63,8 +65,6 @@ module Rammus
       @_main_frame
     end
 
-    # @param [String] url
-    #
     def navigate_frame(frame, url, referer: nil, timeout: nil, wait_until: nil)
       referer ||= network_manager.extra_http_headers[:referer]
       wait_until ||= [:load]
@@ -100,10 +100,19 @@ module Rammus
       end
     end
 
-    # @param [Rammus::Frame] frame
-    # @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
+    # @param frame [Rammus::Frame]
+    # @param timeout [Integer] Maximum navigation time in seconds, defaults to 2 seconds, pass 0 to disable timeout. The default value can be changed by using the {Page.set_default_navigation_timeout(timeout)} or {Page.set_default_timeout(timeout)} methods.
+    # @param wait_until [Array<Symbol>, Symbol] When to consider navigation succeeded, defaults to load. Given an array of event strings, navigation is considered to be successful after all events have been fired. Events can be either:
+    #   * :load - consider navigation to be finished when the load event is fired.
+    #   * :domcontentloaded - consider navigation to be finished when the DOMContentLoaded event is fired.
+    #   * :networkidle0 - consider navigation to be finished when there are no more than 0 network connections for at least 500 ms.
+    #   * :networkidle2 - consider navigation to be finished when there are no more than 2 network connections for at least 500 ms.
     #
-    # @return [Promise<?Rammus::Response>]
+    # @return [Promise<Rammus::Response, nil>] Promise which resolves to the
+    #   main resource response. In case of multiple redirects, the navigation
+    #   will resolve with the response of the last redirect. In case of
+    #   navigation to a different anchor or navigation due to History API usage,
+    #   the navigation will resolve with nil.
     #
     def wait_for_frame_navigation(frame, timeout: nil, wait_until: nil)
       wait_until ||= [:load]

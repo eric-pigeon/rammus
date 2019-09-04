@@ -36,6 +36,8 @@ module Rammus
       @_context_resolve_callback.nil?
     end
 
+    # The frame's default execution context.
+    #
     # @return [Rammus::ExecutionContext]
     #
     def execution_context
@@ -45,26 +47,26 @@ module Rammus
 
     # (see Rammus::ExecutionContext#evaluate_handle)
     #
-    def evaluate_handle(page_function, *args)
-      execution_context.evaluate_handle page_function, *args
+    def evaluate_handle(javascript)
+      execution_context.evaluate_handle javascript
     end
 
     # (see Rammus::ExecutionContext#evaluate)
     #
-    def evaluate(function, *args)
-      execution_context.evaluate function, *args
+    def evaluate(javascript)
+      execution_context.evaluate javascript
     end
 
     # (see Rammus::ExecutionContext#evaluate_function)
     #
-    def evaluate_function(function, *args)
-      execution_context.evaluate_function function, *args
+    def evaluate_function(page_function, *args)
+      execution_context.evaluate_function page_function, *args
     end
 
     # (see Rammus::ExecutionContext#evaluate_handle_function)
     #
-    def evaluate_handle_function(function, *args)
-      execution_context.evaluate_handle_function function, *args
+    def evaluate_handle_function(page_function, *args)
+      execution_context.evaluate_handle_function page_function, *args
     end
 
     # The method queries frame for the selector. If there's no such element
@@ -114,7 +116,7 @@ module Rammus
     #
     # @param selector [String] A selector to query frame for
     # @param page_function [String] function(Array<Element>) Function to be evaluated in browser context
-    # @param *args [Serializable,JSHandle] Arguments to pass to page_function
+    # @param args [Array<Serializable,JSHandle>] Arguments to pass to page_function
     #
     # @return [Promise<Object>]
     #
@@ -134,7 +136,7 @@ module Rammus
     #
     # @param selector [String] A selector to query frame for
     # @param page_function [String] function(Array<Element>) Function to be evaluated in browser context
-    # @param *args [Serializable,JSHandle] Arguments to pass to page_function
+    # @param args [Array<Serializable,JSHandle>] Arguments to pass to page_function
     #
     # @return [Promise<Object>]
     #
@@ -152,6 +154,8 @@ module Rammus
       document.query_selector_all selector
     end
 
+    # Gets the full HTML contents of the frame, including the doctype.
+    #
     # @return [String]
     #
     def content
@@ -168,7 +172,22 @@ module Rammus
       await evaluate_function function
     end
 
-    # @param [String] html
+    # @param html [String] HTML markup to assign to the page.
+    # @param timeout [Integer] Maximum time in milliseconds for resources to
+    #   load, defaults to 2 seconds, pass 0 to disable timeout. The default
+    #   value can be changed by using the
+    #   {Page.set_default_navigation_timeout(timeout)} or
+    #   {Page.set_default_timeout(timeout)} methods
+    # @param wait_until [Array<Symbol>, Symbol] When to consider setting markup
+    #   succeeded, defaults to load. Given an array of event strings, setting
+    #   content is considered to be successful after all events have been fired.
+    #   Events can be either:
+    #   * :load - consider setting content to be finished when the load event is fired.
+    #   * :domcontentloaded - consider setting content to be finished when the DOMContentLoaded event is fired.
+    #   * :networkidle0 - consider setting content to be finished when there are no more than 0 network connections for at least 500 ms.
+    #   * :networkidle2 - consider setting content to be finished when there are no more than 2 network connections for at least 500 ms.
+    #
+    # @return [nil]
     #
     def set_content(html, timeout: nil, wait_until: nil)
       wait_until ||= [:load]
@@ -206,10 +225,10 @@ module Rammus
     # @return [ElementHandle] which resolves to the added tag when the script's onload fires or when the script content was injected into frame.
     #
     def add_script_tag(url: nil, path: nil, content: nil, type: '')
-      # @param url [String]
-      # @param type [String]
+      # param url [String]
+      # param type [String]
       #
-      # @return [Promise<HTMLElement>]
+      # return [Promise<HTMLElement>]
       #
       add_script_url = <<~JAVASCRIPT
       async function addScriptUrl(url, type) {
@@ -336,26 +355,61 @@ module Rammus
       raise "Provide a `url`, `path` or `content`"
     end
 
-    # @param {string} selector
-    # @param {!{delay?: number, button?: "left"|"right"|"middle", clickCount?: number}=} options
+    # This method fetches an element with selector, scrolls it into view if
+    # needed, and then uses {Page#mouse} to click in the center of the element.
+    # If there's no element matching selector, the method throws an error.
     #
-    def click(selector, options)
+    # Bear in mind that if {click} triggers a navigation event and there's a
+    # separate {Page#wait_for_navigation} promise to be resolved, you may end
+    # up with a race condition that yields unexpected results. The correct
+    # pattern for click and wait for navigation is the following:
+    #
+    # @example
+    #    response, _ = await Rammus::Promise.all(
+    #      page.wait_for_navigation(wait_options),
+    #      frame.click(selector, click_options),
+    #    )
+    #
+    # @param selector [String] A selector to search for element to click. If there are multiple elements satisfying the selector, the first will be clicked.
+    # @param delay [Integer] Time to wait between mousedown and mouseup in milliseconds. Defaults to 0.
+    # @param button [String] Mouse button "left", "right" or "middle" defaults to "left"
+    # @param click_count [Integer] number of times to click
+    #
+    # @return [nil]
+    #
+    def click(selector, button: Mouse::Button::LEFT, click_count: 1, delay: 0)
       handle = query_selector selector
       raise "No node found for selector: #{selector}" if handle.nil?
-      handle.click options
+      handle.click button: button, delay: delay, click_count: click_count
       handle.dispose
+      nil
     end
 
-    # @param {string} selector
+    # This method fetches an element with selector and focuses it. If there's
+    # no element matching selector, the method throws an error.
+    #
+    # @param selector [String] A selector of an element to focus. If there are
+    #   multiple elements satisfying the selector, the first will be focused.
+    #
+    # @return [nil]
     #
     def focus(selector)
       handle = query_selector selector
       "No node found for selector: #{selector}" if handle.nil?
       handle.focus
       handle.dispose
+      nil
     end
 
-    # @param {string} selector
+    # This method fetches an element with selector, scrolls it into view if
+    # needed, and then uses {Page#mouse} to hover over the center of the element.
+    # If there's no element matching selector, the method throws an error.
+    #
+    # @param selector [String] A selector to search for element to hover.
+    #   If there are multiple elements satisfying the selector, the
+    #   first will be hovered.
+    #
+    # @return [nil]
     #
     def hover(selector)
       handle = query_selector selector
@@ -364,9 +418,23 @@ module Rammus
       handle.dispose
     end
 
-    # @param {string} selector
-    # @param {!Array<string>} values
-    # @return {!Promise<!Array<string>>}
+    # Triggers a change and input event once all the provided options have been
+    # selected. If there's no <select> element matching selector, the method
+    # throws an error.
+    #
+    # @example single seletion
+    #   frame.select 'select#colors', 'blue'
+    #
+    # @example multiple selections
+    #   frame.select 'select#colors', 'red', 'green', 'blue'
+    #
+    # @param selector [String] A selector to query frame for
+    # @param values [Array<String>] Values of options to select. If the
+    #   <select> has the multiple attribute, all values are considered,
+    #   otherwise only the first one is taken into account.
+    #
+    # @return [Array<String>] An array of option values that have been
+    #   successfully selected.
     #
     def select(selector, *values)
       values.each { |value| raise "Values must be strings. Found value '#{value}' of type '#{value.class}'" unless value.is_a? String }
@@ -392,52 +460,109 @@ module Rammus
       await query_selector_evaluate_function selector, select_values, values
     end
 
-    # @param [String] selector
+    # This method fetches an element with selector, scrolls it into view if
+    # needed, and then uses page.touchscreen to tap in the center of the
+    # element. If there's no element matching selector, the method throws an
+    # error.
+    #
+    # @param selector [String] A selector to search for element to tap. If
+    #   there are multiple elements satisfying the selector, the first will be
+    #   tapped.
+    #
+    # @return [nil]
     #
     def touchscreen_tap(selector)
       handle = query_selector selector
       raise "No node found for selector: #{selector}" if handle.nil?
       handle.tap
       handle.dispose
+      nil
     end
 
-    # @param {string} selector
-    # @param {string} text
-    # @param {{delay: (number|undefined)}=} options
+    # Sends a keydown, keypress/input, and keyup event for each character in
+    # the text.
+    #
+    # To press a special key, like Control or ArrowDown, use {Keyboard#press}.
+    #
+    # @example typing instantly
+    #   frame.type '#mytextarea', 'Hello'
+    #
+    # @example type slower like a user
+    #    frame.type '#mytextarea', 'World',  delay: 0.10
+    #
+    # @param selector [String] A selector of an element to type into. If there
+    #   are multiple elements satisfying the selector, the first will be used.
+    # @param text [String] A text to type into a focused element.
+    # @param delay [Integer, nil] Time to wait between key presses in
+    #   seconds. Defaults to 0.
+    #
+    # @return [nil]
     #
     def type(selector, text, delay: nil)
       handle = query_selector selector
       raise "No node found for selector: #{selector}" if handle.nil?
       handle.type text, delay: delay
       handle.dispose
+      nil
     end
 
-    # @param {string} selector
-    # @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
-    # @return {!Promise<?Puppeteer.ElementHandle>}
+    # @param selector [String]
+    # @param visible [Boolean]
+    # @param hidden [Boolean]
+    # @param timeout [Integer, nil]
+    #
+    # @return [Promise<?ElementHandle>]
     #
     def wait_for_selector(selector, visible: nil, hidden: nil, timeout: nil)
       wait_for_selector_or_xpath selector, false, visible: visible, hidden: hidden, timeout: timeout
     end
 
-    # @param {string} xpath
-    # @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
-    # @return {!Promise<?Puppeteer.ElementHandle>}
+    # @param xpath [String]
+    # @param visible [Boolean]
+    # @param hidden [Boolean]
+    # @param timeout [Integer, nil]
+    #
+    # @return [Promise<?ElementHandle>]
     #
     def wait_for_xpath(xpath, visible: nil, hidden: nil, timeout: nil)
       wait_for_selector_or_xpath xpath, true, visible: visible, hidden: hidden, timeout: timeout
     end
 
-    # @param {Function|string} pageFunction
-    # @param {!{polling?: string|number, timeout?: number}=} options
-    # @return {!Promise<!Puppeteer.JSHandle>}
+    # Returns a promise that resolves when the function evaluates to true
+    #
+    # @example observe viewport changing size
+    #    page = browser.new_page
+    #    watch_dog = page.main_frame.wait_for_function 'window.innerWidth < 100'
+    #    page.set_viewport width: 50, height: 50}
+    #    await watch_dog
+    #
+    # @param page_function [Function] Function or javascript statement to be
+    #   evaluated in browser context. If a function args must be not be nil
+    # @param args [Array<String, JsHandle>] Arguments to pass to page_function
+    # @param polling [String, Integer] An interval at which the page_function
+    #   is executed, defaults to raf. If polling is a number, then it is
+    #   treated as an interval in seconds at which the function would be
+    #   executed. If polling is a string, then it can be one of the following
+    #   values:
+    #   * raf - to constantly execute page_function in requestAnimationFrame
+    #     callback. This is the tightest polling mode which is suitable to
+    #     observe styling changes.
+    #   * mutation - to execute page_function on every DOM mutation.
+    # @param timeout [Integer] maximum time to wait for in seconds. Defaults to
+    #   2 seconds. Pass 0 to disable timeout. The default value can be changed
+    #   by using the {Page.set_default_timeout(timeout)} method.
+    #
+    # @return [Promise<JSHandle>] Promise which resolves when the page_function
+    #   returns a truthy value. It resolves to a JSHandle of the truthy value.
     #
     def wait_for_function(page_function, *args, polling: 'raf', timeout: nil)
       timeout ||= timeout_settings.timeout
       WaitTask.new(self, page_function, 'function', polling, timeout, *args).promise
     end
 
-    # @return {!Promise<string>}
+    # The page's title
+    #
+    # @return [String]
     #
     def title
       await evaluate('document.title')
@@ -466,11 +591,13 @@ module Rammus
         end
       end
 
-      # @param {string} selectorOrXPath
-      # @param {boolean} isXPath
-      # @param {boolean} waitForVisible
-      # @param {boolean} waitForHidden
-      # @return {?Node|boolean}
+      # param selectorOrXPath [String]
+      # param isXPath [Boolean]
+      # param waitForVisible [Boolean]
+      # param waitForHidden [boolean]
+      #
+      # return [?Node,Boolean]
+      #
       PREDICATE = <<~JAVASCRIPT
       function predicate(selectorOrXPath, isXPath, waitForVisible, waitForHidden) {
         const node = isXPath
@@ -497,10 +624,13 @@ module Rammus
       }
       JAVASCRIPT
 
-      # @param {string} selectorOrXPath
-      # @param {boolean} isXPath
-      # @param {!{visible?: boolean, hidden?: boolean, timeout?: number}=} options
-      # @return {!Promise<?Puppeteer.ElementHandle>}
+      # @param selector_or_xpath [String]
+      # @param is_xpath [Boolean]
+      # @param visible [Boolean]
+      # @param hidden [Boolean]
+      # @param timeout [Integer]
+      #
+      # @return [Promise<ElementHandle, nil>]
       #
       def wait_for_selector_or_xpath(selector_or_xpath, is_xpath, visible: false, hidden: false, timeout: nil)
         wait_for_hidden = hidden == true

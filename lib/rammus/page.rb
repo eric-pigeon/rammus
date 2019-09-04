@@ -36,6 +36,7 @@ module Rammus
     # @return [Rammus::Frame]
     #
     delegate [:frames, :main_frame, :network_manager] => :frame_manager
+
     delegate [
       :authenticate,
       :set_extra_http_headers,
@@ -43,6 +44,9 @@ module Rammus
       :set_request_interception,
       :set_user_agent
     ] => :network_manager
+
+    # @!method wait_for_navigation(timeout: nil, wait_until: nil)
+    #   (see Rammus::Frame#wait_for_navigation)
     delegate [
       :add_script_tag,
       :add_style_tag,
