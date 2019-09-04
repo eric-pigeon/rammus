@@ -2,7 +2,11 @@ module Rammus
   # @!visibility private
   #
   module EventEmitter
+    # @!visibility private
+    #
     EVENT_QUEUE = Queue.new
+    # @!visibility private
+    #
     EXECUTOR = Thread.new do
       loop do
         begin

@@ -4,7 +4,9 @@ module Rammus
 
     attr_reader :client
 
-    # @param {!Puppeteer.CDPSession} client
+    # @!visibility private
+    #
+    # @param client [Rammus::CDPSession]
     #
     def initialize(client)
       @client = client

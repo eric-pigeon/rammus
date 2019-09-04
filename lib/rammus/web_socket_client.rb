@@ -2,6 +2,8 @@ require 'websocket/driver'
 require 'socket'
 
 module Rammus
+  # @!visibility private
+  #
   class WebSocketClient
     attr_reader :driver, :status
     attr_accessor :on_message, :on_close

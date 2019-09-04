@@ -1,4 +1,6 @@
 module Rammus
+  # @!visibility private
+  #
   module ProtocolLogger
     extend self
 
