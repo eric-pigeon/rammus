@@ -1,15 +1,24 @@
 module Rammus
+  # The Mouse class operates in main-frame CSS pixels relative to the top-left
+  # corner of the viewport.
+  #
+  # Every page object has its own Mouse, accessible with page.mouse.
+  #
   class Mouse
+    include Promise::Await
+
     module Button
       LEFT = 'left'
       RIGHT = 'right'
       MIDDLE = 'middle'
     end
 
-    include Promise::Await
-
+    # @!visibility private
+    #
     attr_reader :client, :keyboard
 
+    # @!visibility private
+    #
     # @param client [Rammus::CDPSession]
     # @param keyboard [Rammus::Keyboard]
     #
@@ -22,9 +31,13 @@ module Rammus
       @_button = 'none'
     end
 
+    # Dispatches a mousemove event.
+    #
     # @param x [Integer]
     # @param y [Integer]
-    # @param steps [Integer]
+    # @param steps [Integer] defaults to 1. Sends intermediate mousemove events.
+    #
+    # @return [nil]
     #
     def move(x, y, steps: 1)
       from_x = @_x
@@ -40,13 +53,20 @@ module Rammus
           modifiers: keyboard.modifiers
         )
       end
+      nil
     end
 
+    # Shortcut for {Mouse#move}, {Mouse#down} and {Mouse#up}.
+    #
     # @param x [Integer]
     # @param y [Integer]
-    # @param delay [Integer] Time to wait between mousedown and mouseup in milliseconds. Defaults to 0.
-    # @param button [String] Mouse button "left", "right" or "middle" defaults to "left"
+    # @param delay [Integer] Time to wait between mousedown and mouseup in
+    #   seconds. Defaults to 0.
+    # @param button [String] Mouse button "left", "right" or "middle" defaults
+    #   to "left"
     # @param click_count [Integer] number of times to click
+    #
+    # @return [nil]
     #
     def click(x, y, delay: nil, button: Button::LEFT, click_count: 1)
       move x, y
@@ -54,10 +74,16 @@ module Rammus
       down button: button, click_count: click_count
       sleep delay unless delay.nil?
       up button: button, click_count: click_count
+      nil
     end
 
-    # @param button [String] Mouse button "left", "right" or "middle" defaults to "left"
+    # Dispatches a mousedown event.
+    #
+    # @param button [String] Mouse button "left", "right" or "middle" defaults
+    #   to "left"
     # @param click_count [Integer] number of times to click
+    #
+    # @return [nil]
     #
     def down(button: Button::LEFT, click_count: 1)
       @_button = button
@@ -69,10 +95,16 @@ module Rammus
         modifiers: keyboard.modifiers,
         click_count: click_count
       )
+      nil
     end
 
-    # @param button [String] Mouse button "left", "right" or "middle" defaults to "left"
+    # Dispatches a mouseup event.
+    #
+    # @param button [String] Mouse button "left", "right" or "middle" defaults
+    #   to "left"
     # @param click_count [Integer] number of times to click
+    #
+    # @return [nil]
     #
     def up(button: Button::LEFT, click_count: 1)
       @_button = 'none'
@@ -84,6 +116,7 @@ module Rammus
         modifiers: keyboard.modifiers,
         click_count: click_count
       )
+      nil
     end
   end
 end

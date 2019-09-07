@@ -1,5 +1,4 @@
 require 'rammus/execution_context'
-require 'rammus/network_manager'
 
 module Rammus
   # @!visibility private
@@ -24,7 +23,7 @@ module Rammus
       @client = client
       @page = page
 
-      @network_manager = NetworkManager.new client, self, ignore_https_errors
+      @network_manager = Network::Manager.new client, self, ignore_https_errors
       @timeout_settings = timeout_settings
 
       # @type [Hash<String, Frame>]

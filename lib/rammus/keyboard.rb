@@ -1,12 +1,41 @@
 require 'rammus/key_definitions'
 
 module Rammus
+  # Keyboard provides an api for managing a virtual keyboard. The high level
+  # api is {Keyboard#type}, which takes raw characters and generates proper
+  # keydown, keypress/input, and keyup events on your page.
+  #
+  # For finer control, you can use {Keyboard#down}, {Keyboard#up}, and
+  # {Keyboard#send_character| to manually fire events as if they were generated
+  # from a real keyboard.
+  #
+  # @example holding down Shift in order to select and delete some text:
+  #   page.keyboard.type 'Hello World!'
+  #   page.keyboard.press 'ArrowLeft'
+  #
+  #   page.keyboard.down 'Shift'
+  #
+  #   ' World'.length.times { page.keyboard.press 'ArrowLeft' }
+  #   page.keyboard.up 'Shift'
+  #
+  #   page.keyboard.press 'Backspace'
+  #   # Result text will end up saying 'Hello!'
+  #
+  # @example pressing A
+  #    page.keyboard.down 'Shift'
+  #    page.keyboard.press 'KeyA'
+  #    page.keyboard.up 'Shift'
+  #
   class Keyboard
     include Promise::Await
 
+    # @!visibility private
+    #
     attr_reader :client, :modifiers
 
-    # @param {!Puppeteer.CDPSession} client
+    # @!visibility private
+    #
+    # @param client [Rammus::CDPSession]
     #
     def initialize(client)
       @client = client
@@ -14,8 +43,27 @@ module Rammus
       @_pressed_keys = Set.new
     end
 
-    # @param {string} key
-    # @param {{text?: string}=} options
+    # Dispatches a keydown event.
+    #
+    # If key is a single character and no modifier keys besides Shift are being
+    # held down, a keypress/input event will also generated. The text option
+    # can be specified to force an input event to be generated.
+    #
+    # If key is a modifier key, Shift, Meta, Control, or Alt, subsequent key
+    # presses will be sent with that modifier active. To release the modifier
+    # key, use {Keyboard#up}.
+    #
+    # After the key is pressed once, subsequent calls to {Keyboard#down} will
+    # have repeat set to true. To release the key, use {Keyboard#up}.
+    #
+    # @note Modifier keys DO influence {Keyboard#down}. Holding down Shift will
+    #   type the text in upper case.
+    #
+    # @param key [String] Name of key to press, such as ArrowLeft. See
+    #   USKeyboardLayout for a list of all key names.
+    # @param text [String] If specified, generates an input event with this text.
+    #
+    # @return [nil]
     #
     def down(key, text: nil)
       description = key_description_for_string key
@@ -38,9 +86,15 @@ module Rammus
         location: description[:location],
         is_keypad: description[:location] == 3
       ))
+      nil
     end
 
-    # @param {string} key
+    # Dispatches a keyup event.
+    #
+    # @param key [String] Name of key to release, such as ArrowLeft. See
+    #   USKeyboardLayout for a list of all key names.
+    #
+    # @return [nil]
     #
     def up(key)
       description = key_description_for_string key
@@ -58,14 +112,39 @@ module Rammus
       ))
     end
 
-    # @param {string} char
+    # Dispatches a keypress and input event. This does not send a keydown or keyup event.
+    #
+    # @note Modifier keys DO NOT effect {Keyboard#send_character}. Holding down
+    #   Shift will not type the text in upper case.
+    #
+    # @example
+    #    page.keyboard.send_character '嗨'
+    #
+    # @param char [String] Character to send into the page.
+    #
+    # @return [nil]
     #
     def send_character(char)
       await client.command(Protocol::Input.insert_text text: char)
+      nil
     end
 
-    # @param {string} text
-    # @param {{delay: (number|undefined)}=} options
+    # Sends a keydown, keypress/input, and keyup event for each character in
+    # the text.
+    #
+    # @note Modifier keys DO NOT effect {Keyboard#type}. Holding down Shift
+    #   will not type the text in upper case.
+    #
+    # @example typing instantly
+    #    page.keyboard.type 'Hello'
+    # @example typing slower like a user
+    #    page.keyboard.type 'World', delay: 100
+    #
+    # @param text [String] A text to type into a focused element.
+    # @param delay [Integer] Time to wait between key presses in seconds.
+    #   Defaults to 0.
+    #
+    # @return [nil]
     #
     def type(text, delay: 0)
       text.chars.each do |char|
@@ -74,26 +153,36 @@ module Rammus
         else
           send_character char
         end
-        # if (delay)
-        #   await new Promise(f => setTimeout(f, delay));
+        sleep delay unless delay.nil? || delay.zero?
       end
     end
 
-    # @param {string} key
-    # @param {!{delay?: number, text?: string}=} options
+    # Shortcut for {Keyboard#down} and {Keyboard#up}.
+    #
+    # If key is a single character and no modifier keys besides Shift are being
+    # held down, a keypress/input event will also generated. The text option
+    # can be specified to force an input event to be generated.
+    #
+    # @note Modifier keys DO effect {Keyboard#press}. Holding down Shift will
+    #   type the text in upper case.
+    #
+    # @param key [String] Name of key to press, such as ArrowLeft. See
+    #   USKeyboardLayout for a list of all key names.
+    # @param text [String] If specified, generates an input event with this text.
+    # @param delay [Integer] Time to wait between keydown and keyup in seconds.
+    #   Defaults to 0.
+    #
+    # @return [nil]
     #
     def press(key, delay: 0, text: nil)
       down key, text: text
-      # if (delay !== null)
-      #   await new Promise(f => setTimeout(f, options.delay));
+      sleep delay unless delay.nil? || delay.zero?
       up key
     end
 
     private
 
-      # @param {string} keyString
-      #
-      # @return {KeyDescription}
+      # @param key_string [String]
       #
       def key_description_for_string(key_string)
         shift = modifiers & 8
@@ -149,8 +238,9 @@ module Rammus
         description
       end
 
-      # @param {string} key
-      # @return {number}
+      # @param key [String]
+      #
+      # @return [Integer]
       #
       def modifier_bit(key)
         case key

@@ -151,7 +151,7 @@ module Rammus
     # {goto} will not throw an error when any valid HTTP status code is
     # returned by the remote server, including 404 "Not Found" and 500
     # "Internal Server Error". The status code for such responses can be
-    # retrieved by calling {Response#status}.
+    # retrieved by calling {Network::Response#status}.
     #
     # @note {goto} either throws an error or returns a main resource response.
     #   The only exceptions are navigation to about:blank or navigation to the
@@ -160,8 +160,8 @@ module Rammus
     # @param url [String] URL to navigate frame to. The url should include scheme, e.g. https://.
     # @param timeout [Integer] Maximum navigation time in seconds, defaults to
     #   2 seconds, pass 0 to disable timeout. The default value can be changed
-    #   by using the {Page.set_default_navigation_timeout(timeout)} or
-    #   {Page.set_default_timeout(timeout)} methods.
+    #   by using the {Page#set_default_navigation_timeout} or
+    #   {Page#set_default_timeout} methods.
     # @param wait_until [Array<Symbol>, Symbol] When to consider navigation
     #   succeeded, defaults to load. Given an array of event strings, navigation
     #   is considered to be successful after all events have been fired. Event
@@ -193,8 +193,8 @@ module Rammus
     #
     # @param timeout [Integer] Maximum navigation time in seconds, defaults to
     #   2 seconds, pass 0 to disable timeout. The default value can be changed
-    #   by using the {Page.set_default_navigation_timeout(timeout)} or
-    #   {Page.set_default_timeout(timeout)} methods.
+    #   by using the {Page#set_default_navigation_timeout} or
+    #   {Page#set_default_timeout} methods.
     # @param wait_until [Array<Symbol>, Symbol] When to consider navigation
     #   succeeded, defaults to load. Given an array of event strings,
     #   navigation is considered to be successful after all events have been
@@ -287,7 +287,7 @@ module Rammus
     #   Defaults to false.
     # @param timeout [Integer] maximum time to wait for in seconds. Defaults to
     #   2 seconds . Pass 0 to disable timeout. The default value can be changed
-    #   by using the {Page.set_default_timeout(timeout)} method.
+    #   by using the {Rammus::Page#set_default_timeout} method.
     #
     # @return [Promise<ElementHandle>] Promise which resolves when element
     #   specified by selector string is added to DOM. Resolves to null if
@@ -330,7 +330,7 @@ module Rammus
     #   Defaults to false.
     # @param timeout [Integer] maximum time to wait for in seconds. Defaults to
     #   2 seconds . Pass 0 to disable timeout. The default value can be changed
-    #   by using the {Page.set_default_timeout(timeout)} method.
+    #   by using the {Page.set_default_timeout} method.
     #
     # @return [Promise<ElementHandle>] Promise which resolves when element
     #   specified by xpath string is added to DOM. Resolves to null if waiting

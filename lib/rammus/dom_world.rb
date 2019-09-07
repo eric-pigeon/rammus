@@ -176,8 +176,8 @@ module Rammus
     # @param timeout [Integer] Maximum time in milliseconds for resources to
     #   load, defaults to 2 seconds, pass 0 to disable timeout. The default
     #   value can be changed by using the
-    #   {Page.set_default_navigation_timeout(timeout)} or
-    #   {Page.set_default_timeout(timeout)} methods
+    #   {Page#set_default_navigation_timeout} or {Page#set_default_timeout}
+    #   methods
     # @param wait_until [Array<Symbol>, Symbol] When to consider setting markup
     #   succeeded, defaults to load. Given an array of event strings, setting
     #   content is considered to be successful after all events have been fired.
@@ -550,7 +550,7 @@ module Rammus
     #   * mutation - to execute page_function on every DOM mutation.
     # @param timeout [Integer] maximum time to wait for in seconds. Defaults to
     #   2 seconds. Pass 0 to disable timeout. The default value can be changed
-    #   by using the {Page.set_default_timeout(timeout)} method.
+    #   by using the {Page.set_default_timeout} method.
     #
     # @return [Promise<JSHandle>] Promise which resolves when the page_function
     #   returns a truthy value. It resolves to a JSHandle of the truthy value.

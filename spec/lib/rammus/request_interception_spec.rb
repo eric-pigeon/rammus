@@ -487,6 +487,7 @@ module Rammus
         expect(response.status_text).to eq 'Unprocessable Entity'
         expect(await page.evaluate_function("() => document.body.textContent")).to eq 'Yo, page!'
       end
+
       it 'should redirect' do
         page.set_request_interception true
         page.on :request, -> (request) do

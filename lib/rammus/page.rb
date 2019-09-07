@@ -14,9 +14,28 @@ require 'rammus/worker'
 
 module Rammus
   # Page provides methods to interact with a single tab or extension background
-  # page in Chromium.
+  # page in Chromium.  One Browser instance might have multiple Page instances.
   #
-  # One Browser instance might have multiple Page instances.
+  # @example create a page, navigates it to a URL, and then saves a screenshot
+  #    browser = Rammus.launch
+  #    page = browser.new_page
+  #    page.goto 'https://example.com'
+  #    page.screenshot path: 'screenshot.png'
+  #    browser.close
+  #
+  # The Page class emits various events (described below) which can be handled
+  # using on, once or remove_listener.
+  #
+  # @example log messages for a page load event
+  #    page.once :load' -> { puts 'Page laoded! }
+  #
+  # @example unsubscribe from events using remove_listener method
+  #   def log_request(intercepted_request)
+  #     puts "A request was made: {#intercepted_request.url}"
+  #   end
+  #   page.on :request, method(:log_request)
+  #   # Sometime later...
+  #   page.remove_listener :request, method(:log_request)
   #
   class Page
     include Promise::Await
@@ -24,19 +43,59 @@ module Rammus
     extend Promise::Await
     extend Forwardable
 
-    attr_reader :target, :frame_manager, :javascript_enabled, :keyboard, :mouse,
-      :touchscreen, :accessibility, :coverage, :tracing
+    # @!visibility private
+    #
+    attr_reader :frame_manager
 
+    # @return [Rammus::Accessibility]
+    #
+    attr_reader :accessibility
+
+    # @return [Rammus::Coverage]
+    #
+    attr_reader :coverage
+
+    attr_reader :target, :javascript_enabled, :keyboard, :mouse, :touchscreen,
+      :tracing
+
+    # @!method browser
+    #   The browser the page belongs to
+    #
+    #   @return [Rammus::Browser]
+    #
+    # @!method browser_context
+    #   The browser context the page belongs to
+    #
+    #   @return [Rammus::BrowserContext]
+    #
     delegate [:browser, :browser_context] => :target
     # @!method main_frame
+    #   Page is guaranteed to have a main frame which persists during navigations.
     #
-    # Page is guaranteed to have a main frame which persists during navigations.
+    #   @return [Rammus::Frame]
     #
+    # @!method frames
+    #   Frames attached to the page
     #
-    # @return [Rammus::Frame]
+    #   @return [Array<Frame>]
     #
     delegate [:frames, :main_frame, :network_manager] => :frame_manager
 
+    # @!method authenticate(username: nil, password: nil)
+    #   (see Rammus::Network::Manager#authenticate)
+    #
+    # @!method set_extra_http_headers(extra_http_headers)
+    #   (see Rammus::Network::Manager#set_extra_http_headers)
+    #
+    # @!method set_offline_mode(value)
+    #   (see Rammus::Network::Manager#set_offline_mode)
+    #
+    # @!method set_request_interception(value)
+    #   (see Rammus::Network::Manager#set_request_interception)
+    #
+    # @!method set_user_agent(user_agent)
+    #   (see Rammus::Network::Manager#set_user_agent)
+    #
     delegate [
       :authenticate,
       :set_extra_http_headers,
@@ -45,8 +104,80 @@ module Rammus
       :set_user_agent
     ] => :network_manager
 
+    # @!method query_selector(selector)
+    #   (see Rammus::DOMWorld#query_selector)
+    #
+    # @!method query_selector_all(selector)
+    #    (see Rammus::DOMWorld#query_selector_all)
+    #
+    # @!method query_selector_all_evaluate_function(selector, page_function, *args)
+    #    (see Rammus::DOMWorld#query_selector_all_evaluate_function)
+    #
+    # @!method query_selector_evaluate_function(selector, page_function, *args)
+    #    (see Rammus::DOMWorld#query_selector_evaluate_function)
+    #
+    # @!method xpath(expression)
+    #    (see Rammus::DOMWorld#xpath)
+    #
+    # @!method add_script_tag(url: nil, path: nil, content: nil, type: '' )
+    #    (see Rammus::DOMWorld#add_script_tag)
+    #
+    # @!method add_style_tag(url: nil, path: nil, content: nil)
+    #    (see Rammus::DOMWorld#add_style_tag)
+    #
+    # @!method click(selector, button: Mouse::Button::LEFT, click_count: 1, delay: 0)
+    #    (see Rammus::Frame#click)
+    #
+    # @!method content
+    #   Gets the full HTML contents of the page, including the doctype.
+    #
+    #   @return [String]
+    #
+    # @!method evaluate(javascript)
+    #    (see Rammus::DOMWorld#evaluate)
+    #
+    # @!method evaluate_function(page_function, *args)
+    #    (see Rammus::DOMWorld#evaluate_function)
+    #
+    # @!method evaluate_handle(javascript)
+    #    (see Rammus::DOMWorld#evaluate_handle)
+    #
+    # @!method evaluate_handle_function(page_function, *args)
+    #    (see Rammus::DOMWorld#evaluate_handle_function)
+    #
+    # @!method focus(selector)
+    #    (see Rammus::Frame#focus)
+    #
+    # @!method goto(url, referer: nil, timeout: nil, wait_until: nil)
+    #   (see Rammus::Frame#goto)
+    #
+    # @!method hover(selector)
+    #   (see Rammus::DOMWorld#hover)
+    #
+    # @!method select(selector, *values)
+    #   (see Rammus::DOMWorld#select)
+    #
+    # @!method set_content(html, timeout: nil, wait_until: nil)
+    #   (see Rammus::Frame#set_content)
+    #
+    # @!method touchscreen_tap(selector)
+    #   (see Rammus::DOMWorld#touchscreen_tap)
+    #
+    # @!method title
+    #   (see Rammus::DOMWorld#title)
+    #
+    # @!method type(selector, text, delay: nil)
+    #   (see Rammus::DOMWorld#type)
+    #
+    # @!method url
+    #   (see Rammus::Frame#url)
+    #
+    # @!method wait_for_function(page_function, *args, polling: 'raf', timeout: nil)
+    #    (see Rammus::DOMWorld#wait_for_function)
+    #
     # @!method wait_for_navigation(timeout: nil, wait_until: nil)
     #   (see Rammus::Frame#wait_for_navigation)
+    #
     delegate [
       :add_script_tag,
       :add_style_tag,
@@ -54,6 +185,8 @@ module Rammus
       :content,
       :evaluate,
       :evaluate_function,
+      :evaluate_handle,
+      :evaluate_handle_function,
       :focus,
       :goto,
       :hover,
@@ -75,6 +208,7 @@ module Rammus
     ] => :main_frame
 
     # @!visibility private
+    #
     def self.create(target, default_viewport: nil, ignore_https_errors: false)
       new(target, ignore_https_errors: ignore_https_errors).tap do |page|
         await Promise.all(
@@ -89,6 +223,7 @@ module Rammus
 
     private_class_method :new
     # @!visibility private
+    #
     def initialize(target, ignore_https_errors:)
       super()
       @_closed = false
@@ -174,7 +309,7 @@ module Rammus
       @_workers.values
     end
 
-    # @param [Numberic] timeout
+    # @param [Integer] timeout
     #
     def set_default_navigation_timeout(timeout)
       @_timeout_settings.set_default_navigation_timeout timeout
@@ -186,35 +321,13 @@ module Rammus
       @_timeout_settings.timeout = timeout
     end
 
-    # @param [String} page_function
-    # @param [Array<*>] args
-    #
-    # @return [Promise<Rammus::JSHandle>]
-    #
-    def evaluate_handle(page_function, *args)
-      context = main_frame.execution_context
-      context.evaluate_handle page_function, *args
-    end
-
-    # @param [String[ page_function
-    # @param [Array<*>] args
-    #
-    # @return [Promise<Rammus::JSHandle>]
-    #
-    def evaluate_handle_function(page_function, *args)
-      context = main_frame.execution_context
-      context.evaluate_handle_function page_function, *args
-    end
-
-    # @param [Rammus::JSHandle] prototype_handle
-    #
-    # @return [Rammus::JSHandle]
-    #
     def query_objects(prototype_handle)
       context = main_frame.execution_context
       context.query_objects prototype_handle
     end
 
+    # Get page cookies
+    #
     # If no URLs are specified, this method returns cookies for the current page
     # URL. If URLs are specified, only cookies for those URLs are returned.
     #
@@ -228,7 +341,9 @@ module Rammus
       response["cookies"]
     end
 
-    # @param [Array<Protocol.Network.delete_cookies_parameters>] cookies
+    # Deletes cookies, specifying the cookie name is required.
+    #
+    # @param cookies [Array<Hash<name: String, url: String, domain: String, path: String>]
     #
     def delete_cookie(*cookies)
       page_url = url
@@ -347,10 +462,6 @@ module Rammus
       end)
     end
 
-    # @param {(string|Function)} urlOrPredicate
-    # @param {!{timeout?: number}=} options
-    # @return {!Promise<!Puppeteer.Response>}
-    #
     def wait_for_response(url_or_predicate = nil, timeout: nil, &block)
       timeout ||= @_timeout_settings.timeout
       url_or_predicate ||= block
@@ -365,33 +476,64 @@ module Rammus
       end)
     end
 
-    # @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
-    # @return {!Promise<?Puppeteer.Response>}
-    #
     def go_back(timeout: nil, wait_until: nil)
       go(-1, timeout: timeout, wait_until: wait_until)
     end
 
-    # @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
-    # @return {!Promise<?Puppeteer.Response>}
-    #
     def go_forward(timeout: nil, wait_until: nil)
       go(1, timeout: timeout, wait_until: wait_until)
     end
 
+    # Brings page to front (activates tab).
+    #
+    # @return [nil]
+    #
     def bring_to_front
       await client.command Protocol::Page.bring_to_front
+      nil
     end
 
-    # @param {!{viewport: !Puppeteer.Viewport, userAgent: string}} options
+    # Emulates given device metrics and user agent. This method is a shortcut
+    # for calling two methods:
+    #
+    # * {Page#set_user_agent}
+    # * {Page#set_viewport}
+    #
+    # To aid emulation, Rammus provides a list of device descriptors which can
+    # be obtained via the {Rammus.devices}.
+    #
+    # page.emulate will resize the page. A lot of websites don't expect phones to change size, so you should emulate before navigating to the page.
+    #
+    # const puppeteer = require('puppeteer');
+    # const iPhone = puppeteer.devices['iPhone 6'];
+    #
+    # puppeteer.launch().then(async browser => {
+    #   const page = await browser.newPage();
+    #   await page.emulate(iPhone);
+    #   await page.goto('https://www.google.com');
+    #   // other actions...
+    #   await browser.close();
+    # });
+    # List of all available devices is available in the source code: DeviceDescriptors.js.
+    #
+    # options <Object>
+    # viewport <Object>
+    # width <number> page width in pixels.
+    # height <number> page height in pixels.
+    # deviceScaleFactor <number> Specify device scale factor (can be thought of as dpr). Defaults to 1.
+    # isMobile <boolean> Whether the meta viewport tag is taken into account. Defaults to false.
+    # hasTouch<boolean> Specifies if viewport supports touch events. Defaults to false
+    # isLandscape <boolean> Specifies if viewport is in landscape mode. Defaults to false.
+    # userAgent <string>
+    #
+    # @return [nil]
     #
     def emulate(user_agent:, viewport:)
       set_viewport viewport
       set_user_agent user_agent
+      nil
     end
 
-    # @param [Boolean] enabled
-    #
     def set_javascript_enabled(enabled)
       return if javascript_enabled == enabled
 
@@ -399,22 +541,15 @@ module Rammus
       client.command Protocol::Emulation.set_script_execution_disabled value: !javascript_enabled
     end
 
-    # @param [Boolean] enabled
-    #
     def set_bypass_csp(enabled)
       await client.command Protocol::Page.set_bypass_csp enabled: enabled
     end
 
-    # @param {?string} mediaType
-    #
     def emulate_media(media_type = nil)
       raise "Unsupported media type: #{media_type}" unless ['screen', 'print', nil].include? media_type
       client.command Protocol::Emulation.set_emulated_media media: media_type || ''
     end
 
-    # @param {!Puppeteer.Viewport} viewport
-    #
-    # # TODO move to keyword args from EmulationManager#emulate_viewport
     def set_viewport(viewport)
       needs_reload = @_emulation_manager.emulate_viewport viewport
       @_viewport = viewport
@@ -422,29 +557,19 @@ module Rammus
       await reload if needs_reload
     end
 
-    # @return {?Puppeteer.Viewport}
-    #
     def viewport
       @_viewport
     end
 
-    # @param {Function|string} pageFunction
-    # @param {!Array<*>} args
-    #
     def evaluate_on_new_document(page_function, *args)
       source = "(#{page_function})(#{args.map(&:to_json).join(',')})"
       await client.command Protocol::Page.add_script_to_evaluate_on_new_document source: source
     end
 
-    # @param {boolean} enabled
-    #
     def set_cache_enabled(enabled = true)
       network_manager.set_cache_enabled enabled
     end
 
-    # @param {!ScreenshotOptions=} options
-    # @return {!Promise<!Buffer|!String>}
-    #
     def screenshot(type: nil, path: nil, quality: nil, **options)
       screenshot_type = nil
       # options.type takes precedence over inferring the type from options.path
@@ -485,10 +610,6 @@ module Rammus
       screenshot_task screenshot_type, { path: path, quality: quality }.merge(options) # TODO
     end
 
-    # @param {"png"|"jpeg"} format
-    # @param {!ScreenshotOptions=} options
-    # @return {!Promise<!Buffer|!String>}
-    #
     def screenshot_task(format, clip: nil, quality: nil, full_page: false, omit_background: false, encoding: 'binary', path: nil)
       await client.command Protocol::Target.activate_target(target_id: target.target_id)
       clip = unless clip.nil?
@@ -589,6 +710,16 @@ module Rammus
       buffer
     end
 
+    # Close the page
+    #
+    # @note if run_before_unload is passed as true, a beforeunload dialog might
+    #   be summoned and should be handled manually via page's 'dialog' event.
+    #
+    # @param run_before_unload [Boolean] Defaults to false. Whether to run the
+    #   before unload page handlers.
+    #
+    # @return [nil]
+    #
     def close(run_before_unload: false)
       raise 'Protocol error: Connection closed. Most likely the page has been closed.' if client.client.closed?
       if run_before_unload
@@ -597,10 +728,9 @@ module Rammus
         await client.client.command Protocol::Target.close_target target_id: target.target_id
         await target.is_closed_promise
       end
+      nil
     end
 
-    # @return [Boolean]
-    #
     def is_closed?
       @_closed
     end

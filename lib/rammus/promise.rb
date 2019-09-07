@@ -2,6 +2,8 @@ require 'timeout'
 
 module Rammus
   class Promise
+    # @!visibility private
+    #
     EXECUTOR = Concurrent.global_io_executor
     class UnhandledRejection < StandardError; end
 
@@ -121,6 +123,8 @@ module Rammus
       RESOLVED = :resolved
       REJECTED = :rejected
 
+      # @!visibility private
+      #
       class Subscriber
         attr_reader :owner, :promise, :resolved, :rejected
 

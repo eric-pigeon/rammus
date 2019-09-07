@@ -1,5 +1,6 @@
 module Rammus
   # @!visibility private
+  #
   class LifecycleWatcher
     include Promise::Await
 

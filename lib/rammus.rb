@@ -12,6 +12,7 @@ module Rammus
   require 'rammus/event_emitter'
   require 'rammus/promise'
 
+  require 'rammus/network'
   require 'rammus/launcher'
   require 'rammus/protocol'
   require 'rammus/browser'

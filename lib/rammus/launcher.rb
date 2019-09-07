@@ -1,4 +1,6 @@
 module Rammus
+  # @!visibility private
+  #
   class Launcher
     extend Promise::Await
 

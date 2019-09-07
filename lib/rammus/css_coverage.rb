@@ -1,5 +1,6 @@
 module Rammus
   # @!visibility private
+  #
   class CSSCoverage
     include Promise::Await
     attr_reader :client
@@ -15,6 +16,11 @@ module Rammus
       @_reset_on_navigation = false
     end
 
+    # @param reset_on_navigation [Boolean] Whether to reset coverage on every
+    #   navigation. Defaults to true.
+    #
+    # @return [nil]
+    #
     def start(reset_on_navigation: true)
       raise 'CSSCoverage is already enabled' if @_enabled
       @_reset_on_navigation = reset_on_navigation
@@ -30,9 +36,12 @@ module Rammus
         client.command(Protocol::CSS.enable),
         client.command(Protocol::CSS.start_rule_usage_tracking),
       )
+      nil
     end
 
-    # @return [Array<Hash>]
+    # Get coverage report
+    #
+    # @return [Array<Hash<url: String, text: String, ranges: Array<Hash<start: Integer, stop: Integer>>>]
     #
     def stop
       raise 'CSSCoverage is not enabled' unless @_enabled
