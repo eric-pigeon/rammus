@@ -44,9 +44,9 @@ module Rammus
 
       it 'should set the page close state' do
         new_page = context.new_page
-        expect(new_page.is_closed?).to eq false
+        expect(new_page.closed?).to eq false
         new_page.close
-        expect(new_page.is_closed?).to eq true
+        expect(new_page.closed?).to eq true
       end
     end
 

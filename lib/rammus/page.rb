@@ -55,8 +55,15 @@ module Rammus
     #
     attr_reader :coverage
 
-    attr_reader :target, :javascript_enabled, :keyboard, :mouse, :touchscreen,
-      :tracing
+    # @return [Rammus::Keyboard]
+    #
+    attr_reader :keyboard
+
+    # @return [Rammus::Mouse]
+    #
+    attr_reader :mouse
+
+    attr_reader :target, :javascript_enabled, :touchscreen, :tracing
 
     # @!method browser
     #   The browser the page belongs to
@@ -69,6 +76,7 @@ module Rammus
     #   @return [Rammus::BrowserContext]
     #
     delegate [:browser, :browser_context] => :target
+
     # @!method main_frame
     #   Page is guaranteed to have a main frame which persists during navigations.
     #
@@ -237,11 +245,11 @@ module Rammus
       @frame_manager = FrameManager.new(client, self, ignore_https_errors, @_timeout_settings)
       @_emulation_manager = EmulationManager.new client
       @tracing = Tracing.new client
-      # @type {!Map<string, Function>}
+      # @type [Map<string, Function>]
       @_page_bindings = {}
       @coverage = Coverage.new client
       @javascript_enabled = true
-      # @type {?Puppeteer.Viewport}
+      # @type [Viewport]
       @_viewport = nil
 
       # Map<String, Rammus::Worker>
@@ -289,41 +297,42 @@ module Rammus
       end
     end
 
-    # Sets the page's geolocation.
+    # Brings page to front (activates tab).
     #
-    # @param [Numberic] longitude
-    # @param [Numberic] latitude
-    # @param [Numberic, nil] accuracy
+    # @return [nil]
     #
-    def set_geolocation(longitude:, latitude:, accuracy: 0)
-      raise "Invalid longitude '#{longitude}': precondition -180 <= LONGITUDE <= 180 failed." if longitude < -180 || longitude > 180
-      raise "Invalid latitude '#{latitude}': precondition -90 <= LATITUDE <= 90 failed." if latitude < -90 || latitude > 90
-      raise "Invalid accuracy '#{accuracy}': precondition 0 <= ACCURACY failed." if accuracy < 0
-
-      await client.command Protocol::Emulation.set_geolocation_override longitude: longitude, latitude: latitude, accuracy: accuracy
+    def bring_to_front
+      await client.command Protocol::Page.bring_to_front
+      nil
     end
 
-    # @return [Array<Rammus::Worker>]
+    # Close the page
     #
-    def workers
-      @_workers.values
+    # @note if run_before_unload is passed as true, a beforeunload dialog might
+    #   be summoned and should be handled manually via page's 'dialog' event.
+    #
+    # @param run_before_unload [Boolean] Defaults to false. Whether to run the
+    #   before unload page handlers.
+    #
+    # @return [nil]
+    #
+    def close(run_before_unload: false)
+      raise 'Protocol error: Connection closed. Most likely the page has been closed.' if client.client.closed?
+      if run_before_unload
+        await client.command Protocol::Page.close
+      else
+        await client.client.command Protocol::Target.close_target target_id: target.target_id
+        await target.is_closed_promise
+      end
+      nil
     end
 
-    # @param [Integer] timeout
+    # Indicates that the page has been closed.
     #
-    def set_default_navigation_timeout(timeout)
-      @_timeout_settings.set_default_navigation_timeout timeout
-    end
-
-    # @param [Numeric] timeout
+    # @return [Boolean]
     #
-    def set_default_timeout(timeout)
-      @_timeout_settings.timeout = timeout
-    end
-
-    def query_objects(prototype_handle)
-      context = main_frame.execution_context
-      context.query_objects prototype_handle
+    def closed?
+      @_closed
     end
 
     # Get page cookies
@@ -360,137 +369,6 @@ module Rammus
         end.compact.to_h
         await client.command Protocol::Network.delete_cookies cookie
       end
-    end
-
-    # @param [Array<Network::CookieParam>] cookies
-    #
-    def set_cookie(*cookies)
-      page_url = url
-      starts_with_http = page_url.start_with? 'http'
-      cookies = cookies.map do |cookie|
-        if !cookie.has_key?(:url) && starts_with_http
-          cookie[:url] = page_url
-        end
-        if cookie[:url] == "about:blank"
-          raise "Blank page can not have cookie \"#{cookie[:name]}\""
-        end
-        if cookie[:url] && cookie[:url].start_with?("data:")
-          raise "Data URL can not have cookie \"#{cookie[:name]}\""
-        end
-        cookie
-      end
-      delete_cookie(*cookies)
-      if cookies.length
-        await client.command Protocol::Network.set_cookies cookies: cookies
-      end
-    end
-
-    # @param [String] name
-    # @param [#call] function
-    # TODO document block
-    #
-    def expose_function(name, function = nil, &block)
-      function ||= block
-      raise "Failed to add page binding with name #{name}: window['#{name}'] already exists!" if @_page_bindings.has_key? name
-      @_page_bindings[name] = function
-
-      add_page_binding = <<~JAVASCRIPT
-      function addPageBinding(bindingName) {
-        const binding = window[bindingName];
-        window[bindingName] = (...args) => {
-          const me = window[bindingName];
-          let callbacks = me['callbacks'];
-          if (!callbacks) {
-            callbacks = new Map();
-            me['callbacks'] = callbacks;
-          }
-          const seq = (me['lastSeq'] || 0) + 1;
-          me['lastSeq'] = seq;
-          const promise = new Promise((resolve, reject) => callbacks.set(seq, {resolve, reject}));
-          binding(JSON.stringify({name: bindingName, seq, args}));
-          return promise;
-        };
-      }
-      JAVASCRIPT
-
-      expression = "(#{add_page_binding})(\"#{name}\")"
-      await client.command Protocol::Runtime.add_binding name: name
-      await client.command Protocol::Page.add_script_to_evaluate_on_new_document source: expression
-      Promise.all(*frames.map { |frame| frame.evaluate(expression).catch { |error| Util.debug_error error  } })
-    end
-
-    # @return [Rammus::Metrics]
-    #
-    def metrics
-      response = await client.command Protocol::Performance.get_metrics
-      build_metrics_object response["metrics"]
-    end
-
-    # @param timeout [Numeric]
-    # @param wait_until [Symbol, Array<Symbol>]
-    #
-    # @return [Promise<Rammus::Response, nil>]
-    #
-    def reload(timeout: nil, wait_until: nil)
-      Promise.resolve(nil).then do
-        response, _ = await Promise.all(
-          wait_for_navigation(timeout: timeout, wait_until: wait_until),
-          client.command(Protocol::Page.reload)
-        )
-        response
-      end
-    end
-
-    # @param [String] url_or_predicate
-    # @param [Numeric] timeout
-    #
-    # TODO document block
-    #
-    # @return [Promise<Rammus::Request>]
-    #
-    def wait_for_request(url_or_predicate = nil, timeout: nil, &block)
-      timeout ||= @_timeout_settings.timeout
-      url_or_predicate ||= block
-      Util.wait_for_event(network_manager, :request, -> (request) do
-        if url_or_predicate.is_a? String
-          next url_or_predicate == request.url
-        end
-        if url_or_predicate.respond_to?(:call)
-          next !!url_or_predicate.call(request)
-        end
-        false
-      end)
-    end
-
-    def wait_for_response(url_or_predicate = nil, timeout: nil, &block)
-      timeout ||= @_timeout_settings.timeout
-      url_or_predicate ||= block
-      Util.wait_for_event(network_manager, :response, -> (response) do
-        if url_or_predicate.is_a? String
-          next url_or_predicate == response.url
-        end
-        if url_or_predicate.respond_to?(:call)
-          next !!url_or_predicate.call(response)
-        end
-        false
-      end)
-    end
-
-    def go_back(timeout: nil, wait_until: nil)
-      go(-1, timeout: timeout, wait_until: wait_until)
-    end
-
-    def go_forward(timeout: nil, wait_until: nil)
-      go(1, timeout: timeout, wait_until: wait_until)
-    end
-
-    # Brings page to front (activates tab).
-    #
-    # @return [nil]
-    #
-    def bring_to_front
-      await client.command Protocol::Page.bring_to_front
-      nil
     end
 
     # Emulates given device metrics and user agent. This method is a shortcut
@@ -534,133 +412,177 @@ module Rammus
       nil
     end
 
-    def set_javascript_enabled(enabled)
-      return if javascript_enabled == enabled
-
-      @javascript_enabled = enabled
-      client.command Protocol::Emulation.set_script_execution_disabled value: !javascript_enabled
-    end
-
-    def set_bypass_csp(enabled)
-      await client.command Protocol::Page.set_bypass_csp enabled: enabled
-    end
-
+    # Changes the CSS media type of the page.
+    #
+    # @param media_type [String, nil] The only allowed values are 'screen',
+    #   'print' and nil. Passing nil disables media emulation.
+    #
+    # @return [nil]
+    #
     def emulate_media(media_type = nil)
       raise "Unsupported media type: #{media_type}" unless ['screen', 'print', nil].include? media_type
-      client.command Protocol::Emulation.set_emulated_media media: media_type || ''
+      await client.command Protocol::Emulation.set_emulated_media media: media_type || ''
+      nil
     end
 
-    def set_viewport(viewport)
-      needs_reload = @_emulation_manager.emulate_viewport viewport
-      @_viewport = viewport
-
-      await reload if needs_reload
-    end
-
-    def viewport
-      @_viewport
-    end
-
+    # Adds a function which would be invoked in one of the following scenarios:
+    # * whenever the page is navigated
+    # * whenever the child frame is attached or navigated. In this case, the
+    #   function is invoked in the context of the newly attached frame
+    #
+    # The function is invoked after the document was created but before any of
+    # its scripts were run. This is useful to amend the JavaScript environment,
+    # e.g. to seed Math.random.
+    #
+    # @param page_function [String] Function to be evaluated in browser context
+    # @param args [Array<Serializable>] Arguments to pass to page_function
+    #
+    # @return [nil]
+    #
     def evaluate_on_new_document(page_function, *args)
       source = "(#{page_function})(#{args.map(&:to_json).join(',')})"
       await client.command Protocol::Page.add_script_to_evaluate_on_new_document source: source
+      nil
     end
 
-    def set_cache_enabled(enabled = true)
-      network_manager.set_cache_enabled enabled
+    # The method adds a function called name on the page's window object. When
+    # called, the function executes rammus_function in Ruby and returns a
+    # Promise which resolves to the return value of rammus_function.
+    #
+    # If the rammus_function returns a Promise, it will be awaited.
+    #
+    # @note Functions installed via {Page#expose_function} survive navigations.
+    #
+    # @example adding an md5 function into the page
+    #   page.on :console, ->(msg) { puts msg.text }
+    #   page.expose_function 'md5', ->(text) do
+    #     Digest::MD5.hexdigest text
+    #   end
+    #   script = <<~JAVASCRIPT
+    #     async () => {
+    #       // use window.md5 to compute hashes
+    #       const myString = 'RAMMUS';
+    #       const myHash = await window.md5(myString);
+    #       console.log(`md5 of ${myString} is ${myHash}`);
+    #     }
+    #   JAVASCRIPT
+    #
+    #   await page.evaluate_function script
+    #
+    # @example adding a window.readFile function into the page
+    #   page.on :console, ->(msg) { puts msg.text }
+    #   page.expose_function 'readFile' do |file_path|
+    #     File.read file_path
+    #   end
+    #   script = <<~JAVASCRIPT
+    #     async () => {
+    #       // use window.readFile to read contents of a file
+    #       const content = await window.readFile('/etc/hosts');
+    #       console.log(content);
+    #     }
+    #   JAVASCRIPT
+    #   await page.evaluate_function script
+    #
+    #
+    # @overload expose_function(name, function)
+    #   @param name [String] Name of the function on the window object
+    #   @param function [#call] Callback function which will be called in
+    #     Rammus's context.
+    #
+    # @overload expose_function(name, &block)
+    #   @param name [String] Name of the function on the window object
+    #   @yield [*args] callback which will be called in Rammus's
+    #     context.
+    #
+    # @return [nil]
+    #
+    def expose_function(name, function = nil, &block)
+      function ||= block
+      raise "Failed to add page binding with name #{name}: window['#{name}'] already exists!" if @_page_bindings.has_key? name
+      @_page_bindings[name] = function
+
+      add_page_binding = <<~JAVASCRIPT
+      function addPageBinding(bindingName) {
+        const binding = window[bindingName];
+        window[bindingName] = (...args) => {
+          const me = window[bindingName];
+          let callbacks = me['callbacks'];
+          if (!callbacks) {
+            callbacks = new Map();
+            me['callbacks'] = callbacks;
+          }
+          const seq = (me['lastSeq'] || 0) + 1;
+          me['lastSeq'] = seq;
+          const promise = new Promise((resolve, reject) => callbacks.set(seq, {resolve, reject}));
+          binding(JSON.stringify({name: bindingName, seq, args}));
+          return promise;
+        };
+      }
+      JAVASCRIPT
+
+      expression = "(#{add_page_binding})(\"#{name}\")"
+      await client.command Protocol::Runtime.add_binding name: name
+      await client.command Protocol::Page.add_script_to_evaluate_on_new_document source: expression
+      Promise.all(*frames.map { |frame| frame.evaluate(expression).catch { |error| Util.debug_error error  } })
+      nil
     end
 
-    def screenshot(type: nil, path: nil, quality: nil, **options)
-      screenshot_type = nil
-      # options.type takes precedence over inferring the type from options.path
-      # because it may be a 0-length file with no extension created beforehand (i.e. as a temp file).
-      if type
-        raise "Unknown type value: #{type}" unless ['png', 'jpeg'].include? type
-        screenshot_type = type
-      elsif path
-        #TODO
-        #const mimeType = mime.getType(options.path);
-        #if (mimeType === 'image/png')
-        #  screenshotType = 'png';
-        #else if (mimeType === 'image/jpeg')
-        #  screenshotType = 'jpeg';
-        #assert(screenshotType, 'Unsupported screenshot mime type: ' + mimeType);
-      end
-
-      screenshot_type ||= 'png'
-
-      if quality
-        raise "quality is unsupported for the #{screenshot_type} screenshots" unless screenshot_type == 'jpeg'
-        # TODO
-        # assert(typeof options.quality === 'number', 'Expected options.quality to be a number but found ' + (typeof options.quality));
-        # assert(Number.isInteger(options.quality), 'Expected options.quality to be an integer');
-        # assert(options.quality >= 0 && options.quality <= 100, 'Expected options.quality to be between 0 and 100 (inclusive), got ' + options.quality);
-      end
-      # TODO
-      #assert(!options.clip || !options.fullPage, 'options.clip and options.fullPage are exclusive');
-      #if (options.clip) {
-      #  assert(typeof options.clip.x === 'number', 'Expected options.clip.x to be a number but found ' + (typeof options.clip.x));
-      #  assert(typeof options.clip.y === 'number', 'Expected options.clip.y to be a number but found ' + (typeof options.clip.y));
-      #  assert(typeof options.clip.width === 'number', 'Expected options.clip.width to be a number but found ' + (typeof options.clip.width));
-      #  assert(typeof options.clip.height === 'number', 'Expected options.clip.height to be a number but found ' + (typeof options.clip.height));
-      #  assert(options.clip.width !== 0, 'Expected options.clip.width not to be 0.');
-      #  assert(options.clip.height !== 0, 'Expected options.clip.width not to be 0.');
-      #}
-      #return this._screenshotTaskQueue.postTask(this._screenshotTask.bind(this, screenshotType, options));
-      screenshot_task screenshot_type, { path: path, quality: quality }.merge(options) # TODO
+    # Navigate to the previous page in history.
+    #
+    # @param timeout [Integer] Maximum time in milliseconds for resources to
+    #   load, defaults to 2 seconds, pass 0 to disable timeout. The default
+    #   value can be changed by using the
+    #   {Page#set_default_navigation_timeout} or {Page#set_default_timeout}
+    #   methods
+    # @param wait_until [Array<Symbol>, Symbol] When to consider setting markup
+    #   succeeded, defaults to load. Given an array of event strings, setting
+    #   content is considered to be successful after all events have been fired.
+    #   Events can be either:
+    #   * :load - consider setting content to be finished when the load event is fired.
+    #   * :domcontentloaded - consider setting content to be finished when the DOMContentLoaded event is fired.
+    #   * :networkidle0 - consider setting content to be finished when there are no more than 0 network connections for at least 500 ms.
+    #   * :networkidle2 - consider setting content to be finished when there are no more than 2 network connections for at least 500 ms.
+    #
+    # @return [Rammus::Response, nil] the main resource response. In case of
+    #   multiple redirects, the navigation will resolve with the response of the
+    #   last redirect. If can not go back, resolves to nil
+    #
+    def go_back(timeout: nil, wait_until: nil)
+      go(-1, timeout: timeout, wait_until: wait_until)
     end
 
-    def screenshot_task(format, clip: nil, quality: nil, full_page: false, omit_background: false, encoding: 'binary', path: nil)
-      await client.command Protocol::Target.activate_target(target_id: target.target_id)
-      clip = unless clip.nil?
-               x = clip[:x].round
-               y = clip[:y].round
-               width = (clip[:width] + clip[:x] - x).round
-               height = (clip[:height] + clip[:y] - y).round
+    # Navigate to the next page in history.
+    #
+    # @param timeout [Integer] Maximum time in milliseconds for resources to
+    #   load, defaults to 2 seconds, pass 0 to disable timeout. The default
+    #   value can be changed by using the
+    #   {Page#set_default_navigation_timeout} or {Page#set_default_timeout}
+    #   methods
+    # @param wait_until [Array<Symbol>, Symbol] When to consider setting markup
+    #   succeeded, defaults to load. Given an array of event strings, setting
+    #   content is considered to be successful after all events have been fired.
+    #   Events can be either:
+    #   * :load - consider setting content to be finished when the load event is fired.
+    #   * :domcontentloaded - consider setting content to be finished when the DOMContentLoaded event is fired.
+    #   * :networkidle0 - consider setting content to be finished when there are no more than 0 network connections for at least 500 ms.
+    #   * :networkidle2 - consider setting content to be finished when there are no more than 2 network connections for at least 500 ms.
+    #
+    # @return [Rammus::Response, nil] the main resource response. In case of
+    #   multiple redirects, the navigation will resolve with the response of the
+    #   last redirect. If can not go back, resolves to nil
+    #
+    def go_forward(timeout: nil, wait_until: nil)
+      go(1, timeout: timeout, wait_until: wait_until)
+    end
 
-               { x: x, y: y, width: width, height: height, scale: 1 }
-             end
-
-      if full_page
-        metrics = await client.command Protocol::Page.get_layout_metrics
-        width = metrics.dig("contentSize", "width").ceil
-        height = metrics.dig("contentSize", "height").ceil
-
-        # Overwrite clip for full page at all times.
-        clip = { x: 0, y: 0, width: width, height: height, scale: 1 }
-        is_mobile = @_viewport.fetch :is_mobile, false
-        device_scale_factor = @_viewport.fetch :device_scale_factor, 1
-        is_landscape = @_viewport.fetch :is_landscape, false
-        # @type {!Protocol.Emulation.ScreenOrientation}
-        screen_orientation = is_landscape ? { angle: 90, type: 'landscapePrimary' } : { angle: 0, type: 'portraitPrimary' }
-        await client.command Protocol::Emulation.set_device_metrics_override(
-          mobile: is_mobile,
-          width: width,
-          height: height,
-          device_scale_factor: device_scale_factor,
-          screen_orientation: screen_orientation
-        )
-      end
-
-      should_set_default_background = omit_background && format == 'png'
-      if should_set_default_background
-        await client.command Protocol::Emulation.set_default_background_color_override(color: { r: 0, g: 0, b: 0, a: 0 })
-      end
-      result = await client.command Protocol::Page.capture_screenshot(format: format, quality: quality, clip: clip)
-
-      if should_set_default_background
-        await client.command Protocol::Emulation.set_default_background_color_override(color: nil)
-      end
-
-      if full_page && viewport
-        set_viewport @_viewport
-      end
-
-      buffer = encoding == 'base64' ? result["data"] : Base64.decode64(result["data"])
-
-      File.open(path, 'wb') { |file| file.puts buffer } if path
-
-      buffer
+    # @note All timestamps are in monotonic time: monotonically increasing time
+    #   in seconds since an arbitrary point in the past.
+    #
+    # @return [Rammus::Metrics]
+    #
+    def metrics
+      response = await client.command Protocol::Performance.get_metrics
+      build_metrics_object response["metrics"]
     end
 
     def pdf(path: nil, scale: 1, display_header_footer: false,
@@ -710,29 +632,282 @@ module Rammus
       buffer
     end
 
-    # Close the page
+    # (see Rammus::ExecutionContext#query_objects)
+    def query_objects(prototype_handle)
+      context = main_frame.execution_context
+      context.query_objects prototype_handle
+    end
+
+    # Reload the page
     #
-    # @note if run_before_unload is passed as true, a beforeunload dialog might
-    #   be summoned and should be handled manually via page's 'dialog' event.
+    # @param timeout [Integer] Maximum time in milliseconds for resources to
+    #   load, defaults to 2 seconds, pass 0 to disable timeout. The default
+    #   value can be changed by using the
+    #   {Page#set_default_navigation_timeout} or {Page#set_default_timeout}
+    #   methods
+    # @param wait_until [Array<Symbol>, Symbol] When to consider setting markup
+    #   succeeded, defaults to load. Given an array of event strings, setting
+    #   content is considered to be successful after all events have been fired.
+    #   Events can be either:
+    #   * :load - consider setting content to be finished when the load event is fired.
+    #   * :domcontentloaded - consider setting content to be finished when the DOMContentLoaded event is fired.
+    #   * :networkidle0 - consider setting content to be finished when there are no more than 0 network connections for at least 500 ms.
+    #   * :networkidle2 - consider setting content to be finished when there are no more than 2 network connections for at least 500 ms.
     #
-    # @param run_before_unload [Boolean] Defaults to false. Whether to run the
-    #   before unload page handlers.
+    # @return [Promise<Rammus::Response, nil>] Promise which resolves to the
+    #   main resource response. In case of multiple redirects, the navigation
+    #   will resolve with the response of the last redirect.
+    #
+    def reload(timeout: nil, wait_until: nil)
+      Promise.resolve(nil).then do
+        response, _ = await Promise.all(
+          wait_for_navigation(timeout: timeout, wait_until: wait_until),
+          client.command(Protocol::Page.reload)
+        )
+        response
+      end
+    end
+
+    # @param path [String] The file path to save the image to. The screenshot
+    #   type will be inferred from file extension. If path is a relative path,
+    #   then it is resolved relative to current working directory. If no path is
+    #   provided, the image won't be saved to the disk.
+    # @param type [String] Specify screenshot type, can be either jpeg or png.
+    #   Defaults to 'png'.
+    # @param quality [Integer] The quality of the image, between 0-100. Not
+    #   applicable to png images.
+    # @param full_page [Boolean] When true, takes a screenshot of the full
+    #   scrollable page. Defaults to false.
+    # @param clip [Hash] A hash which specifies clipping region of the page.
+    # @option clip [Integer] :x x-coordinate of top-left corner of clip area
+    # @option clip [Integer] :y y-coordinate of top-left corner of clip area
+    # @option clip [Integer] :width width of clipping area
+    # @option clip [Integer] :height height of clipping area
+    # @param omit_background [Boolean] Hides default white background and allows
+    #   capturing screenshots with transparency. Defaults to false.
+    # @param encoding [String] The encoding of the image, can be either base64
+    #   or binary. Defaults to binary.
+    #
+    # @return [String] a base64 string (depending on the value of encoding) with
+    #   captured screenshot.
+    #
+    def screenshot(type: nil, path: nil, quality: nil, full_page: false, omit_background: false, encoding: 'binary', clip: nil)
+      screenshot_type = nil
+      # options.type takes precedence over inferring the type from options.path
+      # because it may be a 0-length file with no extension created beforehand (i.e. as a temp file).
+      if type
+        raise "Unknown type value: #{type}" unless ['png', 'jpeg'].include? type
+        screenshot_type = type
+      elsif path
+        #TODO
+        #const mimeType = mime.getType(options.path);
+        #if (mimeType === 'image/png')
+        #  screenshotType = 'png';
+        #else if (mimeType === 'image/jpeg')
+        #  screenshotType = 'jpeg';
+        #assert(screenshotType, 'Unsupported screenshot mime type: ' + mimeType);
+      end
+
+      screenshot_type ||= 'png'
+
+      if quality
+        raise "quality is unsupported for the #{screenshot_type} screenshots" unless screenshot_type == 'jpeg'
+        # TODO
+        # assert(typeof options.quality === 'number', 'Expected options.quality to be a number but found ' + (typeof options.quality));
+        # assert(Number.isInteger(options.quality), 'Expected options.quality to be an integer');
+        # assert(options.quality >= 0 && options.quality <= 100, 'Expected options.quality to be between 0 and 100 (inclusive), got ' + options.quality);
+      end
+      # TODO
+      #assert(!options.clip || !options.fullPage, 'options.clip and options.fullPage are exclusive');
+      #if (options.clip) {
+      #  assert(typeof options.clip.x === 'number', 'Expected options.clip.x to be a number but found ' + (typeof options.clip.x));
+      #  assert(typeof options.clip.y === 'number', 'Expected options.clip.y to be a number but found ' + (typeof options.clip.y));
+      #  assert(typeof options.clip.width === 'number', 'Expected options.clip.width to be a number but found ' + (typeof options.clip.width));
+      #  assert(typeof options.clip.height === 'number', 'Expected options.clip.height to be a number but found ' + (typeof options.clip.height));
+      #  assert(options.clip.width !== 0, 'Expected options.clip.width not to be 0.');
+      #  assert(options.clip.height !== 0, 'Expected options.clip.width not to be 0.');
+      #}
+      #return this._screenshotTaskQueue.postTask(this._screenshotTask.bind(this, screenshotType, options));
+      screenshot_task screenshot_type, path: path, quality: quality, full_page: full_page, omit_background: omit_background, encoding: encoding, clip: clip
+    end
+
+    # Toggles bypassing page's Content-Security-Policy.
+    #
+    # @note CSP bypassing happens at the moment of CSP initialization rather
+    #   then evaluation. Usually this means that page.setBypassCSP should be
+    #   called before navigating to the domain.
+    #
+    # @param enabled [Boolean] sets bypassing of page's Content-Security-Policy
     #
     # @return [nil]
     #
-    def close(run_before_unload: false)
-      raise 'Protocol error: Connection closed. Most likely the page has been closed.' if client.client.closed?
-      if run_before_unload
-        await client.command Protocol::Page.close
-      else
-        await client.client.command Protocol::Target.close_target target_id: target.target_id
-        await target.is_closed_promise
-      end
+    def set_bypass_csp(enabled)
+      await client.command Protocol::Page.set_bypass_csp enabled: enabled
       nil
     end
 
-    def is_closed?
-      @_closed
+    # Toggles ignoring cache for each request based on the enabled state. By
+    # default, caching is enabled.
+    #
+    # @param enabled [Boolean] sets the enabled state of the cache.
+    #
+    # @return [nil]
+    #
+    def set_cache_enabled(enabled = true)
+      network_manager.set_cache_enabled enabled
+      nil
+    end
+
+    # @param [Array<Network::CookieParam>] cookies
+    #
+    def set_cookie(*cookies)
+      page_url = url
+      starts_with_http = page_url.start_with? 'http'
+      cookies = cookies.map do |cookie|
+        if !cookie.has_key?(:url) && starts_with_http
+          cookie[:url] = page_url
+        end
+        if cookie[:url] == "about:blank"
+          raise "Blank page can not have cookie \"#{cookie[:name]}\""
+        end
+        if cookie[:url] && cookie[:url].start_with?("data:")
+          raise "Data URL can not have cookie \"#{cookie[:name]}\""
+        end
+        cookie
+      end
+      delete_cookie(*cookies)
+      if cookies.length
+        await client.command Protocol::Network.set_cookies cookies: cookies
+      end
+    end
+
+    # This setting will change the default maximum navigation time for the
+    # following methods and related shortcuts:
+    # * {Page#go_back}
+    # * {Page#go_forward}
+    # * {Page#goto}
+    # * {Page#reload}
+    # * {Page#set_content}
+    # * {Page#wait_for_navigation}
+    #
+    # @note {set_default_navigation_timeout} takes priority over
+    #   {set_default_timeout}
+    #
+    # @param timeout [Integer] Maximum navigation time in seconds
+    #
+    # @return [nil]
+    #
+    def set_default_navigation_timeout(timeout)
+      @_timeout_settings.set_default_navigation_timeout timeout
+      nil
+    end
+
+    # This setting will change the default maximum time for the following
+    # methods and related shortcuts:
+    # * {Page#go_back}
+    # * {Page#go_forward}
+    # * {Page#goto}
+    # * {Page#reload}
+    # * {Page#set_content}
+    # * {Page#wait_for}
+    # * {Page#wait_for_file_chooser}
+    # * {Page#wait_for_function}
+    # * {Page#wait_for_navigation}
+    # * {Page#wait_for_request}
+    # * {Page#wait_for_response}
+    # * {Page#wait_for_selector}
+    # * {Page#wait_for_xPath}
+    #
+    # @param timeout [Numeric] Maximum time in seconds
+    #
+    # @return [nil]
+    #
+    def set_default_timeout(timeout)
+      @_timeout_settings.timeout = timeout
+      nil
+    end
+
+    # Sets the page's geolocation.
+    #
+    # @param longitude [Numberic] Longitude between -180 and 180.
+    # @param latitude [Numberic] Latitude between -90 and 90.
+    # @param accuracy [Numberic, nil] Optional non-negative accuracy value.
+    #
+    # @return [nil]
+    #
+    def set_geolocation(longitude:, latitude:, accuracy: 0)
+      raise "Invalid longitude '#{longitude}': precondition -180 <= LONGITUDE <= 180 failed." if longitude < -180 || longitude > 180
+      raise "Invalid latitude '#{latitude}': precondition -90 <= LATITUDE <= 90 failed." if latitude < -90 || latitude > 90
+      raise "Invalid accuracy '#{accuracy}': precondition 0 <= ACCURACY failed." if accuracy < 0
+
+      await client.command Protocol::Emulation.set_geolocation_override longitude: longitude, latitude: latitude, accuracy: accuracy
+      nil
+    end
+
+    # enable or disable JavaScript for the page
+    #
+    # @param enabled [Boolean] Whether or not to enable JavaScript on the page.
+    #
+    # @note changing this value won't affect scripts that have already been run.
+    # It will take full effect on the next navigation.
+    #
+    def set_javascript_enabled(enabled)
+      return if javascript_enabled == enabled
+
+      @javascript_enabled = enabled
+      client.command Protocol::Emulation.set_script_execution_disabled value: !javascript_enabled
+    end
+
+    def set_viewport(viewport)
+      needs_reload = @_emulation_manager.emulate_viewport viewport
+      @_viewport = viewport
+
+      await reload if needs_reload
+    end
+
+    def viewport
+      @_viewport
+    end
+
+    # @param [String] url_or_predicate
+    # @param [Numeric] timeout
+    #
+    # TODO document block
+    #
+    # @return [Promise<Rammus::Request>]
+    #
+    def wait_for_request(url_or_predicate = nil, timeout: nil, &block)
+      timeout ||= @_timeout_settings.timeout
+      url_or_predicate ||= block
+      Util.wait_for_event(network_manager, :request, -> (request) do
+        if url_or_predicate.is_a? String
+          next url_or_predicate == request.url
+        end
+        if url_or_predicate.respond_to?(:call)
+          next !!url_or_predicate.call(request)
+        end
+        false
+      end)
+    end
+
+    def wait_for_response(url_or_predicate = nil, timeout: nil, &block)
+      timeout ||= @_timeout_settings.timeout
+      url_or_predicate ||= block
+      Util.wait_for_event(network_manager, :response, -> (response) do
+        if url_or_predicate.is_a? String
+          next url_or_predicate == response.url
+        end
+        if url_or_predicate.respond_to?(:call)
+          next !!url_or_predicate.call(response)
+        end
+        false
+      end)
+    end
+
+    # @return [Array<Rammus::Worker>]
+    #
+    def workers
+      @_workers.values
     end
 
     private
@@ -745,8 +920,6 @@ module Rammus
         emit :error, PageCrashed.new('Page crashed!')
       end
 
-      #  @param {!Protocol.Log.entryAddedPayload} event
-      #
       def on_log_entry_added(event)
         level = event["entry"]["level"]
         text = event["entry"]["text"]
@@ -774,16 +947,12 @@ module Rammus
         emit :dialog, dialog
       end
 
-      # @param {!Protocol.Runtime.ExceptionDetails} exceptionDetails
-      #
       def handle_exception(exception_details)
         message = Util.get_exception_message exception_details
         error = StandardError.new message
         emit :page_error, error
       end
 
-      # @param {!Protocol.Runtime.consoleAPICalledPayload} event
-      #
       def on_console_api(event)
         if event["executionContextId"] == 0
           # DevTools protocol stores the last 1000 console messages. These
@@ -806,10 +975,6 @@ module Rammus
         add_console_message event["type"], values, event["stackTrace"]
       end
 
-      # @param {string} type
-      # @param {!Array<!Puppeteer.JSHandle>} args
-      # @param {Protocol.Runtime.StackTrace=} stackTrace
-      #
       def add_console_message(type, args, stack_trace)
         if listener_count(:console).zero?
           args.each  { |arg| arg.dispose }
@@ -836,9 +1001,6 @@ module Rammus
         emit(:console, message)
       end
 
-      # @param {!{timeout?: number, waitUntil?: string|!Array<string>}=} options
-      # @return {!Promise<?Puppeteer.Response>}
-      #
       def go(delta, timeout: nil, wait_until: nil)
         history = await client.command Protocol::Page.get_navigation_history
         entry = history["entries"][history["currentIndex"] + delta]
@@ -866,9 +1028,6 @@ module Rammus
         'JSHeapTotalSize',
       ]
 
-      # @param {?Array<!Protocol.Performance.Metric>} metrics
-      # @return {!Metrics}
-      #
       def build_metrics_object(metrics = [])
         metrics.map do |metric|
           next unless SUPPORTED_METRICS.include? metric["name"]
@@ -876,8 +1035,6 @@ module Rammus
         end.compact.to_h
       end
 
-      # @param {!Protocol.Performance.metricsPayload} event
-      #
       def emit_metrics(event)
         emit :metrics, {
           "title" => event["title"],
@@ -885,8 +1042,6 @@ module Rammus
         }
       end
 
-      # @param {!Protocol.Runtime.bindingCalledPayload} event
-      #
       def on_binding_called(event)
         payload = JSON.parse event["payload"]
         name = payload["name"]
@@ -936,8 +1091,9 @@ module Rammus
         'mm' => 3.78
       }
 
-      # @param {(string|number|undefined)} parameter
-      # @return {(number|undefined)}
+      # @param parameter [String, Numeric, nil]
+      #
+      # @return [Numeric, nil]
       #
       def self.convert_print_parameter_to_inches(parameter)
         return if parameter.nil?
@@ -966,6 +1122,59 @@ module Rammus
         end
 
         pixels.to_f / 96
+      end
+
+      def screenshot_task(format, clip: nil, quality: nil, full_page: false, omit_background: false, encoding: 'binary', path: nil)
+        await client.command Protocol::Target.activate_target(target_id: target.target_id)
+        clip = unless clip.nil?
+                 x = clip[:x].round
+                 y = clip[:y].round
+                 width = (clip[:width] + clip[:x] - x).round
+                 height = (clip[:height] + clip[:y] - y).round
+
+                 { x: x, y: y, width: width, height: height, scale: 1 }
+               end
+
+        if full_page
+          metrics = await client.command Protocol::Page.get_layout_metrics
+          width = metrics.dig("contentSize", "width").ceil
+          height = metrics.dig("contentSize", "height").ceil
+
+          # Overwrite clip for full page at all times.
+          clip = { x: 0, y: 0, width: width, height: height, scale: 1 }
+          is_mobile = @_viewport.fetch :is_mobile, false
+          device_scale_factor = @_viewport.fetch :device_scale_factor, 1
+          is_landscape = @_viewport.fetch :is_landscape, false
+          # @type {!Protocol.Emulation.ScreenOrientation}
+          screen_orientation = is_landscape ? { angle: 90, type: 'landscapePrimary' } : { angle: 0, type: 'portraitPrimary' }
+          await client.command Protocol::Emulation.set_device_metrics_override(
+            mobile: is_mobile,
+            width: width,
+            height: height,
+            device_scale_factor: device_scale_factor,
+            screen_orientation: screen_orientation
+          )
+        end
+
+        should_set_default_background = omit_background && format == 'png'
+        if should_set_default_background
+          await client.command Protocol::Emulation.set_default_background_color_override(color: { r: 0, g: 0, b: 0, a: 0 })
+        end
+        result = await client.command Protocol::Page.capture_screenshot(format: format, quality: quality, clip: clip)
+
+        if should_set_default_background
+          await client.command Protocol::Emulation.set_default_background_color_override(color: nil)
+        end
+
+        if full_page && viewport
+          set_viewport @_viewport
+        end
+
+        buffer = encoding == 'base64' ? result["data"] : Base64.decode64(result["data"])
+
+        File.open(path, 'wb') { |file| file.puts buffer } if path
+
+        buffer
       end
   end
 end
