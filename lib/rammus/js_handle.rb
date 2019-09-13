@@ -11,8 +11,8 @@ module Rammus
   # unless the handle is disposed. JSHandles are auto-disposed when their origin
   # frame gets navigated or the parent context gets destroyed.
   #
-  # JSHandle instances can be used as arguments in {Page.evaluate_function},
-  # {Page.query_selector_evaluate} and {Page.evaluate_function_handle} methods.
+  # JSHandle instances can be used as arguments in {Page#evaluate_function},
+  # {Page#query_selector_evaluate} and {Page#evaluate_function_handle} methods.
   #
   class JSHandle
     include Promise::Await

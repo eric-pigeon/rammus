@@ -8,7 +8,7 @@ module Rammus
   # handle is disposed. ElementHandles are auto-disposed when their origin
   # frame gets navigated.
   #
-  # ElementHandle instances can be used as arguments in {Page.query_selector_evaluate_function} and
+  # ElementHandle instances can be used as arguments in {Page#query_selector_evaluate_function} and
   # {Page#evaluate_function} methods.
   #
   class ElementHandle < JSHandle
@@ -164,7 +164,7 @@ module Rammus
     end
 
     # @param {!Object=} options
-    # @returns {!Promise<string|!Buffer>}
+    # @return {!Promise<string|!Buffer>}
     #
     def screenshot(options = {})
       needs_viewport_reset = false
@@ -309,7 +309,7 @@ module Rammus
       end.compact
     end
 
-    # @returns {!Promise<boolean>}
+    # @return {!Promise<boolean>}
     #
     def is_intersecting_viewport
       function = <<~JAVASCRIPT

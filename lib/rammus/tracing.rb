@@ -1,10 +1,23 @@
 module Rammus
+  # You can use {Tracing#start} and {Tracing#stop} to create a trace file which
+  # can be opened in Chrome DevTools or
+  # {https://chromedevtools.github.io/timeline-viewer timeline viewer}.
+  #
+  # @example
+  #   await page.tracing.start path: 'trace.json'
+  #   await page.goto 'https://www.google.com'
+  #   await page.tracing.stop
+  #
   class Tracing
     include Promise::Await
 
+    # @!visibility private
+    #
     attr_reader :client
 
-    # @param [Rammus::CDPSession] client
+    # @!visibility private
+    #
+    # @param client [Rammus::CDPSession]
     #
     def initialize(client)
       @client = client
@@ -12,7 +25,21 @@ module Rammus
       @_path = ''
     end
 
-    # @param {!{path?: string, screenshots?: boolean, categories?: !Array<string>}} options
+    # Start tracing
+    #
+    # @note Only one trace can be active at a time per browser.
+    #
+    # @param path [String] A path to write the trace file to.
+    # @param screenshots [boolean] captures screenshots in the trace.
+    # @param categories [Array<String>] specify custom categories to use instead
+    #   of default.
+    #
+    # @overload
+    #   @yield Block to run with tracing
+    #   @return [String]
+    #
+    # @overload
+    #   @return [nil]
     #
     def start(path: nil, screenshots: false, categories: DEFAULT_CATEGORIES)
       raise 'Cannot start recording trace while already recording trace.' if @_recording
@@ -31,7 +58,9 @@ module Rammus
       end
     end
 
-    # @return {!Promise<!Buffer>}
+    # End trace and get results
+    #
+    # @return [String] trace data
     #
     def stop
       content_promise, fulfill, _ = Promise.create

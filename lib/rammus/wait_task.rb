@@ -1,14 +1,15 @@
 module Rammus
+  # @!visibility private
   class WaitTask
     include Promise::Await
 
     attr_reader :promise, :dom_world
 
-    # @param {!DOMWorld} dom_world
-    # @param {Function|string} predicateBody
-    # @param {string|number} polling
-    # @param {number} timeout
-    # @param {!Array<*>} args
+    # @param [DOMWorld] dom_world
+    # @param [Function|string] predicateBody
+    # @param [string|number] polling
+    # @param [number] timeout
+    # @param [!Array<*>] args
     #
     def initialize(dom_world, predicate_body, title, polling, timeout, *args)
       if polling.is_a? String
@@ -42,7 +43,7 @@ module Rammus
       Concurrent.global_io_executor.post { rerun }
     end
 
-    # @param {!Error} error
+    # @param [Error] error
     #
     def terminate(error)
       @_terminated = true

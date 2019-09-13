@@ -1,15 +1,28 @@
 module Rammus
   class Target
     extend Forwardable
-    attr_reader :target_info, :browser_context, :target_id, :initialized,
-      :initialized_promise, :initialized_callback, :_closed_callback,
-      :is_closed_promise
+    # @!visibility private
+    attr_reader :target_info, :target_id, :initialized, :initialized_promise,
+      :initialized_callback, :_closed_callback, :is_closed_promise
 
+    # The browser context the target belongs to.
+    #
+    # @return [Rammus::BrowserContext]
+    #
+    attr_reader :browser_context
+
+    # @!method browser
+    #   The browser the target belongs to
+    #
+    #   @return [Rammus::Browser]
+    #
     delegate [:browser] => :browser_context
 
-    # @param [Hash] target_info
-    # @param [Rammus::BrowserContext] browser_context
-    # @param [Rammus::ChromeClient] client
+    # @!visibility private
+    #
+    # @param target_info [Hash]
+    # @param browser_context [Rammus::BrowserContext]
+    # @param client [Rammus::ChromeClient]
     #
     def initialize(target_info, browser_context, client, ignore_https_errors, default_viewport)
       @target_info = target_info
@@ -41,9 +54,20 @@ module Rammus
       @initialized_callback.(true) if initialized
     end
 
-    # If the target is not of type "page" or "background_page", returns null.
+    # The target that opened this target. Top-level targets return nil
     #
-    # @return [Rammus::Page]
+    # @return [Target, nil]
+    #
+    def opener
+      return unless opener_id = target_info["openerId"]
+
+      # TODO
+      browser.instance_variable_get(:@_targets)[opener_id]
+    end
+
+    # If the target is not of type "page" or "background_page", returns nil
+    #
+    # @return [Rammus::Page, nil]
     #
     def page
       return unless type == "page" || type == "background_page"
@@ -51,6 +75,37 @@ module Rammus
       @_page ||= Page.create(self, ignore_https_errors: @_ignore_https_errors, default_viewport: @_default_viewport)
     end
 
+    # Identifies what kind of target this is. Can be "page", "background_page",
+    # "service_worker", "browser" or "other".
+    #
+    # @return [String]
+    #
+    def type
+      types = ["page", "background_page", "service_worker", "browser"]
+      if types.include? target_info["type"]
+        target_info["type"]
+      else
+        "other"
+      end
+    end
+
+    def session
+      @_session ||= @_client.create_session target_info
+    end
+
+    # Targer url
+    #
+    # @return [String]
+    #
+    def url
+      target_info["url"]
+    end
+
+    # If the target is not of type "service_worker" or "shared_worker", returns
+    #   nil.
+    #
+    # @return [Worker, nil]
+    #
     def worker
       return if type != 'service_worker' || type != 'shared_worker'
       #if (!this._workerPromise) {
@@ -68,40 +123,9 @@ module Rammus
       #return this._workerPromise;
     end
 
-    def session
-      @_session ||= @_client.create_session target_info
-    end
-
-    # @return [String]
-    #
-    def url
-      target_info["url"]
-    end
-
-    # Identifies what kind of target this is. Can be "page", "background_page",
-    # "service_worker", "browser" or "other".
-    #
-    # @return [String]
-    #
-    def type
-      types = ["page", "background_page", "service_worker", "browser"]
-      if types.include? target_info["type"]
-        target_info["type"]
-      else
-        "other"
-      end
-    end
-
-    def opener
-      return unless opener_id = target_info["openerId"]
-
-      # TODO
-      browser.instance_variable_get(:@_targets)[opener_id]
-    end
-
     private
 
-      # @param [Hash] target_info
+      # @param target_info [Hash]
       #
       def target_info_changed(target_info)
         @target_info = target_info

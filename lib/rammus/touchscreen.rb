@@ -2,16 +2,22 @@ module Rammus
   class Touchscreen
     include Promise::Await
 
-    # @param [Rammus::CDPSession] client
-    # @param [Rammus::Keyboard] keyboard
+    # @!visibility private
+    #
+    # @param client [Rammus::CDPSession]
+    # @param keyboard [Rammus::Keyboard]
     #
     def initialize(client, keyboard)
       @_client = client
       @_keyboard = keyboard
     end
 
-    # @param [Numeric] x
-    # @param [Numeric] y
+    # Dispatches a touchstart and touchend event.
+    #
+    # @param x [Numeric]
+    # @param y [Numeric]
+    #
+    # @return [nil]
     #
     def tap(x, y)
       # Touches appear to be lost during the first frame after navigation.
