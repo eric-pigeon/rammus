@@ -993,7 +993,7 @@ module Rammus
       end
 
       def on_target_crashed(_event)
-        emit :error, PageCrashed.new('Page crashed!')
+        emit :error, Errors::PageCrashed.new('Page crashed!')
       end
 
       def on_log_entry_added(event)

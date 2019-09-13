@@ -91,14 +91,14 @@ module Rammus
 
       it 'should respect timeout' do
         expect { await page.wait_for_function 'false', timeout: 0.1 }
-          .to raise_error(TimeoutError, /waiting for function failed: timeout/)
+          .to raise_error(Errors::TimeoutError, /waiting for function failed: timeout/)
       end
 
       it 'should respect default timeout' do
         page.set_default_timeout 0.1
 
         expect { await page.wait_for_function 'false', timeout: 0.1 }
-          .to raise_error(TimeoutError, /waiting for function failed: timeout/)
+          .to raise_error(Errors::TimeoutError, /waiting for function failed: timeout/)
       end
 
       it 'should disable timeout when its set to 0' do
@@ -282,7 +282,7 @@ module Rammus
 
       it 'should respect timeout' do
         expect { await page.wait_for_selector('div', timeout: 0.1) }
-          .to raise_error TimeoutError, /waiting for selector "div" failed: timeout/
+          .to raise_error Errors::TimeoutError, /waiting for selector "div" failed: timeout/
       end
 
       it 'should have an error message specifically for awaiting an element to be hidden' do
@@ -329,7 +329,7 @@ module Rammus
 
       it 'should respect timeout' do
         expect { await page.wait_for_xpath('//div', timeout: 0.1) }
-          .to raise_error TimeoutError, %r{waiting for XPath "//div" failed: timeout}
+          .to raise_error Errors::TimeoutError, %r{waiting for XPath "//div" failed: timeout}
       end
 
       it 'should run in specified frame' do

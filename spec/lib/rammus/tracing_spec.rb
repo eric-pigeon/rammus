@@ -28,7 +28,7 @@ module Rammus
       page.tracing.start(path: output_file)
       new_page = browser.new_page
       expect { new_page.tracing.start path: output_file }
-        .to raise_error ProtocolError, /Tracing is already started/
+        .to raise_error Errors::ProtocolError, /Tracing is already started/
       new_page.close
       page.tracing.stop
     end

@@ -37,7 +37,7 @@ module Rammus
       # timeout on our end.
       if timeout && timeout != 0
         @_timeout_timer = Concurrent::ScheduledTask.execute(timeout) do
-          terminate TimeoutError.new "waiting for #{title} failed: timeout #{timeout}s exeeded"
+          terminate Errors::TimeoutError.new "waiting for #{title} failed: timeout #{timeout}s exeeded"
         end
       end
       Concurrent.global_io_executor.post { rerun }

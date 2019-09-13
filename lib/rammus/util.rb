@@ -97,7 +97,7 @@ module Rammus
       #if (timeout) {
       #  eventTimeout = setTimeout(() => {
       #    cleanup();
-      #    rejectCallback(new TimeoutError('Timeout exceeded while waiting for event'));
+      #    rejectCallback(new Errors::TimeoutError('Timeout exceeded while waiting for event'));
       #  }, timeout);
       #}
       #function cleanup() {

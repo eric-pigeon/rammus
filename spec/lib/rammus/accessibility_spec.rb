@@ -111,7 +111,6 @@ module Rammus
       end
 
       it 'rich text editable fields should have children' do
-        pending 'broken not sure why'
         content = <<~HTML
         <div contenteditable="true">
           Edit this image: <img src="fakeimage.png" alt="my fake image">
@@ -133,7 +132,6 @@ module Rammus
       end
 
       it 'rich text editable fields with role should have children' do
-        pending 'broken not sure why'
         content = <<~HTML
         <div contenteditable="true" role='textbox'>
           Edit this image: <img src="fakeimage.png" alt="my fake image">

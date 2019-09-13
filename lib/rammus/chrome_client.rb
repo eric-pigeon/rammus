@@ -1,5 +1,6 @@
 module Rammus
   # @!visibility private
+  #
   class ChromeClient
     include Promise::Await
     include EventEmitter
@@ -16,7 +17,7 @@ module Rammus
     def self.create_protocol_error(method, object)
       message = "Protocol error (#{method}): #{object.dig("error", "message")}"
       message += object.dig("error", "data").to_s
-      ProtocolError.new message
+      Errors::ProtocolError.new message
     end
 
     attr_reader :web_socket
@@ -43,7 +44,7 @@ module Rammus
         comamnd_id = next_command_id
 
         Promise.new do |resolve, reject|
-          @_command_callbacks[comamnd_id] = CommandCallback.new(resolve, reject, command["method"])
+          @_command_callbacks[comamnd_id] = CommandCallback.new(resolve, reject, command[:method])
           command = command.merge(id: comamnd_id).to_json
           ProtocolLogger.puts_command command
           web_socket.send_message command: command

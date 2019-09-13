@@ -24,7 +24,6 @@ module Rammus
   class BrowserContext
     include Promise::Await
     include EventEmitter
-    class UncloseableContext < StandardError; end
 
     attr_reader :id, :browser, :client
 
@@ -37,12 +36,18 @@ module Rammus
       @client = client
     end
 
-    # Closes the browser context. All the targets that belong to the browser context will be closed.
-    # All pages will be closed without calling their beforeunload hooks.
+    # Closes the browser context. All the targets that belong to the browser
+    # context will be closed.  All pages will be closed without calling their
+    # beforeunload hooks.
+    #
+    # @raise [Errors::UncloseableContext] raised if the context can't be closed
+    #
+    # @return [nil]
     #
     def close
-      raise UncloseableContext unless id
+      raise Errors::UncloseableContext unless id
       browser.delete_context(self)
+      nil
     end
 
     # Creates a new page in the browser context.

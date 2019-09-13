@@ -35,7 +35,7 @@ module Rammus
       @_navigation_request = nil
       @_event_listeners = [
         Util.add_event_listener(frame_manager.client, :cdp_session_disconnected, -> (_event) { terminate(StandardError.new('Navigation failed because browser has disconnected!')) }),
-        Util.add_event_listener(frame_manager.client, Protocol::Inspector.target_crashed, -> (_event) { terminate(PageCrashed.new("Navigation failed because page crashed")) }),
+        Util.add_event_listener(frame_manager.client, Protocol::Inspector.target_crashed, -> (_event) { terminate(Errors::PageCrashed.new("Navigation failed because page crashed")) }),
         Util.add_event_listener(frame_manager, FrameManager.LifecycleEvent, method(:check_lifecycle_complete)),
         Util.add_event_listener(frame_manager, :frame_navigated_within_document, method(:navigated_within_document)),
         Util.add_event_listener(frame_manager, :frame_detached, method(:on_frame_detached)),
@@ -55,7 +55,7 @@ module Rammus
         else
           Promise.new do |resolve, _reject |
             @_timeout_task = Concurrent::ScheduledTask.execute(@timeout) { resolve.call nil }
-          end.then { Timeout::Error.new "Navigation Timeout Exceeded: #{@timeout}s exceeded" }
+          end.then { Errors::TimeoutError.new "Navigation Timeout Exceeded: #{@timeout}s exceeded" }
         end
 
       @termination_promise, @_termination_callback, _ = Promise.create
@@ -141,14 +141,6 @@ module Rammus
       #
       def terminate(error)
         @_termination_callback.call error
-      end
-
-      def create_timeout_promise
-        #if (!this._timeout)
-        #  return new Promise(() => {});
-        #const errorMessage = 'Navigation Timeout Exceeded: ' + this._timeout + 'ms exceeded';
-        #return new Promise(fulfill => this._maximumTimer = setTimeout(fulfill, this._timeout))
-        #    .then(() => new TimeoutError(errorMessage));
       end
   end
 end

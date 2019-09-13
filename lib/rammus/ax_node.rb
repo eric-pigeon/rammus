@@ -32,7 +32,7 @@ module Rammus
 
       payload.fetch("properties", []).each do |property|
         if property["name"] == "editable"
-          @_richlyEditable = property.dig("value", "value") == 'richtext'
+          @_richly_editable = property.dig("value", "value") == 'richtext'
           @_editable = true
         end
         if property["name"] == "focusable"

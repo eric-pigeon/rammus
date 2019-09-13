@@ -144,6 +144,9 @@ module Rammus
 
     # @!visibility private
     #
+    # @raise [Rammus::Errors::ProtocolError] raised if deleting browser context
+    #   fails
+    #
     def delete_context(context)
       _response = await client.command(Protocol::Target.dispose_browser_context(browser_context_id: context.id))
       @contexts.delete(context.id)
@@ -162,7 +165,6 @@ module Rammus
       target = await wait_for_target { |t| t.target_id == target_id }
       target.page
     end
-
 
     private
 

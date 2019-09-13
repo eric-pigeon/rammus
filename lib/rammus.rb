@@ -4,13 +4,9 @@ require 'set'
 require 'concurrent'
 
 module Rammus
-  class Error < StandardError; end
-  class ProtocolError < Error; end
-  class TimeoutError < Error; end
-  class PageCrashed < Error; end
-
   require 'rammus/event_emitter'
   require 'rammus/promise'
+  require 'rammus/errors'
 
   require 'rammus/network'
   require 'rammus/launcher'

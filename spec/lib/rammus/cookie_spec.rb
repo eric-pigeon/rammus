@@ -220,7 +220,7 @@ module Rammus
          await page.goto 'about:blank'
 
          expect {page.set_cookie({ name: 'example-cookie', value: 'best' }) }
-           .to raise_error ProtocolError, /At least one of the url and domain needs to be specified/
+           .to raise_error Errors::ProtocolError, /At least one of the url and domain needs to be specified/
       end
 
       it 'should not set a cookie with blank page URL' do
@@ -237,7 +237,7 @@ module Rammus
         await page.goto 'data:,Hello%2C%20World!'
 
         expect { page.set_cookie name: 'example-cookie', value: 'best' }
-          .to raise_error(ProtocolError, /At least one of the url and domain needs to be specified/)
+          .to raise_error(Errors::ProtocolError, /At least one of the url and domain needs to be specified/)
       end
 
       it 'should default to setting secure cookie for HTTPS websites' do

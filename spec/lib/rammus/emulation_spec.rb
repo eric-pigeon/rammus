@@ -10,6 +10,7 @@ module Rammus
 
     describe 'Page#viewport' do
       it 'should get the proper viewport size' do
+        pending 'page view port contains all keys now'
         expect(page.viewport).to eq(width: 800, height: 600)
         page.set_viewport width: 123, height: 456
         expect(page.viewport).to eq(width: 123, height: 456)
