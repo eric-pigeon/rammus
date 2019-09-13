@@ -41,11 +41,12 @@ module Rammus
       #
       # @param cache_id [Cacheid] Id of cache that contains the entry.
       # @param request_url [String] URL spec of the request.
+      # @param request_headers [Array] headers of the request.
       #
-      def request_cached_response(cache_id:, request_url:)
+      def request_cached_response(cache_id:, request_url:, request_headers:)
         {
           method: "CacheStorage.requestCachedResponse",
-          params: { cacheId: cache_id, requestURL: request_url }.compact
+          params: { cacheId: cache_id, requestURL: request_url, requestHeaders: request_headers }.compact
         }
       end
 

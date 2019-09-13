@@ -72,6 +72,19 @@ module Rammus
         }
       end
 
+      # Gets metadata of an object store
+      #
+      # @param security_origin [String] Security origin.
+      # @param database_name [String] Database name.
+      # @param object_store_name [String] Object store name.
+      #
+      def get_metadata(security_origin:, database_name:, object_store_name:)
+        {
+          method: "IndexedDB.getMetadata",
+          params: { securityOrigin: security_origin, databaseName: database_name, objectStoreName: object_store_name }.compact
+        }
+      end
+
       # Requests database with given name in given frame.
       #
       # @param security_origin [String] Security origin.

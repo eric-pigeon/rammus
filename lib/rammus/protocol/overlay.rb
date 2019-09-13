@@ -22,11 +22,12 @@ module Rammus
       # For testing.
       #
       # @param node_id [Dom.nodeid] Id of the node to get highlight object for.
+      # @param include_distance [Boolean] Whether to include distance info.
       #
-      def get_highlight_object_for_test(node_id:)
+      def get_highlight_object_for_test(node_id:, include_distance: nil)
         {
           method: "Overlay.getHighlightObjectForTest",
-          params: { nodeId: node_id }.compact
+          params: { nodeId: node_id, includeDistance: include_distance }.compact
         }
       end
 
@@ -192,15 +193,6 @@ module Rammus
         {
           method: "Overlay.setShowViewportSizeOnResize",
           params: { show: show }.compact
-        }
-      end
-
-      # @param suspended [Boolean] Whether overlay should be suspended and not consume any resources until resumed.
-      #
-      def set_suspended(suspended:)
-        {
-          method: "Overlay.setSuspended",
-          params: { suspended: suspended }.compact
         }
       end
 

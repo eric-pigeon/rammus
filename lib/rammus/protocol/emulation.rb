@@ -206,6 +206,17 @@ module Rammus
         }
       end
 
+      # Overrides default host system timezone with the specified one.
+      #
+      # @param timezone_id [String] The timezone identifier. If empty, disables the override and restores default host system timezone.
+      #
+      def set_timezone_override(timezone_id:)
+        {
+          method: "Emulation.setTimezoneOverride",
+          params: { timezoneId: timezone_id }.compact
+        }
+      end
+
       # Resizes the frame/viewport of the page. Note that this does not affect the frame's container
       # (e.g. browser window). Can be used to produce screenshots of the specified size. Not supported
       # on Android.
@@ -233,16 +244,8 @@ module Rammus
         }
       end
 
-      def virtual_time_advanced
-        'Emulation.virtualTimeAdvanced'
-      end
-
       def virtual_time_budget_expired
         'Emulation.virtualTimeBudgetExpired'
-      end
-
-      def virtual_time_paused
-        'Emulation.virtualTimePaused'
       end
     end
   end

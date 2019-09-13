@@ -303,7 +303,7 @@ module Rammus
         }
       end
 
-      # Sets the requests to intercept that match a the provided patterns and optionally resource types.
+      # Sets the requests to intercept that match the provided patterns and optionally resource types.
       #
       # @param patterns [Array] Requests matching any of these patterns will be forwarded and wait for the corresponding continueInterceptedRequest call.
       #

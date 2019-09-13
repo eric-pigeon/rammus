@@ -44,12 +44,13 @@ module Rammus
       # @param options [String] Tracing options
       # @param buffer_usage_reporting_interval [Number] If set, the agent will issue bufferUsage events at this interval, specified in milliseconds
       # @param transfer_mode [String] Whether to report trace events as series of dataCollected events or to save trace to a stream (defaults to `ReportEvents`).
+      # @param stream_format [Streamformat] Trace data format to use. This only applies when using `ReturnAsStream` transfer mode (defaults to `json`).
       # @param stream_compression [Streamcompression] Compression format to use. This only applies when using `ReturnAsStream` transfer mode (defaults to `none`)
       #
-      def start(categories: nil, options: nil, buffer_usage_reporting_interval: nil, transfer_mode: nil, stream_compression: nil, trace_config: nil)
+      def start(categories: nil, options: nil, buffer_usage_reporting_interval: nil, transfer_mode: nil, stream_format: nil, stream_compression: nil, trace_config: nil)
         {
           method: "Tracing.start",
-          params: { categories: categories, options: options, bufferUsageReportingInterval: buffer_usage_reporting_interval, transferMode: transfer_mode, streamCompression: stream_compression, traceConfig: trace_config }.compact
+          params: { categories: categories, options: options, bufferUsageReportingInterval: buffer_usage_reporting_interval, transferMode: transfer_mode, streamFormat: stream_format, streamCompression: stream_compression, traceConfig: trace_config }.compact
         }
       end
 

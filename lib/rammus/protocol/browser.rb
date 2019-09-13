@@ -41,6 +41,14 @@ module Rammus
         }
       end
 
+      # Crashes GPU process.
+      #
+      def crash_gpu_process
+        {
+          method: "Browser.crashGpuProcess"
+        }
+      end
+
       # Returns version information.
       #
       def get_version

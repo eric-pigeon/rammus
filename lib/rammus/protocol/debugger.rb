@@ -25,9 +25,12 @@ module Rammus
       # Enables debugger for the given page. Clients should not assume that the debugging has been
       # enabled until the result for this command is received.
       #
-      def enable
+      # @param max_scripts_cache_size [Number] The maximum size in bytes of collected scripts (not referenced by other heap objects) the debugger can hold. Puts no limit if paramter is omitted.
+      #
+      def enable(max_scripts_cache_size: nil)
         {
-          method: "Debugger.enable"
+          method: "Debugger.enable",
+          params: { maxScriptsCacheSize: max_scripts_cache_size }.compact
         }
       end
 
@@ -190,6 +193,17 @@ module Rammus
         {
           method: "Debugger.setBreakpoint",
           params: { location: location, condition: condition }.compact
+        }
+      end
+
+      # Sets instrumentation breakpoint.
+      #
+      # @param instrumentation [String] Instrumentation name.
+      #
+      def set_instrumentation_breakpoint(instrumentation:)
+        {
+          method: "Debugger.setInstrumentationBreakpoint",
+          params: { instrumentation: instrumentation }.compact
         }
       end
 

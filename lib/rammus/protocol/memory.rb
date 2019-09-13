@@ -15,6 +15,14 @@ module Rammus
         }
       end
 
+      # Simulate OomIntervention by purging V8 memory.
+      #
+      def forcibly_purge_java_script_memory
+        {
+          method: "Memory.forciblyPurgeJavaScriptMemory"
+        }
+      end
+
       # Enable/disable suppressing memory pressure notifications in all processes.
       #
       # @param suppressed [Boolean] If true, memory pressure notifications will be suppressed.

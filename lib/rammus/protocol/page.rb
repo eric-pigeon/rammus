@@ -128,6 +128,12 @@ module Rammus
         }
       end
 
+      def get_installability_errors
+        {
+          method: "Page.getInstallabilityErrors"
+        }
+      end
+
       # Returns all browser cookies. Depending on the backend support, will return detailed cookie
       # information in the `cookies` field.
       #
@@ -582,6 +588,10 @@ module Rammus
         'Page.frameResized'
       end
 
+      def frame_requested_navigation
+        'Page.frameRequestedNavigation'
+      end
+
       def frame_scheduled_navigation
         'Page.frameScheduledNavigation'
       end
@@ -592,6 +602,10 @@ module Rammus
 
       def frame_stopped_loading
         'Page.frameStoppedLoading'
+      end
+
+      def download_will_begin
+        'Page.downloadWillBegin'
       end
 
       def interstitial_hidden

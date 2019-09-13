@@ -82,11 +82,13 @@ module Rammus
       # @param height [Integer] Frame height in DIP (headless chrome only).
       # @param browser_context_id [Browsercontextid] The browser context to create the page in.
       # @param enable_begin_frame_control [Boolean] Whether BeginFrames for this target will be controlled via DevTools (headless chrome only, not supported on MacOS yet, false by default).
+      # @param new_window [Boolean] Whether to create a new Window or Tab (chrome-only, false by default).
+      # @param background [Boolean] Whether to create the target in background or foreground (chrome-only, false by default).
       #
-      def create_target(url:, width: nil, height: nil, browser_context_id: nil, enable_begin_frame_control: nil)
+      def create_target(url:, width: nil, height: nil, browser_context_id: nil, enable_begin_frame_control: nil, new_window: nil, background: nil)
         {
           method: "Target.createTarget",
-          params: { url: url, width: width, height: height, browserContextId: browser_context_id, enableBeginFrameControl: enable_begin_frame_control }.compact
+          params: { url: url, width: width, height: height, browserContextId: browser_context_id, enableBeginFrameControl: enable_begin_frame_control, newWindow: new_window, background: background }.compact
         }
       end
 
