@@ -63,7 +63,21 @@ module Rammus
     #
     attr_reader :mouse
 
-    attr_reader :target, :javascript_enabled, :touchscreen, :tracing
+    # target this page was created from
+    #
+    # @return [Rammus::Target]
+    #
+    attr_reader :target
+
+    # @return [Rammus::Touchscreen]
+    #
+    attr_reader :touchscreen
+
+    # @return [Rammus::Tracing]
+    #
+    attr_reader :tracing
+
+    attr_reader :javascript_enabled
 
     # @!method browser
     #   The browser the page belongs to
@@ -185,6 +199,12 @@ module Rammus
     #
     # @!method wait_for_navigation(timeout: nil, wait_until: nil)
     #   (see Rammus::Frame#wait_for_navigation)
+    #
+    # @!method wait_for_selector(selector, visible: nil, hidden: nil, timeout: nil)
+    #   (see Rammus::Frame#wait_for_selector)
+    #
+    # @!method wait_for_xpath(xpath, visible: nil, hidden: nil, timeout: nil)
+    #   (see Rammus::Frame#wait_for_xpath)
     #
     delegate [
       :add_script_tag,
@@ -809,14 +829,12 @@ module Rammus
     # * {Page#goto}
     # * {Page#reload}
     # * {Page#set_content}
-    # * {Page#wait_for}
-    # * {Page#wait_for_file_chooser}
     # * {Page#wait_for_function}
     # * {Page#wait_for_navigation}
     # * {Page#wait_for_request}
     # * {Page#wait_for_response}
     # * {Page#wait_for_selector}
-    # * {Page#wait_for_xPath}
+    # * {Page#wait_for_xpath}
     #
     # @param timeout [Numeric] Maximum time in seconds
     #
@@ -844,7 +862,7 @@ module Rammus
       nil
     end
 
-    # enable or disable JavaScript for the page
+    # Enable or disable JavaScript for the page
     #
     # @param enabled [Boolean] Whether or not to enable JavaScript on the page.
     #
@@ -858,23 +876,69 @@ module Rammus
       client.command Protocol::Emulation.set_script_execution_disabled value: !javascript_enabled
     end
 
-    def set_viewport(viewport)
+    # Change the page viewport size
+    #
+    # In the case of multiple pages in a single browser, each page can have its
+    # own viewport size.
+    #
+    # {Page.set_viewport} will resize the page. A lot of websites don't expect
+    # phones to change size, so you should set the viewport before navigating to
+    # the page.
+    #
+    # @note in certain cases, setting viewport will reload the page in order to
+    #   set the is_mobile or has_touch properties.
+    #
+    # @param width [Integer] page width in pixels
+    # @param height [Integer] page height in pixels
+    # @param device_scale_factor [Integer] Specify device scale factor (can be
+    #   thought of as dpr). Defaults to 1.
+    # @param is_mobile [Integer] Whether the meta viewport tag is taken into
+    #   account. Defaults to false.
+    # @param has_touch [Boolean] Specifies if viewport supports touch events.
+    #   Defaults to false
+    # @param is_landscape [Boolean] Specifies if viewport is in landscape mode.
+    #   Defaults to false.
+    #
+    # @return [nil]
+    #
+    def set_viewport(width:, height:, device_scale_factor: 1, is_mobile: false, has_touch: false, is_landscape: false)
+      viewport = {
+        width: width,
+        height: height,
+        device_scale_factor: device_scale_factor,
+        is_mobile: is_mobile,
+        has_touch: has_touch,
+        is_landscape: is_landscape
+      }.compact
       needs_reload = @_emulation_manager.emulate_viewport viewport
       @_viewport = viewport
 
       await reload if needs_reload
+      nil
     end
 
+    # Page viewport
+    #
+    # @return [Hash]
+    #   * width [Integer] page width in pixels.
+    #   * height [Integer] page height in pixels.
+    #   * device_scale_factor [Integer] Specify device scale factor (can be though of as dpr). Defaults to 1.
+    #   * is_mobile [Boolean] Whether the meta viewport tag is taken into account. Defaults to false.
+    #   * has_touch [Boolean] Specifies if viewport supports touch events. Defaults to false
+    #   * is_landscape [Boolean] Specifies if viewport is in landscape mode. Defaults to false.
+    #
     def viewport
       @_viewport
     end
 
-    # @param [String] url_or_predicate
-    # @param [Numeric] timeout
+    # Wait for a request
     #
-    # TODO document block
+    # @param url_or_predicate [String, #call] A URL or predicate to wait for.
+    # @param timeout [Numberic] Maximum wait time in seconds, defaults to 2
+    #   seconds, pass 0 to disable the timeout. The default value can be changed
+    #   by using the {Page#set_default_timeout} method.
     #
-    # @return [Promise<Rammus::Request>]
+    # @return [Promise<Request>] Promise which resolves to the matched request.
     #
     def wait_for_request(url_or_predicate = nil, timeout: nil, &block)
       timeout ||= @_timeout_settings.timeout
@@ -890,6 +954,13 @@ module Rammus
       end)
     end
 
+    # @param url_or_predicate [String, #call] A URL or predicate to wait for.
+    # @param timeout [Numeric] Maximum wait time in seconds, defaults to 2
+    #   seconds, pass 0 to disable the timeout. The default value can be changed
+    #   by using the {Page#set_default_timeout} method.
+    #
+    # @return [Promise<Response>] Promise which resolves to the matched response.
+    #
     def wait_for_response(url_or_predicate = nil, timeout: nil, &block)
       timeout ||= @_timeout_settings.timeout
       url_or_predicate ||= block
@@ -904,7 +975,12 @@ module Rammus
       end)
     end
 
-    # @return [Array<Rammus::Worker>]
+    # Page workers
+    #
+    # @note This does not contain ServiceWorkers
+    #
+    # @return [Array<Rammus::Worker>] all of the dedicated WebWorkers associated
+    #   with the page.
     #
     def workers
       @_workers.values
