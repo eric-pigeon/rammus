@@ -286,10 +286,9 @@ module Rammus
       end
 
       it 'should have an error message specifically for awaiting an element to be hidden' do
-        pending 'broken'
         await page.set_content "<div></div>"
 
-        expect { await page.wait_for_selector 'div', hidden: true, timeout: 10 }
+        expect { await page.wait_for_selector 'div', hidden: true, timeout: 0.5 }
           .to raise_error(/waiting for selector "div" to be hidden failed: timeout/)
       end
 
