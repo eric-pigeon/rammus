@@ -667,7 +667,7 @@ module Rammus
         server.set_route("/#{img_path}") { |req, res| await Promise.new, 0 }
         expect do
           await page.set_content("<img src='#{server.domain + img_path}'></img>", timeout: 0.01)
-        end.to raise_error(Timeout::Error, /Navigation Timeout Exceeded/)
+        end.to raise_error(Errors::TimeoutError, /Navigation Timeout Exceeded/)
       end
 
       it 'should respect default navigation timeout' do
@@ -676,7 +676,7 @@ module Rammus
         # stall for image
         server.set_route("/#{img_path}") { |req, res| await Promise.new, 0 }
         expect { await page.set_content("<img src='#{server.domain + img_path}'></img>") }
-          .to raise_error(Timeout::Error, /Navigation Timeout Exceeded/)
+          .to raise_error(Errors::TimeoutError, /Navigation Timeout Exceeded/)
       end
 
       it 'should await resources to load' do

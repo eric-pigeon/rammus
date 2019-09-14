@@ -22,7 +22,7 @@ module Rammus
       it 'fails without an id' do
         context = browser.default_context
 
-        expect { context.close }.to raise_error BrowserContext::UncloseableContext
+        expect { context.close }.to raise_error Errors::UncloseableContext
       end
 
       it 'closes all children targets' do

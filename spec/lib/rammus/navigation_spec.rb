@@ -122,7 +122,7 @@ module Rammus
             .then { res.finish }
         end
         expect { await page.goto server.domain + 'empty.html', timeout: 0.1 }
-          .to raise_error(Timeout::Error, /Navigation Timeout Exceeded: 0.1s/)
+          .to raise_error(Errors::TimeoutError, /Navigation Timeout Exceeded: 0.1s/)
         finish_response.(nil)
       end
 
@@ -135,7 +135,7 @@ module Rammus
         end
         page.set_default_navigation_timeout 0.1
         expect { await page.goto server.domain + 'empty.html' }
-          .to raise_error(Timeout::Error, /Navigation Timeout Exceeded: 0.1s/)
+          .to raise_error(Errors::TimeoutError, /Navigation Timeout Exceeded: 0.1s/)
         finish_response.(nil)
       end
 
@@ -148,7 +148,7 @@ module Rammus
         end
         page.set_default_timeout 0.1
         expect { await page.goto server.domain + 'empty.html' }
-          .to raise_error(Timeout::Error, /Navigation Timeout Exceeded: 0.1s/)
+          .to raise_error(Errors::TimeoutError, /Navigation Timeout Exceeded: 0.1s/)
         finish_response.(nil)
       end
 
@@ -162,7 +162,7 @@ module Rammus
         page.set_default_timeout 0
         page.set_default_navigation_timeout 0.1
         expect { await page.goto server.domain + 'empty.html' }
-          .to raise_error(Timeout::Error, /Navigation Timeout Exceeded: 0.1s/)
+          .to raise_error(Errors::TimeoutError, /Navigation Timeout Exceeded: 0.1s/)
         finish_response.(nil)
       end
 
