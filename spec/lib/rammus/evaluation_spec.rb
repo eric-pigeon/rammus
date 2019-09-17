@@ -143,12 +143,6 @@ module Rammus
         expect(result).to eq(-Float::INFINITY)
       end
 
-      it 'should accept "undefined" as one of multiple parameters' do
-        pending 'no concept of undefined'
-        result = await page.evaluate_function "(a, b) => Object.is(a, undefined) && Object.is(b, 'foo')", nil, 'foo'
-        expect(result).to eq true
-      end
-
       it 'should properly serialize null fields' do
         expect(await page.evaluate_function("() => ({a: undefined})")).to eq({})
       end

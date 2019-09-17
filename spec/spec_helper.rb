@@ -149,6 +149,15 @@ RSpec.configure do |config|
 
   config.before(:suite) do
     Thread.new { TestServer.start! }
+
+    Rammus.launch.tap do |browser|
+      puts "Running Using Browswer Version"
+      browser.version.each do |key, value|
+        puts "#{key}: #{value}"
+      end
+
+      browser.close
+    end
   end
 
   config.after(:suite) do
