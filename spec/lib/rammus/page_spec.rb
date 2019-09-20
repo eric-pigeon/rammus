@@ -61,6 +61,7 @@ module Rammus
 
     describe 'Page.Events.error' do
       it 'should throw when page crashes' do
+        skip "Travis version of chrome doesn't send Inspector.targetCrashed on chrome://crash" if ENV["TRAVIS"] == "true"
         error = nil
         page.on :error, -> (err) { error = err }
         await Promise.all(
