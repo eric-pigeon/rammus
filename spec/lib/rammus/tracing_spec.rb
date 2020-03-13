@@ -1,6 +1,5 @@
 module Rammus
   RSpec.describe Tracing, browser: true do
-    include Promise::Await
     before { @_context = browser.create_context }
     after { @_context.close }
     let(:context) { @_context }
@@ -11,7 +10,7 @@ module Rammus
 
     it 'should output a trace' do
       page.tracing.start screenshots: true, path: output_file
-      await page.goto server.domain + 'grid.html'
+      page.goto(server.domain + 'grid.html').wait!
       page.tracing.stop
       expect(File.exist? output_file).to eq true
     end
@@ -28,14 +27,14 @@ module Rammus
       page.tracing.start(path: output_file)
       new_page = browser.new_page
       expect { new_page.tracing.start path: output_file }
-        .to raise_error Errors::ProtocolError, /Tracing is already started/
+        .to raise_error Errors::ProtocolError, /Tracing has already been started/
       new_page.close
       page.tracing.stop
     end
 
     it 'should return a buffer' do
       trace = page.tracing.start(screenshots: true, path: output_file) do
-        await page.goto server.domain + 'grid.html'
+        page.goto(server.domain + 'grid.html').wait!
       end
       buf = File.read output_file
       expect(trace).to eq buf
@@ -43,14 +42,14 @@ module Rammus
 
     it 'should work without options' do
       trace = page.tracing.start do
-        await page.goto server.domain + 'grid.html'
+        page.goto(server.domain + 'grid.html').wait!
       end
       expect(trace).not_to be_nil
     end
 
     it 'should support without a path' do
       trace = page.tracing.start screenshots: true do
-        await page.goto server.domain + 'grid.html'
+        page.goto(server.domain + 'grid.html').wait!
       end
       expect(trace).to include 'screenshot'
     end

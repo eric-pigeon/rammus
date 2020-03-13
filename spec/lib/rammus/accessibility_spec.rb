@@ -1,6 +1,5 @@
 module Rammus
   RSpec.describe Accessibility, browser: true do
-    include Promise::Await
     before { @_context = browser.create_context }
     after { @_context.close }
     let(:context) { @_context }
@@ -17,7 +16,30 @@ module Rammus
     end
 
     it 'returns accessibility tree' do
-      await page.goto server.domain + 'accessibility.html'
+      page.set_content(<<~CONTENT
+      <head>
+        <title>Accessibility Test</title>
+      </head>
+      <body>
+        <div>Hello World</div>
+        <h1>Inputs</h1>
+        <input placeholder="Empty input" autofocus />
+        <input placeholder="readonly input" readonly />
+        <input placeholder="disabled input" disabled />
+        <input aria-label="Input with whitespace" value="  " />
+        <input value="value only" />
+        <input aria-placeholder="placeholder" value="and a value" />
+        <div aria-hidden="true" id="desc">This is a description!</div>
+        <input aria-placeholder="placeholder" value="and a value" aria-describedby="desc" />
+        <select>
+          <option>First Option</option>
+          <option>Second Option</option>
+        </select>
+      </body>
+      CONTENT
+      ).wait!
+      page.focus('[placeholder="Empty input"]')
+
       expected = {
         role: 'WebArea',
         name: 'Accessibility Test',
@@ -30,6 +52,7 @@ module Rammus
           { role: 'textbox', name: 'Input with whitespace', value: '  ' },
           { role: 'textbox', name: '', value: 'value only' },
           { role: 'textbox', name: 'placeholder', value: 'and a value' },
+          # { role: "text", name: "This is a description!" },
           { role: 'textbox', name: 'placeholder', value: 'and a value', description: 'This is a description!' },
           { role: 'combobox', name: '', value: 'First Option', children: [
             { role: 'menuitem', name: 'First Option', selected: true },
@@ -37,11 +60,13 @@ module Rammus
           }
         ]
       }
+
       expect(page.accessibility.snapshot).to eq expected
     end
 
     it 'should report uninteresting nodes' do
-      await page.set_content "<textarea autofocus>hi</textarea>"
+      page.set_content("<textarea autofocus>hi</textarea>").wait!
+      page.focus('textarea')
 
       expected = {
         role: 'textbox',
@@ -50,7 +75,7 @@ module Rammus
         focused: true,
         multiline: true,
         children: [{
-          role: 'GenericContainer',
+          role: 'generic',
           name: '',
           children: [{
             role: 'text', name: 'hi'
@@ -61,31 +86,31 @@ module Rammus
     end
 
     it 'returns roledescription' do
-      await page.set_content '<div tabIndex=-1 aria-roledescription="foo">Hi</div>'
+      page.set_content('<div tabIndex=-1 aria-roledescription="foo">Hi</div>').wait!
       snapshot = page.accessibility.snapshot
       expect(snapshot[:children][0][:roledescription]).to eq 'foo'
     end
 
-    it ' returns orientation' do
-      await page.set_content '<a href="" role="slider" aria-orientation="vertical">11</a>'
+    it 'returns orientation' do
+      page.set_content('<a href="" role="slider" aria-orientation="vertical">11</a>').wait!
       snapshot = page.accessibility.snapshot
       expect(snapshot[:children][0][:orientation]).to eq 'vertical'
     end
 
     it 'returns autocomplete' do
-      await page.set_content '<input type="number" aria-autocomplete="list" />'
+      page.set_content('<input type="number" aria-autocomplete="list" />').wait!
       snapshot = page.accessibility.snapshot
       expect(snapshot[:children][0][:autocomplete]).to eq 'list'
     end
 
     it 'returns multiselectable' do
-      await page.set_content '<div role="grid" tabIndex=-1 aria-multiselectable=true>hey</div>'
+      page.set_content('<div role="grid" tabIndex=-1 aria-multiselectable=true>hey</div>').wait!
       snapshot = page.accessibility.snapshot
       expect(snapshot[:children][0][:multiselectable]).to eq true
     end
 
     it 'returns keyshortcuts' do
-      await page.set_content '<div role="grid" tabIndex=-1 aria-keyshortcuts="foo">hey</div>'
+      page.set_content('<div role="grid" tabIndex=-1 aria-keyshortcuts="foo">hey</div>').wait!
       snapshot = page.accessibility.snapshot
       expect(snapshot[:children][0][:keyshortcuts]).to eq 'foo'
     end
@@ -98,7 +123,7 @@ module Rammus
           <div role="tab">Tab2</div>
         </div>
         HTML
-        await page.set_content content
+        page.set_content(content).wait!
         expected = {
           role: 'WebArea',
           name: '',
@@ -116,10 +141,10 @@ module Rammus
           Edit this image: <img src="fakeimage.png" alt="my fake image">
         </div>
         HTML
-        await page.set_content content
+        page.set_content(content).wait!
 
         expected = {
-          role: 'GenericContainer',
+          role: 'generic',
           name: '',
           value: 'Edit this image: ',
           children: [
@@ -137,7 +162,7 @@ module Rammus
           Edit this image: <img src="fakeimage.png" alt="my fake image">
         </div>
         HTML
-        await page.set_content content
+        page.set_content(content).wait!
         expected = {
           role: 'textbox',
           name: '',
@@ -191,7 +216,7 @@ module Rammus
           <img alt="yo" src="fakeimg.png">
         </div>
         HTML
-        await page.set_content content
+        page.set_content(content).wait!
         expected = {
           role: 'textbox',
           name: 'my favorite textbox',
@@ -208,7 +233,7 @@ module Rammus
           <img alt="yo" src="fakeimg.png">
         </div>
         HTML
-        await page.set_content content
+        page.set_content(content).wait!
         expected = {
           role: 'checkbox',
           name: 'my favorite checkbox',
@@ -226,7 +251,7 @@ module Rammus
           <img alt="yo" src="fakeimg.png">
         </div>
         HTML
-        await page.set_content content
+        page.set_content(content).wait!
         expected = {
           role: 'checkbox',
           name: 'this is the inner content yo',
@@ -238,14 +263,14 @@ module Rammus
 
       describe 'root option' do
         it 'should work a button' do
-          await page.set_content "<button>My Button</button>"
+          page.set_content("<button>My Button</button>").wait!
 
           button = page.query_selector 'button'
           expect(page.accessibility.snapshot root: button).to eq(role: 'button', name: 'My Button')
         end
 
         it 'should work an input' do
-          await page.set_content '<input title="My Input" value="My Value">'
+          page.set_content('<input title="My Input" value="My Value">').wait!
 
           input = page.query_selector 'input'
           expect(page.accessibility.snapshot(root: input)).to eq(role: 'textbox', name: 'My Input', value: 'My Value')
@@ -259,7 +284,7 @@ module Rammus
             <div role="menuitem">Third Item</div>
           </div>
           HTML
-          await page.set_content content
+          page.set_content(content).wait!
 
           menu = page.query_selector 'div[role="menu"]'
           expect(page.accessibility.snapshot(root: menu)).to eq({
@@ -274,21 +299,25 @@ module Rammus
         end
 
         it 'should return null when the element is no longer in DOM' do
-          await page.set_content "<button>My Button</button>"
+          page.set_content("<button>My Button</button>").wait!
           button = page.query_selector 'button'
           page.query_selector_evaluate_function 'button', 'button => button.remove()'
           expect(page.accessibility.snapshot(root: button)).to eq nil
         end
 
         it 'should support the interesting_only option' do
-          await page.set_content "<div><button>My Button</button></div>"
+          page.set_content("<div><button>My Button</button></div>").wait!
           div = page.query_selector 'div'
           expect(page.accessibility.snapshot(root: div)).to eq nil
           expect(page.accessibility.snapshot(root: div, interesting_only: false)).to eq({
-            role: 'GenericContainer',
+            role: 'generic',
             name: '',
-            children: [ { role: 'button', name: 'My Button' } ] }
-          )
+            children: [{
+              role: 'button',
+              name: 'My Button',
+              children: [{ role: 'text', name: 'My Button' }],
+            }]
+          })
         end
       end
     end

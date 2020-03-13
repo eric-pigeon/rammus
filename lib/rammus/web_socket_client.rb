@@ -29,6 +29,10 @@ module Rammus
       driver.close
     end
 
+    def url
+      @socket.url
+    end
+
     private
 
       def setup_driver
@@ -59,13 +63,14 @@ module Rammus
         @listener_thread = Thread.new do
           begin
             loop { parse_input }
-          rescue EOFError, IOError
+          rescue EOFError, IOError, Errno::ECONNRESET
           end
         end.tap { |thread| thread.abort_on_exception = true }
       end
   end
 
   # @!visibility private
+  #
   class Socket
     attr_reader :url
 

@@ -75,18 +75,23 @@ module SeverHelper
   let(:server) { Server.new }
 
   def attach_frame(page, frame_id, url)
-    function = <<~JAVASCRIPT
-    async function attachFrame(frameId, url) {
-      const frame = document.createElement('iframe');
-      frame.src = url;
-      frame.id = frameId;
-      document.body.appendChild(frame);
-      await new Promise(x => frame.onload = x);
-      return frame;
-    }
-    JAVASCRIPT
-    handle = await page.evaluate_handle_function function, frame_id, url
-    handle.as_element.content_frame
+    Concurrent::Promises.future do
+      function = <<~JAVASCRIPT
+      async function attachFrame(frameId, url) {
+        const frame = document.createElement('iframe');
+        frame.src = url;
+        frame.id = frameId;
+        document.body.appendChild(frame);
+        await new Promise(x => frame.onload = x);
+        return frame;
+      }
+      JAVASCRIPT
+      page
+        .evaluate_handle_function(function, frame_id, url)
+        .value!
+        .as_element
+        .content_frame
+    end
   end
 
   def detach_frame(page, frame_id)
@@ -96,7 +101,7 @@ module SeverHelper
         frame.remove();
       }
     JAVASCRIPT
-    await page.evaluate_function function, frame_id
+    page.evaluate_function(function, frame_id).value!
   end
 
   def is_favicon(request)
@@ -106,12 +111,12 @@ module SeverHelper
   def wait_event(emitter, event_name, predicate = nil, &block)
     predicate ||= block || ->(_) { true }
 
-    Rammus::Promise.new do |resolve, _|
+    Concurrent::Promises.resolvable_future.tap do |future|
       listener = -> (event) do
         next unless predicate.(event)
 
         emitter.remove_listener event_name, listener
-        resolve.(event)
+        future.fulfill(event)
       end
       emitter.on event_name, listener
     end
@@ -120,8 +125,6 @@ module SeverHelper
   after(:each) { server.reset }
 
   shared_context 'browser', browser: true do
-    include Rammus::Promise::Await
-
     before(:context) { @_browser = Rammus::Launcher.launch }
 
     let(:browser) { @_browser }
@@ -130,8 +133,6 @@ module SeverHelper
   end
 
   shared_context 'page', page: true do
-    include Rammus::Promise::Await
-
     before(:context) { @_browser = Rammus.launch }
     before { @_context = browser.create_context }
 
@@ -157,14 +158,14 @@ RSpec.configure do |config|
   config.before(:suite) do
     Thread.new { TestServer.start! }
 
-    Rammus.launch.tap do |browser|
-      puts "Running Using Browswer Version"
-      browser.version.each do |key, value|
-        puts "#{key}: #{value}"
-      end
+    # Rammus.launch.tap do |browser|
+    #   puts "Running Using Browswer Version"
+    #   browser.version.each do |key, value|
+    #     puts "#{key}: #{value}"
+    #   end
 
-      browser.close
-    end
+    #   browser.close
+    # end
   end
 
   config.after(:suite) do

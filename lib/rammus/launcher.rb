@@ -2,12 +2,10 @@ module Rammus
   # @!visibility private
   #
   class Launcher
-    extend Promise::Await
-
     def self.launch(headless: true, args: [])
       tmpdir = Dir.mktmpdir
 
-      chrome_arguments = DEFAULT_ARGS
+      chrome_arguments = DEFAULT_ARGS.dup
       chrome_arguments.push(*HEADLESS_ARGS) if headless
       # TODO support pipe as well
       chrome_arguments.push('--remote-debugging-port=0')
@@ -22,11 +20,55 @@ module Rammus
 
       client = ChromeClient.new(ws_client)
 
-      close_callback = -> { await client.command Protocol::Browser.close }
+      close_callback = -> { client.command(Protocol::Browser.close).wait! }
 
       Browser.new(client: client, close_callback: close_callback, default_viewport: { width: 800, height: 600 }).tap do |browser|
         ObjectSpace.define_finalizer(browser, Launcher.process_killer(pid, tmpdir))
       end
+    end
+
+    # TODO
+    # @param {!(Launcher.BrowserOptions & {browserWSEndpoint?: string, browserURL?: string, transport?: !Puppeteer.ConnectionTransport})} options
+    #
+    # @return [Rammus::Browser]
+    #
+    def self.connect(ws_endpoint:)
+      # const {
+      #   browserWSEndpoint,
+      #   browserURL,
+      #   ignoreHTTPSErrors = false,
+      #   defaultViewport = {width: 800, height: 600},
+      #   transport,
+      #   slowMo = 0,
+      # } = options;
+
+      # assert(Number(!!browserWSEndpoint) + Number(!!browserURL) + Number(!!transport) === 1, 'Exactly one of browserWSEndpoint, browserURL or transport must be passed to puppeteer.connect');
+      ws_client = WebSocketClient.new(ws_endpoint)
+      client = ChromeClient.new ws_client
+      context_ids = client.command Protocol::Target.get_browser_contexts
+      viewport = { width: 800, height: 600 }
+      close_callback = -> { client.command(Protocol::Browser.close).wait!  }
+      Browser.new(
+        client: client,
+        context_ids: context_ids,
+        default_viewport: viewport,
+        close_callback: close_callback
+      )
+
+      # let connection = null;
+      # if (transport) {
+      #   connection = new Connection('', transport, slowMo);
+      # } else if (browserWSEndpoint) {
+      #   const connectionTransport = await WebSocketTransport.create(browserWSEndpoint);
+      #   connection = new Connection(browserWSEndpoint, connectionTransport, slowMo);
+      # } else if (browserURL) {
+      #   const connectionURL = await getWSEndpoint(browserURL);
+      #   const connectionTransport = await WebSocketTransport.create(connectionURL);
+      #   connection = new Connection(connectionURL, connectionTransport, slowMo);
+      # }
+
+      # const {browserContextIds} = await connection.send('Target.getBrowserContexts');
+      # return Browser.create(connection, browserContextIds, ignoreHTTPSErrors, defaultViewport, null, () => connection.send('Browser.close').catch(debugError));
     end
 
     private

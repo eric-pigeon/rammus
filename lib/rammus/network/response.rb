@@ -1,17 +1,16 @@
 module Rammus
   module Network
     class Response
-      include Promise::Await
-
-      attr_reader :client, :request, :url, :status, :status_text, :from_service_worker, :body_loaded_promise_fulfill,
-        :remote_address
+      attr_reader :client, :request, :url, :status, :status_text,
+        :from_service_worker, :body_loaded_promise_fulfill, :remote_address
 
       def initialize(client, request, response_payload)
         @client = client
         @request = request
         #this._contentPromise = null;
 
-        @_body_loaded_promise, @body_loaded_promise_fulfill, _ = Promise.create
+        @_body_loaded_promise = Concurrent::Promises.resolvable_future
+        @body_loaded_promise_fulfill = @_body_loaded_promise.method(:fulfill)
 
         @remote_address = {
           ip: response_payload["remoteIPAddress"],
@@ -50,7 +49,7 @@ module Rammus
         @_buffer ||= @_body_loaded_promise.then do |error|
           raise error if error
 
-          response = await client.command(Protocol::Network.get_response_body(request_id: request.request_id)), 0
+          response = client.command(Protocol::Network.get_response_body(request_id: request.request_id)).value!
           if response["base64Encoded"]
             Base64.decode64 response["body"]
           else

@@ -21,8 +21,6 @@ module Rammus
     # a redirected url.
     #
     class Request
-      include Promise::Await
-
       # Frame that initiated this request, or nil if navigating to error pages.
       #
       # @return [nil, Frame]
@@ -182,16 +180,16 @@ module Rammus
         raise 'Request is already handled!' if @_interception_handled
         @_interception_handled = true
 
-        await(client.command(Protocol::Fetch.continue_request(
+        client.command(Protocol::Fetch.continue_request(
           request_id: interception_id,
           url: url,
           method: method,
           post_data: post_data,
           headers: headers_array(headers)
-        )).catch do |error|
+        )).rescue do |error|
           # In certain cases, protocol will return error if the request was already canceled
           # or the page was closed. We should tolerate these errors.
-        end)
+        end.value!
         nil
       end
 
@@ -234,17 +232,17 @@ module Rammus
         response_headers['content-length'] ||= body.bytesize.to_s unless body.nil?
         status ||= 200
 
-        await(client.command(Protocol::Fetch.fulfill_request(
+        client.command(Protocol::Fetch.fulfill_request(
           request_id: interception_id,
           response_code: status,
           response_phrase: STATUS_TEXTS[status],
           response_headers: headers_array(response_headers),
           body: Base64.strict_encode64(body || '')
-        )).catch do |error|
+        )).rescue do |error|
           # In certain cases, protocol will return error if the request was already canceled
           # or the page was closed. We should tolerate these errors.
           Util.debug_error error
-        end)
+        end.wait!
         nil
       end
 
@@ -296,14 +294,14 @@ module Rammus
         raise 'Request Interception is not enabled!' unless @_allow_interception
         raise 'Request is already handled!' if @_interception_handled
         @_interception_handled = true
-        await client.command(Protocol::Fetch.fail_request(
+        client.command(Protocol::Fetch.fail_request(
           request_id: interception_id,
           error_reason: error_reason
-        )).catch do |error|
+        )).rescue do |error|
           # In certain cases, protocol will return error if the request was already canceled
           # or the page was closed. We should tolerate these errors.
           Util.debug_error error
-        end
+        end.value!
         nil
       end
 

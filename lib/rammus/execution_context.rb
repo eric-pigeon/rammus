@@ -12,8 +12,6 @@ module Rammus
   # Besides pages, execution contexts can be found in workers.
   #
   class ExecutionContext
-    include Promise::Await
-
     # @!visibility private
     #
     EVALUATION_SCRIPT_URL = '__puppeteer_evaluation_script__';
@@ -137,7 +135,7 @@ module Rammus
     def query_objects(prototype_handle)
       raise 'Prototype JSHandle is disposed!' if prototype_handle.disposed?
       raise 'Prototype JSHandle must not be referencing primitive value' if prototype_handle.remote_object["objectId"].nil?
-      response = await client.command Protocol::Runtime.query_objects prototype_object_id: prototype_handle.remote_object["objectId"]
+      response = client.command(Protocol::Runtime.query_objects prototype_object_id: prototype_handle.remote_object["objectId"]).value!
       JSHandle.create_js_handle self, response["objects"]
     end
 
@@ -150,8 +148,8 @@ module Rammus
     def _adopt_element_handle(element_handle)
       'Cannot adopt handle that already belongs to this execution context' if element_handle.execution_context == self
       'Cannot adopt handle without DOMWorld' if world.nil?
-      node_info = await client.command Protocol::DOM.describe_node object_id: element_handle.remote_object["objectId"]
-      object = await client.command Protocol::DOM.resolve_node backend_node_id: node_info["node"]["backendNodeId"], execution_context_id: context_id
+      node_info = client.command(Protocol::DOM.describe_node object_id: element_handle.remote_object["objectId"]).value!
+      object = client.command(Protocol::DOM.resolve_node backend_node_id: node_info["node"]["backendNodeId"], execution_context_id: context_id).value!
       JSHandle.create_js_handle self, object["object"]
     end
 
@@ -165,7 +163,7 @@ module Rammus
           return_by_value: return_by_value,
           await_promise: true,
           user_gesture: true
-        )).catch(method(:rewrite_error))
+        )).rescue(&method(:rewrite_error))
 
         evaluate_promise.then do |response|
           if response["exceptionDetails"]
@@ -190,7 +188,7 @@ module Rammus
               return_by_value: return_by_value,
               await_promise: true,
               user_gesture: true
-             )).catch(method(:rewrite_error))
+             )).rescue(&method(:rewrite_error))
           rescue => err
             #  if (err instanceof TypeError && err.message === 'Converting circular structure to JSON')
             #    err.message += ' Are you passing a nested JSHandle?';

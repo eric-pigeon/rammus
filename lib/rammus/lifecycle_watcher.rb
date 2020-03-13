@@ -2,8 +2,6 @@ module Rammus
   # @!visibility private
   #
   class LifecycleWatcher
-    include Promise::Await
-
     attr_reader :frame_manager, :frame,
       # Fulfills when the frame and all children frames have all of the expected
       # lifecycle events
@@ -42,29 +40,33 @@ module Rammus
         Util.add_event_listener(frame_manager.network_manager, :request, method(:on_request))
       ]
 
-      @same_document_navigation_promise, @_same_document_navigation_complete_callback, _ = Promise.create
+      @same_document_navigation_promise = Concurrent::Promises.resolvable_future
+      @_same_document_navigation_complete_callback = @same_document_navigation_promise.method(:fulfill)
 
-      @lifecycle_promise, @_lifecycle_callback, _ = Promise.create
+      @lifecycle_promise = Concurrent::Promises.resolvable_future
+      @_lifecycle_callback = @lifecycle_promise.method(:fulfill)
 
-      @new_document_navigation_promise, @_new_document_navigation_complete_callback, _ = Promise.create
+      @new_document_navigation_promise = Concurrent::Promises.resolvable_future
+      @_new_document_navigation_complete_callback = @new_document_navigation_promise.method(:fulfill)
 
       @_timeout_task = nil
       @_timeout_promise =
         if @timeout.nil? || timeout == 0
-          Promise.new
+          Concurrent::Promises.resolvable_future
         else
-          Promise.new do |resolve, _reject |
-            @_timeout_task = Concurrent::ScheduledTask.execute(@timeout) { resolve.call nil }
+          Concurrent::Promises.resolvable_future.tap do |future|
+            @_timeout_task = Concurrent::ScheduledTask.execute(@timeout) { future.fulfill nil }
           end.then { Errors::TimeoutError.new "Navigation Timeout Exceeded: #{@timeout}s exceeded" }
         end
 
-      @termination_promise, @_termination_callback, _ = Promise.create
+      @termination_promise = Concurrent::Promises.resolvable_future
+      @_termination_callback = @termination_promise.method(:fulfill)
       # TODO
       # check_lifecycle_complete(nil)
     end
 
     def timeout_or_termination_promise
-      @_timeout_or_termination_promise ||= Promise.race(@_timeout_promise, termination_promise)
+      @_timeout_or_termination_promise ||= Concurrent::Promises.any(@_timeout_promise, termination_promise)
     end
 
     # @return [Rammus::Response]
@@ -98,17 +100,17 @@ module Rammus
       def check_lifecycle_complete(_frame)
         return unless LifecycleWatcher.check_lifecycle(frame, @_expected_lifecycle)
 
-        @_lifecycle_callback.(nil)
+        @_lifecycle_callback.(nil, false)
 
         # TODO is this ever going to happen?
         return if @frame.loader_id == @_initial_loader_id && !@_has_same_document_navigation
 
         if @_has_same_document_navigation
-          @_same_document_navigation_complete_callback.(nil)
+          @_same_document_navigation_complete_callback.(nil, false)
         end
 
         if @frame.loader_id != @_initial_loader_id
-          @_new_document_navigation_complete_callback.(nil)
+          @_new_document_navigation_complete_callback.(nil, false)
         end
       end
 

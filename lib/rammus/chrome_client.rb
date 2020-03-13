@@ -2,7 +2,6 @@ module Rammus
   # @!visibility private
   #
   class ChromeClient
-    include Promise::Await
     include EventEmitter
 
     CommandCallback = Struct.new(:resolve, :reject, :method)
@@ -34,17 +33,24 @@ module Rammus
       @command_mutex = Mutex.new
       # Hash<Integer, { resolve: Method, reject: Method, method: String }>
       @_command_callbacks = {}
+      @event_queue = Rammus::EventQueue.new
       @_closed = false
     end
 
     # @param [Hash] command
     #
+    # @return [Concurrent::ResolvableFuture]
+    #
     def command(command)
       @command_mutex.synchronize do
         comamnd_id = next_command_id
 
-        Promise.new do |resolve, reject|
-          @_command_callbacks[comamnd_id] = CommandCallback.new(resolve, reject, command[:method])
+        Concurrent::Promises.resolvable_future.tap do |future|
+          @_command_callbacks[comamnd_id] = CommandCallback.new(
+            future.method(:fulfill),
+            future.method(:reject),
+            command[:method]
+          )
           command = command.merge(id: comamnd_id).to_json
           ProtocolLogger.puts_command command
           web_socket.send_message command: command
@@ -71,7 +77,7 @@ module Rammus
     # @return [Rammus::CDPSession]
     #
     def create_session(target_info)
-      response = await command Protocol::Target.attach_to_target target_id: target_info["targetId"], flatten: true
+      response = command(Protocol::Target.attach_to_target(target_id: target_info["targetId"], flatten: true)).value
 
       session_id = response["sessionId"]
 
@@ -90,7 +96,13 @@ module Rammus
       @_closed
     end
 
+    def url
+      web_socket.url
+    end
+
     private
+
+      attr_reader :event_queue
 
       def on_close
         return if @_closed

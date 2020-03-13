@@ -38,9 +38,7 @@ module Rammus
   #   page.remove_listener :request, method(:log_request)
   #
   class Page
-    include Promise::Await
     include EventEmitter
-    extend Promise::Await
     extend Forwardable
 
     # @!visibility private
@@ -239,12 +237,12 @@ module Rammus
     #
     def self.create(target, default_viewport: nil, ignore_https_errors: false)
       new(target, ignore_https_errors: ignore_https_errors).tap do |page|
-        await Promise.all(
+        Concurrent::Promises.zip(
           page.frame_manager.start,
           target.session.command(Protocol::Target.set_auto_attach auto_attach: true, wait_for_debugger_on_start: false, flatten: true),
           target.session.command(Protocol::Performance.enable),
           target.session.command(Protocol::Log.enable),
-        )
+        ).wait!
         page.set_viewport default_viewport if default_viewport
       end
     end
@@ -322,7 +320,7 @@ module Rammus
     # @return [nil]
     #
     def bring_to_front
-      await client.command Protocol::Page.bring_to_front
+      client.command(Protocol::Page.bring_to_front).wait!
       nil
     end
 
@@ -334,17 +332,25 @@ module Rammus
     # @param run_before_unload [Boolean] Defaults to false. Whether to run the
     #   before unload page handlers.
     #
-    # @return [nil]
+    # @return [Concurrent::Promises::Future<nil>]
     #
     def close(run_before_unload: false)
-      raise 'Protocol error: Connection closed. Most likely the page has been closed.' if client.client.closed?
-      if run_before_unload
-        await client.command Protocol::Page.close
-      else
-        await client.client.command Protocol::Target.close_target target_id: target.target_id
-        await target.is_closed_promise
+      Concurrent::Promises.future do
+        raise 'Protocol error: Connection closed. Most likely the page has been closed.' if client.client.closed?
+
+        event_promise = Concurrent::Promises.resolvable_future.tap do |future|
+          browser.once :target_destroyed, future.method(:resolve)
+        end
+
+        if run_before_unload
+          client.command(Protocol::Page.close).wait!
+        else
+          client.client.command(Protocol::Target.close_target(target_id: target.target_id)).wait!
+          target.is_closed_promise.wait!
+        end
+        event_promise.wait!
+        nil
       end
-      nil
     end
 
     # Indicates that the page has been closed.
@@ -366,13 +372,15 @@ module Rammus
     #
     def cookies(*urls)
       urls = urls.length.zero? ? nil : urls
-      response = await client.command Protocol::Network.get_cookies urls: urls
+      response = client.command(Protocol::Network.get_cookies(urls: urls)).value!
       response["cookies"]
     end
 
     # Deletes cookies, specifying the cookie name is required.
     #
     # @param cookies [Array<Hash<name: String, url: String, domain: String, path: String>]
+    #
+    # @return [nil]
     #
     def delete_cookie(*cookies)
       page_url = url
@@ -387,8 +395,9 @@ module Rammus
           next unless [:name, :url, :domain, :path].include? key
           [key, value]
         end.compact.to_h
-        await client.command Protocol::Network.delete_cookies cookie
+        client.command(Protocol::Network.delete_cookies(cookie)).wait!
       end
+      nil
     end
 
     # Emulates given device metrics and user agent. This method is a shortcut
@@ -441,7 +450,7 @@ module Rammus
     #
     def emulate_media(media_type = nil)
       raise "Unsupported media type: #{media_type}" unless ['screen', 'print', nil].include? media_type
-      await client.command Protocol::Emulation.set_emulated_media media: media_type || ''
+      client.command(Protocol::Emulation.set_emulated_media(media: media_type || '')).wait!
       nil
     end
 
@@ -461,7 +470,7 @@ module Rammus
     #
     def evaluate_on_new_document(page_function, *args)
       source = "(#{page_function})(#{args.map(&:to_json).join(',')})"
-      await client.command Protocol::Page.add_script_to_evaluate_on_new_document source: source
+      client.command(Protocol::Page.add_script_to_evaluate_on_new_document(source: source)).wait!
       nil
     end
 
@@ -541,9 +550,11 @@ module Rammus
       JAVASCRIPT
 
       expression = "(#{add_page_binding})(\"#{name}\")"
-      await client.command Protocol::Runtime.add_binding name: name
-      await client.command Protocol::Page.add_script_to_evaluate_on_new_document source: expression
-      Promise.all(*frames.map { |frame| frame.evaluate(expression).catch { |error| Util.debug_error error  } })
+      client.command(Protocol::Runtime.add_binding(name: name)).wait!
+      client.command(Protocol::Page.add_script_to_evaluate_on_new_document(source: expression)).wait!
+      Concurrent::Promises.zip(*frames.map do |frame|
+        frame.evaluate(expression).rescue { |error| Util.debug_error error }
+      end).wait!
       nil
     end
 
@@ -601,7 +612,7 @@ module Rammus
     # @return [Rammus::Metrics]
     #
     def metrics
-      response = await client.command Protocol::Performance.get_metrics
+      response = client.command(Protocol::Performance.get_metrics).value!
       build_metrics_object response["metrics"]
     end
 
@@ -629,7 +640,7 @@ module Rammus
       margin_bottom = Page.convert_print_parameter_to_inches(margin[:bottom]) || 0
       margin_right = Page.convert_print_parameter_to_inches(margin[:right]) || 0
 
-      result = await client.command Protocol::Page.print_to_pdf(
+      result = client.command(Protocol::Page.print_to_pdf(
         landscape: landscape,
         display_header_footer: display_header_footer,
         header_template: header_template,
@@ -644,7 +655,7 @@ module Rammus
         margin_right: margin_right,
         page_ranges: page_ranges,
         prefer_css_page_size: prefer_css_page_size
-      )
+      )).value!
       buffer = Base64.decode64(result["data"])
 
       File.open(path, 'wb') { |file| file.puts buffer } if path
@@ -679,11 +690,11 @@ module Rammus
     #   will resolve with the response of the last redirect.
     #
     def reload(timeout: nil, wait_until: nil)
-      Promise.resolve(nil).then do
-        response, _ = await Promise.all(
+      Concurrent::Promises.future do
+        response, _ = Concurrent::Promises.zip(
           wait_for_navigation(timeout: timeout, wait_until: wait_until),
           client.command(Protocol::Page.reload)
-        )
+        ).value!
         response
       end
     end
@@ -762,7 +773,7 @@ module Rammus
     # @return [nil]
     #
     def set_bypass_csp(enabled)
-      await client.command Protocol::Page.set_bypass_csp enabled: enabled
+      client.command(Protocol::Page.set_bypass_csp(enabled: enabled)).wait!
       nil
     end
 
@@ -797,7 +808,7 @@ module Rammus
       end
       delete_cookie(*cookies)
       if cookies.length
-        await client.command Protocol::Network.set_cookies cookies: cookies
+        client.command(Protocol::Network.set_cookies(cookies: cookies)).wait!
       end
     end
 
@@ -858,7 +869,7 @@ module Rammus
       raise "Invalid latitude '#{latitude}': precondition -90 <= LATITUDE <= 90 failed." if latitude < -90 || latitude > 90
       raise "Invalid accuracy '#{accuracy}': precondition 0 <= ACCURACY failed." if accuracy < 0
 
-      await client.command Protocol::Emulation.set_geolocation_override longitude: longitude, latitude: latitude, accuracy: accuracy
+      client.command(Protocol::Emulation.set_geolocation_override(longitude: longitude, latitude: latitude, accuracy: accuracy)).wait!
       nil
     end
 
@@ -913,7 +924,7 @@ module Rammus
       needs_reload = @_emulation_manager.emulate_viewport viewport
       @_viewport = viewport
 
-      await reload if needs_reload
+      reload.wait if needs_reload
       nil
     end
 
@@ -943,7 +954,7 @@ module Rammus
     def wait_for_request(url_or_predicate = nil, timeout: nil, &block)
       timeout ||= @_timeout_settings.timeout
       url_or_predicate ||= block
-      Util.wait_for_event(network_manager, :request, -> (request) do
+      Util.wait_for_event(network_manager, :request, timeout, session_closed_future) do |request|
         if url_or_predicate.is_a? String
           next url_or_predicate == request.url
         end
@@ -951,7 +962,7 @@ module Rammus
           next !!url_or_predicate.call(request)
         end
         false
-      end)
+      end
     end
 
     # @param url_or_predicate [String, #call] A URL or predicate to wait for.
@@ -964,7 +975,7 @@ module Rammus
     def wait_for_response(url_or_predicate = nil, timeout: nil, &block)
       timeout ||= @_timeout_settings.timeout
       url_or_predicate ||= block
-      Util.wait_for_event(network_manager, :response, -> (response) do
+      Util.wait_for_event(network_manager, :response, timeout, session_closed_future) do |response|
         if url_or_predicate.is_a? String
           next url_or_predicate == response.url
         end
@@ -972,7 +983,7 @@ module Rammus
           next !!url_or_predicate.call(response)
         end
         false
-      end)
+      end
     end
 
     # Page workers
@@ -986,10 +997,18 @@ module Rammus
       @_workers.values
     end
 
+    def inspect
+      "#<#{self.class}:0x#{object_id} #{viewport}>"
+    end
+
     private
 
       def client
         @client ||= target.session
+      end
+
+      def event_queue
+        client.send :event_queue
       end
 
       def on_target_crashed(_event)
@@ -1078,13 +1097,13 @@ module Rammus
       end
 
       def go(delta, timeout: nil, wait_until: nil)
-        history = await client.command Protocol::Page.get_navigation_history
+        history = client.command(Protocol::Page.get_navigation_history).value!
         entry = history["entries"][history["currentIndex"] + delta]
         return if entry.nil?
-        response, _ = await Promise.all(
+        response, _ = Concurrent::Promises.zip(
          wait_for_navigation(timeout: timeout, wait_until: wait_until),
          client.command(Protocol::Page.navigate_to_history_entry entry_id: entry["id"])
-        )
+        ).value!
         response
       end
 
@@ -1138,7 +1157,7 @@ module Rammus
         expression =
           begin
             result = @_page_bindings[name].call(*args)
-            result = await result if result.is_a?(Promise)
+            result = result.value! if result.is_a?(Concurrent::Promises::Future)
             Util.evaluation_string deliver_result, name, seq, result
           rescue => error
             # @param {string} name
@@ -1201,7 +1220,7 @@ module Rammus
       end
 
       def screenshot_task(format, clip: nil, quality: nil, full_page: false, omit_background: false, encoding: 'binary', path: nil)
-        await client.command Protocol::Target.activate_target(target_id: target.target_id)
+        client.command(Protocol::Target.activate_target(target_id: target.target_id)).wait!
         clip = unless clip.nil?
                  x = clip[:x].round
                  y = clip[:y].round
@@ -1212,7 +1231,7 @@ module Rammus
                end
 
         if full_page
-          metrics = await client.command Protocol::Page.get_layout_metrics
+          metrics = client.command(Protocol::Page.get_layout_metrics).value!
           width = metrics.dig("contentSize", "width").ceil
           height = metrics.dig("contentSize", "height").ceil
 
@@ -1223,23 +1242,23 @@ module Rammus
           is_landscape = @_viewport.fetch :is_landscape, false
           # @type {!Protocol.Emulation.ScreenOrientation}
           screen_orientation = is_landscape ? { angle: 90, type: 'landscapePrimary' } : { angle: 0, type: 'portraitPrimary' }
-          await client.command Protocol::Emulation.set_device_metrics_override(
+          client.command(Protocol::Emulation.set_device_metrics_override(
             mobile: is_mobile,
             width: width,
             height: height,
             device_scale_factor: device_scale_factor,
             screen_orientation: screen_orientation
-          )
+          )).wait!
         end
 
         should_set_default_background = omit_background && format == 'png'
         if should_set_default_background
-          await client.command Protocol::Emulation.set_default_background_color_override(color: { r: 0, g: 0, b: 0, a: 0 })
+          client.command(Protocol::Emulation.set_default_background_color_override(color: { r: 0, g: 0, b: 0, a: 0 })).wait!
         end
-        result = await client.command Protocol::Page.capture_screenshot(format: format, quality: quality, clip: clip)
+        result = client.command(Protocol::Page.capture_screenshot(format: format, quality: quality, clip: clip)).value!
 
         if should_set_default_background
-          await client.command Protocol::Emulation.set_default_background_color_override(color: nil)
+          client.command(Protocol::Emulation.set_default_background_color_override(color: nil)).wait!
         end
 
         if full_page && viewport
@@ -1251,6 +1270,12 @@ module Rammus
         File.open(path, 'wb') { |file| file.puts buffer } if path
 
         buffer
+      end
+
+      def session_closed_future
+        @_session_closed_future ||= Concurrent::Promises.resolvable_future.tap do |future|
+          client.once :cdp_session_disconnected, -> (_event) { future.fulfill(StandardError.new('Target closed')) }
+        end
       end
   end
 end

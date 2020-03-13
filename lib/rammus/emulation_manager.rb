@@ -2,8 +2,6 @@ module Rammus
   # @!visibility private
   #
   class EmulationManager
-    include Promise::Await
-
     attr_reader :client
 
     # @param client [Rammus::CDPSession]
@@ -20,7 +18,7 @@ module Rammus
       # @type {Protocol.Emulation.ScreenOrientation}
       screen_orientation = is_landscape ? { angle: 90, type: 'landscapePrimary' } : { angle: 0, type: 'portraitPrimary' }
 
-      await Promise.all(
+      Concurrent::Promises.zip(
         client.command(Protocol::Emulation.set_device_metrics_override(
           mobile: is_mobile,
           width: width,
@@ -29,7 +27,7 @@ module Rammus
           screen_orientation: screen_orientation
         )),
         client.command(Protocol::Emulation.set_touch_emulation_enabled enabled: has_touch)
-      )
+      ).wait!
 
       reload_needed = @_emulating_mobile != is_mobile || @_has_touch != has_touch
       @_emulating_mobile = is_mobile

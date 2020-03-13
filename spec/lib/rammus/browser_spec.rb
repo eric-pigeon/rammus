@@ -33,7 +33,7 @@ module Rammus
 
         expect(browser.browser_contexts.size).to eq 1
 
-        response = await browser.client.command Protocol::Target.get_browser_contexts
+        response = browser.client.command(Protocol::Target.get_browser_contexts).value
         expect(response["browserContextIds"].size).to eq 0
       end
 
@@ -58,6 +58,25 @@ module Rammus
         version = browser.version
 
         expect(version).to be_a Hash
+      end
+    end
+
+    describe '#close' do
+      it 'should terminate network waiters' do
+        new_browser = Rammus.launch
+        remote = Rammus.connect ws_endpoint: new_browser.ws_endpoint
+        new_page = remote.new_page
+
+        results = Concurrent::Promises.zip(
+          new_page.wait_for_request(server.empty_page).rescue { |e| e },
+          new_page.wait_for_response(server.empty_page).rescue { |e| e },
+          new_browser.close
+        ).value!
+
+        results.take(2).each do |result|
+          expect(result.message).to include 'Target closed'
+          expect(result.message).not_to include 'Timeout'
+        end
       end
     end
   end

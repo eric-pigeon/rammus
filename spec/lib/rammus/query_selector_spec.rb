@@ -1,6 +1,5 @@
 module Rammus
   RSpec.describe "Query Selector", browser: true do
-    include Promise::Await
     before { @_context = browser.create_context }
     after { @_context.close }
     let(:context) { @_context }
@@ -8,34 +7,34 @@ module Rammus
 
     describe 'Page.query_selector_evaluate_function' do
       it 'should work' do
-        await page.set_content '<section id="testAttribute">43543</section>'
-        id_attribute = await page.query_selector_evaluate_function 'section', 'e => e.id'
+        page.set_content('<section id="testAttribute">43543</section>').wait!
+        id_attribute = page.query_selector_evaluate_function('section', 'e => e.id').value!
         expect(id_attribute).to eq 'testAttribute'
       end
 
       it 'should accept arguments' do
-        await page.set_content '<section>hello</section>'
-        text = await page.query_selector_evaluate_function 'section', '(e, suffix) => e.textContent + suffix', ' world!'
+        page.set_content('<section>hello</section>').wait!
+        text = page.query_selector_evaluate_function('section', '(e, suffix) => e.textContent + suffix', ' world!').value!
         expect(text).to eq 'hello world!'
       end
 
       it 'should accept ElementHandles as arguments' do
-        await page.set_content '<section>hello</section><div> world</div>'
+        page.set_content('<section>hello</section><div> world</div>').wait!
         div_handle = page.query_selector 'div'
-        text = await page.query_selector_evaluate_function 'section', '(e, div) => e.textContent + div.textContent', div_handle
+        text = page.query_selector_evaluate_function('section', '(e, div) => e.textContent + div.textContent', div_handle).value!
         expect(text).to eq 'hello world'
       end
 
       it 'should throw error if no element is found' do
         expect do
-          await page.query_selector_evaluate_function 'section', 'e => e.id'
+          page.query_selector_evaluate_function('section', 'e => e.id').wait!
         end.to raise_error(/failed to find element matching selector 'section'/)
       end
     end
 
     describe 'Page.query_selector_all_evaluate_function' do
       it 'evaluates the function passing in the query selector results' do
-        await page.set_content '<div>hello</div><div>beautiful</div><div>world!</div>'
+        page.set_content('<div>hello</div><div>beautiful</div><div>world!</div>').wait!
         divs_count = page.query_selector_all_evaluate_function 'div', 'divs => divs.length'
         expect(divs_count).to eq 3
       end
@@ -43,7 +42,7 @@ module Rammus
 
     describe 'Page#query_selector' do
       it 'should query existing element' do
-        await page.set_content '<section>test</section>'
+        page.set_content('<section>test</section>').wait!
         element = page.query_selector 'section'
         expect(element).not_to be_nil
       end
@@ -56,15 +55,15 @@ module Rammus
 
     describe 'Page#query_selector_all' do
       it 'should query existing elements' do
-        await page.set_content '<div>A</div><br/><div>B</div>'
+        page.set_content('<div>A</div><br/><div>B</div>').wait!
         elements = page.query_selector_all 'div'
         expect(elements.length).to eq 2
-        values = elements.map { |element| await page.evaluate_function 'e => e.textContent', element }
+        values = elements.map { |element| page.evaluate_function('e => e.textContent', element).value! }
         expect(values).to eq ['A', 'B']
       end
 
       it 'should return empty array if nothing is found' do
-        await page.goto server.empty_page
+        page.goto(server.empty_page).wait!
         elements = page.query_selector_all 'div'
         expect(elements.length).to eq 0
       end
@@ -72,7 +71,7 @@ module Rammus
 
     describe 'Page#xpath' do
       it 'should query existing element' do
-        await page.set_content '<section>test</section>'
+        page.set_content('<section>test</section>').wait!
         elements = page.xpath '/html/body/section'
         expect(elements[0]).not_to be_nil
         expect(elements.length).to eq 1
@@ -84,7 +83,7 @@ module Rammus
       end
 
       it 'should return multiple elements' do
-        await page.set_content '<div></div><div></div>'
+        page.set_content('<div></div><div></div>').wait!
         elements = page.xpath '/html/body/div'
         expect(elements.length).to eq 2
       end
@@ -92,17 +91,17 @@ module Rammus
 
     describe 'ElementHandle#query_selector' do
       it 'should query existing element' do
-        await page.goto server.domain + 'playground.html'
-        await page.set_content '<html><body><div class="second"><div class="inner">A</div></div></body></html>'
+        page.goto(server.domain + 'playground.html').wait!
+        page.set_content('<html><body><div class="second"><div class="inner">A</div></div></body></html>').wait!
         html = page.query_selector 'html'
         second = html.query_selector '.second'
         inner = second.query_selector '.inner'
-        content = await page.evaluate_function 'e => e.textContent', inner
+        content = page.evaluate_function('e => e.textContent', inner).value!
         expect(content).to eq 'A'
       end
 
       it 'should return null for non-existing element' do
-        await page.set_content '<html><body><div class="second"><div class="inner">B</div></div></body></html>'
+        page.set_content('<html><body><div class="second"><div class="inner">B</div></div></body></html>').wait!
         html = page.query_selector 'html'
         second = html.query_selector '.third'
         expect(second).to eq nil
@@ -111,23 +110,23 @@ module Rammus
 
     describe 'ElementHandle#query_selector_evaluate_function' do
       it 'should work' do
-        await page.set_content '<html><body><div class="tweet"><div class="like">100</div><div class="retweets">10</div></div></body></html>'
+        page.set_content('<html><body><div class="tweet"><div class="like">100</div><div class="retweets">10</div></div></body></html>').wait!
         tweet = page.query_selector '.tweet'
-        content = await tweet.query_selector_evaluate_function '.like', "node => node.innerText"
+        content = tweet.query_selector_evaluate_function('.like', "node => node.innerText").value!
         expect(content).to eq '100'
       end
 
       it 'should retrieve content from subtree' do
         html_content = '<div class="a">not-a-child-div</div><div id="myId"><div class="a">a-child-div</div></div>'
-        await page.set_content html_content
+        page.set_content(html_content).wait!
         element_handle = page.query_selector '#myId'
-        content = await element_handle.query_selector_evaluate_function '.a', "node => node.innerText"
+        content = element_handle.query_selector_evaluate_function('.a', "node => node.innerText").value!
         expect(content).to eq 'a-child-div'
       end
 
       it 'should throw in case of missing selector' do
         html_content = '<div class="a">not-a-child-div</div><div id="myId"></div>'
-        await page.set_content html_content
+        page.set_content(html_content).wait!
         element_handle = page.query_selector '#myId'
         expect { element_handle.query_selector_evaluate_function '.a', "node => node.innerText" }
           .to raise_error "Error: failed to find element matching selector '.a'"
@@ -136,7 +135,7 @@ module Rammus
 
     describe 'ElementHandle#query_selector_all_evaluate_function' do
       it 'should work' do
-        await page.set_content '<html><body><div class="tweet"><div class="like">100</div><div class="like">10</div></div></body></html>'
+        page.set_content('<html><body><div class="tweet"><div class="like">100</div><div class="like">10</div></div></body></html>').wait!
         tweet = page.query_selector '.tweet'
         content = tweet.query_selector_all_evaluate_function '.like', "nodes => nodes.map(n => n.innerText)"
         expect(content).to eq ['100', '10']
@@ -144,7 +143,7 @@ module Rammus
 
       it 'should retrieve content from subtree' do
         html_content = '<div class="a">not-a-child-div</div><div id="myId"><div class="a">a1-child-div</div><div class="a">a2-child-div</div></div>'
-        await page.set_content html_content
+        page.set_content(html_content).wait!
         element_handle = page.query_selector '#myId'
         content = element_handle.query_selector_all_evaluate_function '.a', "nodes => nodes.map(n => n.innerText)"
         expect(content).to eq ['a1-child-div', 'a2-child-div']
@@ -152,7 +151,7 @@ module Rammus
 
       it 'should not throw in case of missing selector' do
         html_content = '<div class="a">not-a-child-div</div><div id="myId"></div>'
-        await page.set_content html_content
+        page.set_content(html_content).wait!
         element_handle = page.query_selector '#myId'
         nodes_length = element_handle.query_selector_all_evaluate_function '.a', "nodes => nodes.length"
         expect(nodes_length).to eq 0
@@ -161,16 +160,16 @@ module Rammus
 
     describe 'ElementHandle#query_selector_all' do
       it 'should query existing elements' do
-        await page.set_content '<html><body><div>A</div><br/><div>B</div></body></html>'
+        page.set_content('<html><body><div>A</div><br/><div>B</div></body></html>').wait!
         html = page.query_selector 'html'
         elements = html.query_selector_all 'div'
         expect(elements.length).to eq 2
-        values = elements.map { |element| await page.evaluate_function "e => e.textContent", element }
+        values = elements.map { |element| page.evaluate_function("e => e.textContent", element).value! }
         expect(values).to eq ['A', 'B']
       end
 
       it 'should return empty array for non-existing elements' do
-        await page.set_content '<html><body><span>A</span><br/><span>B</span></body></html>'
+        page.set_content('<html><body><span>A</span><br/><span>B</span></body></html>').wait!
         html = page.query_selector 'html'
         elements = html.query_selector_all 'div'
         expect(elements.length).to eq 0
@@ -179,17 +178,17 @@ module Rammus
 
     describe 'ElementHandle#xpath' do
       it 'should query existing element' do
-        await page.goto server.domain + 'playground.html'
-        await page.set_content '<html><body><div class="second"><div class="inner">A</div></div></body></html>'
+        page.goto(server.domain + 'playground.html').wait!
+        page.set_content('<html><body><div class="second"><div class="inner">A</div></div></body></html>').wait!
         html = page.query_selector 'html'
         second = html.xpath "./body/div[contains(@class, 'second')]"
         inner = second[0].xpath "./div[contains(@class, 'inner')]"
-        content = await page.evaluate_function "e => e.textContent", inner[0]
+        content = page.evaluate_function("e => e.textContent", inner[0]).value!
         expect(content).to eq 'A'
       end
 
       it 'should return null for non-existing element' do
-        await page.set_content '<html><body><div class="second"><div class="inner">B</div></div></body></html>'
+        page.set_content('<html><body><div class="second"><div class="inner">B</div></div></body></html>').wait!
         html = page.query_selector 'html'
         second = html.xpath "/div[contains(@class, 'third')]"
         expect(second).to eq []

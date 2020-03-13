@@ -1,9 +1,13 @@
+# frozen_string_literal: true
+
 module Rammus
   class Target
     extend Forwardable
     # @!visibility private
     attr_reader :target_info, :target_id, :initialized, :initialized_promise,
-      :initialized_callback, :_closed_callback, :is_closed_promise
+      :initialized_callback, :_closed_callback, :is_closed_promise,
+      :_page_promise,
+      :_page
 
     # The browser context the target belongs to.
     #
@@ -27,21 +31,26 @@ module Rammus
     def initialize(target_info, browser_context, client, ignore_https_errors, default_viewport)
       @target_info = target_info
       @browser_context = browser_context
+      @target_id = target_info["targetId"]
+      # session factory
       @_ignore_https_errors = ignore_https_errors
       @_default_viewport = default_viewport
-      @target_id = target_info["targetId"]
+      # screenshot task queue
+      @_page_promise = nil
+      @_worker_promise = nil
       @_client = client
 
-      initialized_promise, @initialized_callback, _reject = Promise.create
+      initialized_promise = Concurrent::Promises.resolvable_future
+      @initialized_callback = initialized_promise.method(:fulfill)
       @initialized_promise = initialized_promise.then do |success|
         next false unless success
 
-        next true if opener.nil? || type != "page"
-        #if (!opener || !opener._pagePromise || this.type() !== 'page')
-        #  return true;
+        # if (!opener || !opener._page_promise || type != 'page')
+        if (!opener || !opener._page || type != 'page')
+          next true
+        end
 
-        #const openerPage = await opener._pagePromise;
-        opener_page = opener.page
+        opener_page = opener._page
 
         next true if opener_page.listener_count(:popup).zero?
         popup_page = self.page
@@ -49,7 +58,8 @@ module Rammus
         true
       end
 
-      @is_closed_promise, @_closed_callback, _ = Promise.create
+      @is_closed_promise = Concurrent::Promises.resolvable_future
+      @_closed_callback = @is_closed_promise.method(:fulfill)
       @initialized = target_info["type"] != 'page' || target_info["url"] != ""
       @initialized_callback.(true) if initialized
     end
@@ -89,6 +99,8 @@ module Rammus
       end
     end
 
+    # @return [Rammus::CDPSession]
+    #
     def session
       @_session ||= @_client.create_session target_info
     end
@@ -121,6 +133,10 @@ module Rammus
       #  });
       #}
       #return this._workerPromise;
+    end
+
+    def inspect
+      "#<#{self.class}:0x#{object_id} #{target_info}>"
     end
 
     private

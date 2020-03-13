@@ -1,6 +1,5 @@
 module Rammus
   RSpec.describe 'Screenshot', browser: true do
-    include Promise::Await
     before { @_context = browser.create_context }
     after { @_context.close }
     let(:context) { @_context }
@@ -13,7 +12,7 @@ module Rammus
           next if is_favicon request
           requests << request
         end
-        await page.goto server.empty_page
+        page.goto(server.empty_page).wait!
         expect(requests.length).to eq 1
       end
 
@@ -23,8 +22,8 @@ module Rammus
           next if is_favicon request
           requests << request
         end
-        await page.goto server.empty_page
-        attach_frame page, 'frame1', server.empty_page
+        page.goto(server.empty_page).wait!
+        attach_frame(page, 'frame1', server.empty_page).wait!
         expect(requests.length).to eq 2
       end
 
@@ -34,8 +33,8 @@ module Rammus
           next if is_favicon request
           requests << request
         end
-        await page.goto server.empty_page
-        await page.evaluate_function "() => fetch('/empty.html')"
+        page.goto(server.empty_page).wait!
+        page.evaluate_function("() => fetch('/empty.html')").wait!
         expect(requests.length).to eq 2
       end
     end
@@ -47,31 +46,31 @@ module Rammus
           next if is_favicon request
           requests << request
         end
-        await page.goto server.empty_page
+        page.goto(server.empty_page).wait!
         expect(requests.length).to eq 1
         expect(requests[0].frame).to eq page.main_frame
       end
 
       it 'should work for subframe navigation request' do
-        await page.goto server.empty_page
+        page.goto(server.empty_page).wait!
         requests = []
         page.on :request, -> (request) do
           next if is_favicon request
           requests << request
         end
-        attach_frame page, 'frame1', server.empty_page
+        attach_frame(page, 'frame1', server.empty_page).wait!
         expect(requests.length).to eq 1
         expect(requests[0].frame).to eq page.frames[1]
       end
 
       it 'should work for fetch requests' do
-        await page.goto server.empty_page
+        page.goto(server.empty_page).wait!
         requests = []
         page.on :request, -> (request) do
           next if is_favicon request
           requests << request
         end
-        await page.evaluate_function "() => fetch('/digits/1.png')"
+        page.evaluate_function("() => fetch('/digits/1.png')").wait!
         expect(requests.length).to eq 1
         expect(requests[0].frame).to eq page.main_frame
       end
@@ -79,7 +78,7 @@ module Rammus
 
     describe 'Request#headers' do
       it 'should work' do
-        response = await page.goto server.empty_page
+        response = page.goto(server.empty_page).value!
         expect(response.request.headers['user-agent']).to include 'Chrome'
       end
     end
@@ -90,14 +89,14 @@ module Rammus
           res.header['foo'] = 'bar'
           res.finish
         end
-        response = await page.goto server.empty_page
+        response = page.goto(server.empty_page).value!
         expect(response.headers['foo']).to eq 'bar'
       end
     end
 
     describe 'Response#from_cache' do
       it 'should return |false| for non-cached content' do
-        response = await page.goto server.empty_page
+        response = page.goto(server.empty_page).value!
         expect(response.from_cache).to eq false
       end
 
@@ -109,8 +108,8 @@ module Rammus
         end
 
         # Load and re-load to make sure it's cached.
-        await page.goto server.domain + 'cached/one-style.html'
-        await page.reload
+        page.goto(server.domain + 'cached/one-style.html').wait!
+        page.reload.wait!
 
         expect(responses.size).to eq 2
         expect(responses['one-style.css'].status).to eq 200
@@ -122,7 +121,7 @@ module Rammus
 
     describe 'Response#from_service_worker' do
       it 'should return |false| for non-service-worker content' do
-        response = await page.goto server.empty_page
+        response = page.goto(server.empty_page).value!
         expect(response.from_service_worker).to eq false
       end
 
@@ -134,9 +133,9 @@ module Rammus
         end
 
         # Load and re-load to make sure serviceworker is installed and running.
-        await page.goto server.domain + 'serviceworkers/fetch/sw.html',  wait_until: :networkidle2
-        await page.evaluate_function 'async() => await window.activationPromise'
-        await page.reload
+        page.goto(server.domain + 'serviceworkers/fetch/sw.html',  wait_until: :networkidle2).wait!
+        page.evaluate_function('async() => await window.activationPromise').wait!
+        page.reload.wait!
 
         expect(responses.size).to eq 2
         expect(responses['sw.html'].status).to eq 200
@@ -148,47 +147,47 @@ module Rammus
 
     describe 'Request#post_data' do
       it 'should work' do
-        await page.goto server.empty_page
+        page.goto(server.empty_page).wait!
         request = nil
         page.on :request, -> (r) { request = r }
-        await page.evaluate_function "() => fetch('./post', { method: 'POST', body: JSON.stringify({foo: 'bar'})})"
+        page.evaluate_function("() => fetch('./post', { method: 'POST', body: JSON.stringify({foo: 'bar'})})").wait!
         expect(request).not_to be_nil
         expect(request.post_data).to eq '{"foo":"bar"}'
       end
 
       it 'should be |undefined| when there is no post data' do
-        response = await page.goto server.empty_page
+        response = page.goto(server.empty_page).value!
         expect(response.request.post_data).to eq nil
       end
     end
 
     describe 'Response#text' do
       it 'should work' do
-        response = await page.goto server.domain + 'simple.json'
-        expect(await response.text).to eq "{\"foo\": \"bar\"}\n"
+        response = page.goto(server.domain + 'simple.json').value!
+        expect(response.text.value!).to eq "{\"foo\": \"bar\"}\n"
       end
 
       it 'should return uncompressed text' do
         server.enable_gzip '/simple.json'
-        response = await page.goto server.domain + 'simple.json'
+        response = page.goto(server.domain + 'simple.json').value!
         expect(response.headers['content-encoding']).to eq 'gzip'
-        expect(await response.text).to eq "{\"foo\": \"bar\"}\n"
+        expect(response.text.value!).to eq "{\"foo\": \"bar\"}\n"
       end
 
       it 'should throw when requesting body of redirected response' do
         server.set_redirect '/foo.html', '/empty.html'
-        response = await page.goto server.domain + "foo.html"
+        response = page.goto(server.domain + "foo.html").value!
         redirect_chain = response.request.redirect_chain
         expect(redirect_chain.length).to eq 1
         redirected = redirect_chain[0].response
         expect(redirected.status).to eq 302
 
-        expect { await redirected.text }
+        expect { redirected.text.value! }
           .to raise_error(/Response body is unavailable for redirect responses/)
       end
 
       it 'should wait until response completes' do
-        await page.goto server.empty_page
+        page.goto(server.empty_page).wait!
         # Setup server to trap request.
         server_response = nil
         server.set_route '/get' do |req, res|
@@ -203,11 +202,11 @@ module Rammus
         request_finished = false
         page.on :request_Finished, -> (r) { request_finished = request_finished || r.url.include?('/get') }
         # send request and wait for server response
-        page_response, _ = await Promise.all(
+        page_response, _ = Concurrent::Promises.zip(
           page.wait_for_response { |r| !is_favicon r.request },
           page.evaluate_function("() => fetch('./get', { method: 'GET'})"),
           server.wait_for_request('/get')
-        )
+        ).value!
 
         expect(server_response).not_to be_nil
         expect(page_response).not_to be_nil
@@ -220,39 +219,39 @@ module Rammus
         # Finish response
         server_response << "ld!"
         server_response.finish
-        expect(await response_text).to eq 'hello world!'
+        expect(response_text.value!).to eq 'hello world!'
       end
     end
 
     describe 'Response#json' do
       it 'should work' do
-        response = await page.goto server.domain + 'simple.json'
-        expect(await response.json).to eq 'foo' => 'bar'
+        response = page.goto(server.domain + 'simple.json').value!
+        expect(response.json.value!).to eq 'foo' => 'bar'
       end
     end
 
     describe 'Response#buffer' do
       it 'should work' do
-        response = await page.goto server.domain + 'pptr.png'
+        response = page.goto(server.domain + 'pptr.png').value!
         path = File.expand_path("../../support/public/pptr.png", File.dirname(__FILE__))
         image_buffer = IO.binread(path)
-        response_buffer = await response.buffer
+        response_buffer = response.buffer.value!
         expect(response_buffer).to eq image_buffer
       end
 
       it 'should work with compression' do
         server.enable_gzip '/pptr.png'
-        response = await page.goto server.domain + 'pptr.png'
+        response = page.goto(server.domain + 'pptr.png').value!
         path = File.expand_path("../../support/public/pptr.png", File.dirname(__FILE__))
         image_buffer = IO.binread(path)
-        response_buffer = await response.buffer
+        response_buffer = response.buffer.value!
         expect(response_buffer).to eq image_buffer
       end
     end
 
     describe 'Response#status_text' do
       it 'should work' do
-        response = await page.goto server.domain + 'empty.html'
+        response = page.goto(server.domain + 'empty.html').value!
         expect(response.status_text).to eq 'OK'
       end
     end
@@ -261,7 +260,7 @@ module Rammus
       it 'Page.Events.Request' do
         requests = []
         page.on :request, -> (request) { requests << request }
-        await page.goto server.empty_page
+        page.goto(server.empty_page).wait!
         expect(requests.length).to eq 1
         expect(requests[0].url).to eq server.empty_page
         expect(requests[0].resource_type).to eq 'document'
@@ -274,7 +273,7 @@ module Rammus
       it 'Page.Events.Response' do
         responses = []
         page.on :response, -> (response) { responses << response }
-        await page.goto server.empty_page
+        page.goto(server.empty_page).wait!
         expect(responses.length).to eq 1
         expect(responses[0].url).to eq server.empty_page
         expect(responses[0].status).to eq 200
@@ -297,7 +296,7 @@ module Rammus
         end
         failed_requests = []
         page.on :request_failed, -> (request) {failed_requests << request }
-        await page.goto server.domain + 'one-style.html'
+        page.goto(server.domain + 'one-style.html').wait!
         expect(failed_requests.length).to eq 1
         expect(failed_requests[0].url).to include 'one-style.css'
         expect(failed_requests[0].response).to eq nil
@@ -309,7 +308,7 @@ module Rammus
       it 'Page.Events.RequestFinished' do
         requests = []
         page.on :request_finished, -> (request) { requests << request }
-        await page.goto server.empty_page
+        page.goto(server.empty_page).wait!
         expect(requests.length).to eq 1
         expect(requests[0].url).to eq server.empty_page
         expect(requests[0].response).not_to be_nil
@@ -322,7 +321,7 @@ module Rammus
         page.on :request, -> (request) { events << 'request' }
         page.on :response, -> (response) { events << 'response' }
         page.on :request_finished, -> (request) { events << 'requestfinished' }
-        await page.goto server.empty_page
+        page.goto(server.empty_page).wait!
         expect(events).to eq ['request', 'response', 'requestfinished']
       end
 
@@ -334,7 +333,7 @@ module Rammus
         page.on :request_failed, -> (request) { events <<  "FAIL #{request.url}" }
         server.set_redirect '/foo.html', '/empty.html'
         foo_url = server.domain + 'foo.html'
-        response = await page.goto foo_url
+        response = page.goto(foo_url).value!
         expect(events).to eq([
           "GET #{foo_url}",
           "302 #{foo_url}",
@@ -357,7 +356,7 @@ module Rammus
         requests = {}
         page.on :request, -> (request) { requests[request.url.split('/').pop] = request }
         server.set_redirect '/rrredirect', '/frames/one-frame.html'
-        await page.goto server.domain + 'rrredirect'
+        page.goto(server.domain + 'rrredirect').wait!
         expect(requests['rrredirect'].is_navigation_request).to eq true
         expect(requests['one-frame.html'].is_navigation_request).to eq true
         expect(requests['frame.html'].is_navigation_request).to eq true
@@ -373,7 +372,7 @@ module Rammus
         end
         page.set_request_interception true
         server.set_redirect '/rrredirect', '/frames/one-frame.html'
-        await page.goto server.domain + 'rrredirect'
+        page.goto(server.domain + 'rrredirect').wait!
         expect(requests['rrredirect'].is_navigation_request).to eq true
         expect(requests['one-frame.html'].is_navigation_request).to eq true
         expect(requests['frame.html'].is_navigation_request).to eq true
@@ -384,7 +383,7 @@ module Rammus
       it 'should work when navigating to image' do
         requests = []
         page.on :request, -> (request) { requests << request }
-        await page.goto server.domain + 'pptr.png'
+        page.goto(server.domain + 'pptr.png').wait!
         expect(requests[0].is_navigation_request).to eq true
       end
     end
@@ -392,10 +391,10 @@ module Rammus
     describe 'Page#set_extra_http_headers' do
       it 'should work' do
         page.set_extra_http_headers foo: 'bar'
-        request, _ = await Promise.all(
+        request, _ = Concurrent::Promises.zip(
           server.wait_for_request('/empty.html'),
           page.goto(server.empty_page)
-        )
+        ).value!
         expect(request.headers['foo']).to eq 'bar'
       end
 
@@ -408,29 +407,29 @@ module Rammus
     describe 'Page#authenticate' do
       it 'should work' do
         server.set_auth '/empty.html', 'user', 'pass'
-        response = await page.goto server.empty_page
+        response = page.goto(server.empty_page).value!
         expect(response.status).to eq 401
         page.authenticate username: 'user', password: 'pass'
-        response = await page.reload
+        response = page.reload.value!
         expect(response.status).to eq 200
       end
 
       it 'should fail if wrong credentials' do
         server.set_auth '/empty.html', 'user2', 'pass2'
         page.authenticate username: 'foo', password: 'bar'
-        response = await page.goto server.empty_page
+        response = page.goto(server.empty_page).value!
         expect(response.status).to eq 401
       end
 
       it 'should allow disable authentication' do
         server.set_auth '/empty.html', 'user3', 'pass3'
         page.authenticate username: 'user3', password: 'pass3'
-        response = await page.goto server.empty_page
+        response = page.goto(server.empty_page).value!
         expect(response.status).to eq 200
 
         page.authenticate
         # Navigate to a different origin to bust Chrome's credential caching.
-        response = await page.goto server.cross_process_domain + 'empty.html'
+        response = page.goto(server.cross_process_domain + 'empty.html').value!
         expect(response.status).to eq 401
       end
     end

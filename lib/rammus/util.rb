@@ -2,8 +2,6 @@ module Rammus
   # @!visibility private
   #
   module Util
-    extend Promise::Await
-
     def self.evaluation_string(function_string, *args)
       "(#{function_string})(#{args.map(&:to_json).join(',')})"
     end
@@ -35,7 +33,8 @@ module Rammus
 
     EventListener = Struct.new(:emitter, :event_name, :handler)
 
-    def self.add_event_listener(emitter, event_name, handler)
+    def self.add_event_listener(emitter, event_name, handler = nil, &block)
+      handler ||= block
       emitter.on event_name, handler
       EventListener.new emitter, event_name, handler
     end
@@ -70,45 +69,78 @@ module Rammus
     def self.release_object(client, remote_object)
       return if remote_object["objectId"].nil?
 
-      await(client.command(Protocol::Runtime.release_object object_id: remote_object["objectId"]).catch do |error|
+      client.command(Protocol::Runtime.release_object object_id: remote_object["objectId"]).rescue do |error|
         # Exceptions might happen in case of a page been navigated or closed.
         # Swallow these since they are harmless and we don't leak anything in this case.
         debug_error error
-      end)
+      end.value!
     end
 
-    # @param {!NodeJS.EventEmitter} emitter
-    # @param {(string|symbol)} eventName
-    # @param {function} predicate
-    # @return {!Promise}
+    # TODO document overload
     #
-    def self.wait_for_event(emitter, event_name, predicate, timeout = nil)
-      _event_timeout = nil
-      promise, resolve_callback, _reject_callback = Promise.create
+    # @param [EventEmitter] emitter
+    # @param [String,Symbol] event_name
+    # @param [Integer] timeout
+    # @param [#call:Boolean] predicate
+    #
+    # @return [Concurrent::Promises::Future]
+    #
+    def self.wait_for_event(emitter, event_name, timeout = nil, abort_promise = nil, predicate = nil, &block)
+      predicate ||= block
+      event_timeout = nil
 
-      listener = Util.add_event_listener(emitter, event_name, -> (event) do
+      future = Concurrent::Promises.resolvable_future
+
+      listener = Util.add_event_listener(emitter, event_name) do |event|
         next unless predicate.(event)
-        Util.remove_event_listeners [listener]
-        #cleanup();
-        resolve_callback.(event)
-      end)
 
-      # TODO
-      #if (timeout) {
-      #  eventTimeout = setTimeout(() => {
-      #    cleanup();
-      #    rejectCallback(new Errors::TimeoutError('Timeout exceeded while waiting for event'));
-      #  }, timeout);
-      #}
-      #function cleanup() {
-      #  Helper.removeEventListeners([listener]);
-      #  clearTimeout(eventTimeout);
-      #}
-      promise
+        future.fulfill event
+      end
+      if timeout
+        event_timeout = Concurrent::ScheduledTask.execute(timeout) do
+          future.reject(Timeout::Error.new("Timeout exceeded while waiting for event"))
+        end
+      end
+      cleanup = -> do
+        Util.remove_event_listeners [listener]
+        event_timeout.cancel
+      end
+      result =
+        if abort_promise
+          Concurrent::Promises.any(future, abort_promise)
+        else
+          future
+        end
+      result
+        .then { |value| cleanup.call; value }
+        .rescue { |error| cleanup.call; raise error }
     end
 
     def self.debug_error(error)
       # TODO
+    end
+
+    # TODO
+    # * @template T
+    # * @param {!Promise<T>} promise
+    # * @param {string} taskName
+    # * @param {number} timeout
+    # * @return {!Promise<T>}
+    #
+    def self.wait_with_timeout(future, task_name, timeout)
+      return future if timeout.nil?
+
+      Concurrent::Promises.future do
+        timeout_future = Concurrent::Promises.resolvable_future
+        timeout_task = Concurrent::ScheduledTask.execute(timeout) do
+          timeout_future.reject Timeout::Error.new("waiting for #{task_name} failed: timeout #{timeout}s exceeded.")
+        end
+        begin
+          Concurrent::Promises.any(future, timeout_future).value!
+        ensure
+          timeout_task.cancel
+        end
+      end
     end
   end
 end

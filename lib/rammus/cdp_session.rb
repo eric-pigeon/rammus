@@ -32,18 +32,28 @@ module Rammus
     #
     def command(command)
       if client.nil?
-        return Promise.reject(StandardError.new "Protocol error (#{command[:method]}): Session closed. Most likely the #{target_type} has been closed.")
+        return Concurrent::Promises.rejected_future(
+          StandardError.new "Protocol error (#{command[:method]}): Session closed. Most likely the #{target_type} has been closed."
+        )
       end
       @_command_mutex.synchronize do
         client._raw_send(command.merge sessionId: session_id) do |command_id|
-          Promise.new do |resolve, reject|
-            @_command_callbacks[command_id] = CommandCallback.new(resolve, reject, command[:method])
+          Concurrent::Promises.resolvable_future.tap do |future|
+            @_command_callbacks[command_id] = CommandCallback.new(
+              future.method(:fulfill),
+              future.method(:reject),
+              command[:method]
+            )
           end
         end
       end
     end
 
     private
+
+      def event_queue
+        @_event_queue ||= client.send :event_queue
+      end
 
       # @param [Hash] message
       #
@@ -69,8 +79,8 @@ module Rammus
           end
           @_command_callbacks.clear
         end
-        @client = nil
         emit :cdp_session_disconnected
+        @client = nil
       end
   end
 end

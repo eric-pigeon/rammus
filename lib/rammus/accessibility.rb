@@ -18,8 +18,6 @@ module Rammus
   # exposing only the "interesting" nodes of the tree.
   #
   class Accessibility
-    include Promise::Await
-
     attr_reader :client
 
     # @param client [Rammus::CDPSession]
@@ -37,10 +35,10 @@ module Rammus
     # @return [Hash]
     #
     def snapshot(root: nil, interesting_only: true)
-      nodes = (await client.command Protocol::Accessibility.get_full_ax_tree)["nodes"]
+      nodes = client.command(Protocol::Accessibility.get_full_ax_tree).value!["nodes"]
       backend_node_id = nil
       if root
-        node = await client.command Protocol::DOM.describe_node object_id: root.remote_object["objectId"]
+        node = client.command(Protocol::DOM.describe_node(object_id: root.remote_object["objectId"])).value!
         backend_node_id = node.dig "node", "backendNodeId"
       end
       default_root = AXNode.create_tree nodes

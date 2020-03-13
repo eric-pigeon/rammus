@@ -1,6 +1,5 @@
 module Rammus
   RSpec.describe ElementHandle, browser: true do
-    include Promise::Await
     before { @_context = browser.create_context }
     after { @_context.close }
     let(:context) { @_context }
@@ -9,7 +8,7 @@ module Rammus
     describe '#bounding_box' do
       it 'returns the bounding box' do
         page.set_viewport width: 500, height: 500
-        await page.goto server.domain + 'grid.html'
+        page.goto(server.domain + 'grid.html').wait!
         element_handle = page.query_selector '.box:nth-of-type(13)'
         box = element_handle.bounding_box
         expect(box).to eq(x: 100, y: 50, width: 50, height: 50)
@@ -17,7 +16,7 @@ module Rammus
 
       it 'should handle nested frames' do
         page.set_viewport width: 500, height: 500
-        await page.goto server.domain + 'frames/nested-frames.html'
+        page.goto(server.domain + 'frames/nested-frames.html').wait!
         nestedFrame = page.frames[1].child_frames[1]
         element_handle = nestedFrame.query_selector 'div'
         box = element_handle.bounding_box
@@ -25,16 +24,16 @@ module Rammus
       end
 
       it 'should return nil for invisible elements' do
-        await page.set_content '<div style="display:none">hi</div>'
+        page.set_content('<div style="display:none">hi</div>').wait!
         element = page.query_selector 'div'
         expect(element.bounding_box).to eq nil
       end
 
       it 'should force a layout' do
         page.set_viewport width: 500, height: 500
-        await page.set_content '<div style="width: 100px; height: 100px">hello</div>'
+        page.set_content('<div style="width: 100px; height: 100px">hello</div>').wait!
         element_handle = page.query_selector 'div'
-        await page.evaluate_function "element => element.style.height = '200px'", element_handle
+        page.evaluate_function("element => element.style.height = '200px'", element_handle).wait!
         box = element_handle.bounding_box
         expect(box).to eq(x: 8, y: 8, width: 100, height: 200)
       end
@@ -45,7 +44,7 @@ module Rammus
           <rect id="theRect" x="30" y="50" width="200" height="300"></rect>
         </svg>
         HTML
-        await page.set_content content
+        page.set_content(content).wait!
         element = page.query_selector '#therect'
         pptr_bounding_box = element.bounding_box
         function = <<~JAVASCRIPT
@@ -54,7 +53,7 @@ module Rammus
           return {x: rect.x, y: rect.y, width: rect.width, height: rect.height};
         }
         JAVASCRIPT
-        web_bounding_box = await page.evaluate_function function, element
+        web_bounding_box = page.evaluate_function(function, element).value!
         web_bounding_box = web_bounding_box.map { |k, v| [k.to_sym, v] }.to_h
         expect(pptr_bounding_box).to eq web_bounding_box
       end
@@ -62,10 +61,10 @@ module Rammus
 
     describe '#box_model' do
       it 'returns the box model' do
-        await page.goto server.domain + 'resetcss.html'
+        page.goto(server.domain + 'resetcss.html').wait!
 
         # Step 1: Add Frame and position it absolutely.
-        attach_frame page, 'frame1', server.domain + 'resetcss.html'
+        attach_frame(page, 'frame1', server.domain + 'resetcss.html').wait!
         function = <<~JAVASCRIPT
         () => {
           const frame = document.querySelector('#frame1');
@@ -76,7 +75,7 @@ module Rammus
           `;
         }
         JAVASCRIPT
-        await page.evaluate_function function
+        page.evaluate_function(function).wait!
 
         # Step 2: Add div and position it absolutely inside frame.
         frame = page.frames[1]
@@ -98,7 +97,7 @@ module Rammus
           return div;
         }
         JAVASCRIPT
-        div_handle = (await frame.evaluate_handle_function(function)).as_element
+        div_handle = frame.evaluate_handle_function(function).value!.as_element
 
         # Step 3: query div's boxModel and assert box values.
         box = div_handle.box_model
@@ -123,7 +122,7 @@ module Rammus
       end
 
       it 'should return null for invisible elements' do
-        await page.set_content '<div style="display:none">hi</div>'
+        page.set_content('<div style="display:none">hi</div>').wait!
         element = page.query_selector 'div'
         expect(element.box_model).to eq nil
       end
@@ -131,8 +130,8 @@ module Rammus
 
     describe '#content_frame' do
       it 'returns the frame' do
-        await page.goto server.empty_page
-        attach_frame page, 'frame1', server.empty_page
+        page.goto(server.empty_page).wait!
+        attach_frame(page, 'frame1', server.empty_page).wait!
         element_handle = page.query_selector '#frame1'
         frame = element_handle.content_frame
         expect(frame).to eq page.frames[1]
@@ -141,48 +140,48 @@ module Rammus
 
     describe '#click' do
       it 'click the element' do
-        await page.goto server.domain + 'input/button.html'
+        page.goto(server.domain + 'input/button.html').wait!
         button = page.query_selector 'button'
         button.click
-        expect(await page.evaluate_function "() => result").to eq 'Clicked'
+        expect(page.evaluate_function("() => result").value!).to eq 'Clicked'
       end
 
       it 'should work for Shadow DOM v1' do
-        await page.goto server.domain + 'shadow.html'
-        button_handle = await page.evaluate_handle_function "() => button"
+        page.goto(server.domain + 'shadow.html').wait!
+        button_handle = page.evaluate_handle_function("() => button").value!
         button_handle.click
-        expect(await page.evaluate_function "() => clicked").to eq true
+        expect(page.evaluate_function("() => clicked").value!).to eq true
       end
 
       it 'should work for TextNodes' do
-        await page.goto server.domain + 'input/button.html'
-        button_text_node = await page.evaluate_handle_function "() => document.querySelector('button').firstChild"
+        page.goto(server.domain + 'input/button.html').wait!
+        button_text_node = page.evaluate_handle_function("() => document.querySelector('button').firstChild").value!
         expect { button_text_node.click }.to raise_error 'Node is not of type HTMLElement'
       end
 
       it 'should throw for detached nodes' do
-        await page.goto server.domain + 'input/button.html'
+        page.goto(server.domain + 'input/button.html').wait!
         button = page.query_selector 'button'
-        await page.evaluate_function "button => button.remove()", button
+        page.evaluate_function("button => button.remove()", button).wait!
         expect { button.click }. to raise_error 'Node is detached from document'
       end
 
       it 'should throw for hidden nodes' do
-        await page.goto server.domain + 'input/button.html'
+        page.goto(server.domain + 'input/button.html').wait!
         button = page.query_selector 'button'
-        await page.evaluate_function "button => button.style.display = 'none'", button
+        page.evaluate_function("button => button.style.display = 'none'", button).wait!
         expect { button.click }.to raise_error 'Node is either not visible or not an HTMLElement'
       end
 
       it 'should throw for recursively hidden nodes' do
-        await page.goto server.domain + 'input/button.html'
+        page.goto(server.domain + 'input/button.html').wait!
         button = page.query_selector 'button'
-        await page.evaluate_function "button => button.parentElement.style.display = 'none'", button
+        page.evaluate_function("button => button.parentElement.style.display = 'none'", button).wait!
         expect { button.click }.to raise_error 'Node is either not visible or not an HTMLElement'
       end
 
       it 'should throw for <br> elements' do
-        await page.set_content 'hello<br>goodbye'
+        page.set_content('hello<br>goodbye').wait!
         br = page.query_selector 'br'
         expect { br.click }.to raise_error 'Node is either not visible or not an HTMLElement'
       end
@@ -190,16 +189,17 @@ module Rammus
 
     describe '#hover' do
       it 'hovers the element' do
-        await page.goto server.domain + 'input/scrollable.html'
+        page.goto(server.domain + 'input/scrollable.html').wait!
         button = page.query_selector '#button-6'
         button.hover
-        expect(await page.evaluate_function "() => document.querySelector('button:hover').id").to eq 'button-6'
+        expect(page.evaluate_function("() => document.querySelector('button:hover').id").value!)
+          .to eq 'button-6'
       end
     end
 
     describe '#is_intersecting_viewport' do
       it 'should work' do
-        await page.goto server.domain + 'offscreenbuttons.html'
+        page.goto(server.domain + 'offscreenbuttons.html').wait!
         11.times do |i|
           button = page.query_selector "#btn#{i}"
           # All but last button are visible.

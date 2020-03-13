@@ -15,7 +15,6 @@ module Rammus
   # {Page#query_selector_evaluate} and {Page#evaluate_function_handle} methods.
   #
   class JSHandle
-    include Promise::Await
     # @!visibility private
     #
     attr_reader :context, :client, :remote_object
@@ -76,7 +75,7 @@ module Rammus
         return result;
       }
       JAVASCRIPT
-      object_handle = await execution_context.evaluate_handle_function function, self, property_name
+      object_handle = execution_context.evaluate_handle_function(function, self, property_name).value!
       properties = object_handle.get_properties
       result = properties[property_name]
       object_handle.dispose
@@ -88,10 +87,10 @@ module Rammus
     # @return [Map<string, JSHandle>>]
     #
     def get_properties
-      response = await client.command Protocol::Runtime.get_properties(
+      response = client.command(Protocol::Runtime.get_properties(
         object_id: remote_object["objectId"],
         own_properties: true
-      )
+      )).value!
       response["result"].each_with_object({}) do |property, memo|
         next unless property["enumerable"]
 
@@ -110,12 +109,12 @@ module Rammus
     #
     def json_value
       if remote_object["objectId"]
-        response = await client.command Protocol::Runtime.call_function_on(
+        response = client.command(Protocol::Runtime.call_function_on(
           function_declaration: 'function() { return this; }',
           object_id: remote_object["objectId"],
           return_by_value: true,
           await_promise: true
-        )
+        )).value!
         return Util.value_from_remote_object response["result"]
       end
 

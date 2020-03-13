@@ -1,8 +1,6 @@
 module Rammus
   # @!visibility private
   class WaitTask
-    include Promise::Await
-
     attr_reader :promise, :dom_world
 
     # @param [DOMWorld] dom_world
@@ -31,15 +29,20 @@ module Rammus
       @_args = args
       @_run_count = 0
       dom_world.wait_tasks << self
-      @promise, @_resolve, @_reject = Promise.create
+      @promise = Concurrent::Promises.resolvable_future
+      @_resolve = @promise.method(:fulfill)
+      @_reject = @promise.method(:reject)
       @_terminated = false
       # Since page navigation requires us to re-install the page script, we should track
       # timeout on our end.
-      if timeout && timeout != 0
-        @_timeout_timer = Concurrent::ScheduledTask.execute(timeout) do
-          terminate Errors::TimeoutError.new "waiting for #{title} failed: timeout #{timeout}s exeeded"
+      @_timeout_timer =
+        if timeout && timeout != 0
+          Concurrent::ScheduledTask.execute(timeout) do
+             terminate Errors::TimeoutError.new "waiting for #{title} failed: timeout #{timeout}s exeeded"
+           end
+        else
+          nil
         end
-      end
       Concurrent.global_io_executor.post { rerun }
     end
 
@@ -52,52 +55,54 @@ module Rammus
     end
 
     def rerun
-      @_run_count += 1
-      # @type {?Puppeteer.JSHandle}
-      success = nil
-      error = nil
-      begin
-        success = await dom_world.execution_context.evaluate_handle_function(
-          WAIT_FOR_PREDICATE_PAGE_FUNCTION,
-          @_predicate_body,
-          @_polling,
-          @_timeout * 1000, # javascript set timeout is in milliseconds
-          *@_args
-        ), 0
-      rescue => err
-        error = err
+      Concurrent::Promises.future do
+        @_run_count += 1
+        # @type {?Puppeteer.JSHandle}
+        success = nil
+        error = nil
+        begin
+          success = dom_world.execution_context.evaluate_handle_function(
+            WAIT_FOR_PREDICATE_PAGE_FUNCTION,
+            @_predicate_body,
+            @_polling,
+            @_timeout * 1000, # javascript set timeout is in milliseconds
+            *@_args
+          ).value!
+        rescue => err
+          error = err
+        end
+
+        #if (this._terminated || runCount !== this._runCount) {
+        if @_terminated
+          success.dispose.wait! if success
+
+          return
+        end
+
+        # Ignore timeouts in pageScript - we track timeouts ourselves.
+        # If the frame's execution context has already changed, `frame.evaluate` will
+        # throw an error - ignore this predicate run altogether.
+        if error.nil? && (dom_world.evaluate_function("s => !s", success).rescue { |err| true }).value!
+          success.dispose
+          return
+        end
+
+        # When the page is navigated, the promise is rejected.
+        # We will try again in the new execution context.
+        return if error&.message&.include? 'Execution context was destroyed'
+
+        # We could have tried to evaluate in a context which was already
+        # destroyed.
+        return if error&.message&.include? 'Cannot find context with specified id'
+
+        if error
+          @_reject.(error)
+        else
+          @_resolve.(success)
+        end
+
+        cleanup
       end
-
-      #if (this._terminated || runCount !== this._runCount) {
-      if @_terminated
-        await success.dispose if success
-
-        return
-      end
-
-      # Ignore timeouts in pageScript - we track timeouts ourselves.
-      # If the frame's execution context has already changed, `frame.evaluate` will
-      # throw an error - ignore this predicate run altogether.
-      if error.nil? && (await dom_world.evaluate_function("s => !s", success).catch { |err| true })
-        success.dispose
-        return
-      end
-
-      # When the page is navigated, the promise is rejected.
-      # We will try again in the new execution context.
-      return if error&.message&.include? 'Execution context was destroyed'
-
-      # We could have tried to evaluate in a context which was already
-      # destroyed.
-      return if error&.message&.include? 'Cannot find context with specified id'
-
-      if error
-        @_reject.(error)
-      else
-        @_resolve.(success)
-      end
-
-      cleanup
     end
 
     private
@@ -198,7 +203,7 @@ module Rammus
       JAVASCRIPT
 
       def cleanup
-        #clearTimeout(this._timeoutTimer);
+        @_timeout_timer.cancel
         dom_world.wait_tasks.delete self
         #this._runningTask = null;
       end

@@ -4,7 +4,6 @@ module Rammus
   # @!visibility private
   #
   class FrameManager
-    include Promise::Await
     include EventEmitter
 
     UTILITY_WORLD_NAME = '__puppeteer_utility_world__';
@@ -45,13 +44,15 @@ module Rammus
       client.on Protocol::Page.lifecycle_event, method(:on_lifecycle_event)
     end
 
+    # @return [Concurrent::Promises::Future]
+    #
     def start
-      _, frame_tree = await Promise.all(
+      _, frame_tree = Concurrent::Promises.zip(
         client.command(Protocol::Page.enable),
         client.command(Protocol::Page.get_frame_tree)
-      )
+      ).value
       handle_frame_tree frame_tree["frameTree"]
-       Promise.all(
+      Concurrent::Promises.zip(
         client.command(Protocol::Page.set_lifecycle_events_enabled enabled: true),
         client.command(Protocol::Runtime.enable).then { ensure_isolated_world UTILITY_WORLD_NAME },
         network_manager.start
@@ -69,13 +70,13 @@ module Rammus
       wait_until ||= [:load]
       timeout ||= timeout_settings.navigation_timeout
 
-      Promise.resolve(nil).then do
+      Concurrent::Promises.future do
         watcher = LifecycleWatcher.new frame_manager: self, frame: frame, wait_until: wait_until, timeout: timeout
 
-        error, ensure_new_document_navigation = await Promise.race(
+        error, ensure_new_document_navigation = Concurrent::Promises.any(
           navigate(url, referer, frame.id),
           watcher.timeout_or_termination_promise
-        )
+        ).value!
 
         if error.nil?
           navigation_promise =
@@ -85,10 +86,10 @@ module Rammus
               watcher.same_document_navigation_promise
             end
 
-          error = await Promise.race(
+          error = Concurrent::Promises.any(
             watcher.timeout_or_termination_promise,
             navigation_promise
-          )
+          ).value!
         end
 
         watcher.dispose
@@ -117,13 +118,13 @@ module Rammus
       wait_until ||= [:load]
       timeout ||= timeout_settings.navigation_timeout
       watcher = LifecycleWatcher.new frame_manager: self, frame: frame, wait_until: wait_until, timeout: timeout
-      Promise.resolve(nil).then do
+      Concurrent::Promises.future do
         begin
-          error = await Promise.race(
+          error = Concurrent::Promises.any(
             watcher.timeout_or_termination_promise,
             watcher.same_document_navigation_promise,
             watcher.new_document_navigation_promise
-          )
+          ).value!
           raise error unless error.nil?
           watcher.navigation_response
         ensure
@@ -155,10 +156,14 @@ module Rammus
 
     private
 
+      def event_queue
+        client.send :event_queue
+      end
+
       def navigate(url, referrer, frame_id)
-        Promise.resolve(nil).then do
+        Concurrent::Promises.future do
           begin
-            response = await client.command(Protocol::Page.navigate url: url, referrer: referrer, frame_id: frame_id)
+            response = client.command(Protocol::Page.navigate url: url, referrer: referrer, frame_id: frame_id).value!
             ensure_new_document_navigation = !!response["loaderId"]
             if response["errorText"]
               [StandardError.new("#{response["errorText"]} at #{url}"), ensure_new_document_navigation]
@@ -189,19 +194,19 @@ module Rammus
         return if @_isolated_worlds.member? name
 
         @_isolated_worlds << name
-        await client.command(Protocol::Page.add_script_to_evaluate_on_new_document(
+        client.command(Protocol::Page.add_script_to_evaluate_on_new_document(
           source: "//# sourceURL=#{ExecutionContext::EVALUATION_SCRIPT_URL}",
           world_name: name
-        ))
-        await Promise.all(
-         frames.map do |frame|
+        )).wait!
+        Concurrent::Promises.zip(
+         *frames.map do |frame|
            client.command Protocol::Page.create_isolated_world(
              frame_id: frame.id,
              grant_univeral_access: true,
              world_name: name
            )
          end
-        )
+        ).wait!
       end
 
       def on_frame_navigated(frame_payload)

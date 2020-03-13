@@ -1,6 +1,5 @@
 module Rammus
   RSpec.describe Frame, browser: true do
-    include Promise::Await
     before { @_context = browser.create_context }
     after { @_context.close }
     let(:context) { @_context }
@@ -8,8 +7,8 @@ module Rammus
 
     describe 'Frame#execution_context' do
       it 'should work' do
-        await page.goto server.empty_page
-        attach_frame page, 'frame1', server.empty_page
+        page.goto(server.empty_page).wait!
+        attach_frame(page, 'frame1', server.empty_page).wait!
         expect(page.frames.length).to eq 2
         frame1, frame2 = page.frames
         context1 = frame1.execution_context
@@ -20,10 +19,10 @@ module Rammus
         expect(context1.frame).to eq frame1
         expect(context2.frame).to eq frame2
 
-        await context1.evaluate_function '() => window.a = 1'
-        await context2.evaluate_function '() => window.a = 2'
-        a1 = await context1.evaluate_function '() => window.a'
-        a2 = await context2.evaluate_function '() => window.a'
+        context1.evaluate_function('() => window.a = 1').wait!
+        context2.evaluate_function('() => window.a = 2').wait!
+        a1 = context1.evaluate_function('() => window.a').value!
+        a2 = context2.evaluate_function('() => window.a').value!
         expect(a1).to eq  1
         expect(a2).to eq 2
       end
@@ -31,16 +30,16 @@ module Rammus
 
     describe 'Frame#evaluate_handle_function' do
       it 'should work' do
-        await page.goto server.empty_page
+        page.goto(server.empty_page).wait!
         main_frame = page.main_frame
-        window_handle = main_frame.evaluate_handle_function '() => window'
+        window_handle = main_frame.evaluate_handle_function('() => window').value!
         expect(window_handle).not_to be_nil
       end
     end
 
     describe 'Frame.evaluate_function' do
       it 'should throw for detached frames' do
-        frame1 = attach_frame page, 'frame1', server.empty_page
+        frame1 = attach_frame(page, 'frame1', server.empty_page).value!
         detach_frame page, 'frame1'
         expect { frame1.evaluate_function '() => 7 * 8' }
           .to raise_error(/Execution Context is not available in detached frame/)
@@ -49,7 +48,7 @@ module Rammus
 
     describe 'Frame Management' do
       it 'should handle nested frames' do
-        await page.goto server.domain + 'frames/nested-frames.html'
+        page.goto(server.domain + 'frames/nested-frames.html').wait!
         expect(dump_frames(page.main_frame)).to eq([
           'http://localhost:<PORT>/frames/nested-frames.html',
           '    http://localhost:<PORT>/frames/two-frames.html (2frames)',
@@ -60,18 +59,18 @@ module Rammus
       end
 
       it 'should send events when frames are manipulated dynamically' do
-        await page.goto server.empty_page
+        page.goto(server.empty_page).wait!
         # validate frame_attached events
         attached_frames = []
         page.on :frame_attached, -> (frame) { attached_frames << frame }
-        attach_frame page, 'frame1', './assets/frame.html'
+        attach_frame(page, 'frame1', './assets/frame.html').wait!
         expect(attached_frames.length).to eq 1
         expect(attached_frames[0].url).to include '/assets/frame.html'
 
         # validate frame_navigated events
         navigated_frames = []
         page.on :frame_navigated, -> (frame) { navigated_frames << frame }
-        navigate_frame page, 'frame1', './empty.html'
+        navigate_frame(page, 'frame1', './empty.html')
         expect(navigated_frames.length).to eq 1
         expect(navigated_frames[0].url).to eq server.empty_page
 
@@ -84,18 +83,18 @@ module Rammus
       end
 
       it 'should send "frame_navigated" when navigating on anchor URLs' do
-        await page.goto server.empty_page
-        await Promise.all(
+        page.goto(server.empty_page).wait!
+        Concurrent::Promises.zip(
           wait_event(page, :frame_navigated),
           page.goto(server.empty_page + '#foo')
-        )
+        ).wait!
         expect(page.url).to eq server.empty_page + '#foo'
       end
 
       it 'should persist main_frame on cross-process navigation' do
-        await page.goto server.empty_page
+        page.goto(server.empty_page).wait!
         main_frame = page.main_frame
-        await page.goto server.cross_process_domain + 'empty.html'
+        page.goto(server.cross_process_domain + 'empty.html').wait!
         expect(page.main_frame == main_frame).to eq true
       end
 
@@ -103,7 +102,7 @@ module Rammus
         has_events = false
         page.on :frame_attached, -> (frame) { has_events = true }
         page.on :frame_detached, -> (frame) { has_events = true }
-        await page.goto server.empty_page
+        page.goto(server.empty_page).wait!
         expect(has_events).to eq false
       end
 
@@ -114,7 +113,7 @@ module Rammus
         page.on :frame_attached, -> (frame) { attached_frames << frame }
         page.on :frame_detached, -> (frame) { detached_frames << frame }
         page.on :frame_navigated, -> (frame) { navigated_frames << frame }
-        await page.goto server.domain + 'frames/nested-frames.html'
+        page.goto(server.domain + 'frames/nested-frames.html').wait!
         expect(attached_frames.length).to eq 4
         expect(detached_frames.length).to eq 0
         expect(navigated_frames.length).to eq 5
@@ -122,7 +121,7 @@ module Rammus
         attached_frames = []
         detached_frames = []
         navigated_frames = []
-        await page.goto server.empty_page
+        page.goto(server.empty_page).wait!
         expect(attached_frames.length).to eq 0
         expect(detached_frames.length).to eq 4
         expect(navigated_frames.length).to eq 1
@@ -135,7 +134,7 @@ module Rammus
         page.on :frame_attached, -> (frame) { attached_frames << frame }
         page.on :frame_detached, -> (frame) { detached_frames << frame }
         page.on :frame_navigated, -> (frame) { navigated_frames << frame }
-        await page.goto server.domain + 'frames/frameset.html'
+        page.goto(server.domain + 'frames/frameset.html').wait!
         expect(attached_frames.length).to eq 4
         expect(detached_frames.length).to eq 0
         expect(navigated_frames.length).to eq 5
@@ -143,14 +142,14 @@ module Rammus
         attached_frames = []
         detached_frames = []
         navigated_frames = []
-        await page.goto server.empty_page
+        page.goto(server.empty_page).wait!
         expect(attached_frames.length).to eq 0
         expect(detached_frames.length).to eq 4
         expect(navigated_frames.length).to eq 1
       end
 
       it 'should report frame from-inside shadow DOM' do
-        await page.goto server.domain + 'shadow.html'
+        page.goto(server.domain + 'shadow.html').wait!
         function = <<~JAVASCRIPT
         async url => {
           const frame = document.createElement('iframe');
@@ -159,13 +158,13 @@ module Rammus
           await new Promise(x => frame.onload = x);
         }
         JAVASCRIPT
-        await page.evaluate_function function, server.empty_page
+        page.evaluate_function(function, server.empty_page).wait!
         expect(page.frames.length).to eq 2
         expect(page.frames[1].url).to eq server.empty_page
       end
 
       it 'should report frame.name' do
-        attach_frame page, 'theFrameId', server.empty_page
+        attach_frame(page, 'theFrameId', server.empty_page).wait!
         function = <<~JAVASCRIPT
         url => {
           const frame = document.createElement('iframe');
@@ -175,31 +174,31 @@ module Rammus
           return new Promise(x => frame.onload = x);
         }
         JAVASCRIPT
-        await page.evaluate_function function, server.empty_page
+        page.evaluate_function(function, server.empty_page).wait!
         expect(page.frames[0].name).to eq ''
         expect(page.frames[1].name).to eq 'theFrameId'
         expect(page.frames[2].name).to eq 'theFrameName'
       end
 
       it 'should report frame.parent' do
-        attach_frame page, 'frame1', server.empty_page
-        attach_frame page, 'frame2', server.empty_page
+        attach_frame(page, 'frame1', server.empty_page).wait!
+        attach_frame(page, 'frame2', server.empty_page).wait!
         expect(page.frames[0].parent_frame).to eq nil
         expect(page.frames[1].parent_frame).to eq page.main_frame
         expect(page.frames[2].parent_frame).to eq page.main_frame
       end
 
       it 'should report different frame instance when frame re-attaches' do
-        frame1 = attach_frame page, 'frame1', server.empty_page
-        await page.evaluate_function "() => {
+        frame1 = attach_frame(page, 'frame1', server.empty_page).value!
+        page.evaluate_function("() => {
           window.frame = document.querySelector('#frame1');
           window.frame.remove();
-        }"
+        }").value!
         expect(frame1.is_detached?).to eq true
-        frame2, _ = await Promise.all(
+        frame2, _ = Concurrent::Promises.zip(
           wait_event(page, :frame_attached),
           page.evaluate_function("() => document.body.appendChild(window.frame)")
-        )
+        ).value!
         expect(frame2.is_detached?).to eq false
         expect(frame1).not_to eq frame2
       end
@@ -220,7 +219,7 @@ module Rammus
           return new Promise(x => frame.onload = x);
         }
         JAVASCRIPT
-        await page.evaluate_function function, frame_id, url
+        page.evaluate_function(function, frame_id, url).value!
       end
     end
   end

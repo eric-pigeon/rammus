@@ -10,8 +10,6 @@ module Rammus
   #
   class Frame
     extend Forwardable
-    include Promise::Await
-
     # @!visibility private
     #
     attr_reader :id, :frame_manager, :loader_id, :main_world, :secondary_world

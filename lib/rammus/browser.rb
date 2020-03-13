@@ -5,7 +5,6 @@ module Rammus
   # through {Rammus.launch} or {Rammus.connect}.
   #
   class Browser
-    include Promise::Await
     include EventEmitter
     extend Forwardable
     attr_reader :client, :default_context
@@ -16,7 +15,7 @@ module Rammus
 
     # @!visibility private
     #
-    def initialize(client:, close_callback: nil, ignore_https_errors: false, default_viewport: nil)
+    def initialize(client:, context_ids: [], close_callback: nil, ignore_https_errors: false, default_viewport: nil)
       super()
       @client = client
       @_ignore_https_errors = ignore_https_errors
@@ -24,11 +23,11 @@ module Rammus
       @contexts = {}
       @default_context = BrowserContext.new(client: client, browser: self)
       @_close_callback = close_callback
-      @_targets = {}
+      @_targets = Concurrent::Hash.new
       client.on Protocol::Target.target_created, method(:target_created)
       client.on Protocol::Target.target_destroyed, method(:target_destroyed)
       client.on Protocol::Target.target_info_changed, method(:target_info_changed)
-      await client.command Protocol::Target.set_discover_targets discover: true
+      client.command(Protocol::Target.set_discover_targets discover: true).wait!
     end
 
     # Creates a new incognito browser context. This won't share cookies/cache
@@ -37,7 +36,7 @@ module Rammus
     # @return [Rammus::BrowserContext]
     #
     def create_context
-      response = await client.command(Protocol::Target.create_browser_context)
+      response = client.command(Protocol::Target.create_browser_context).value
       context_id = response['browserContextId']
 
       BrowserContext.new(client: client, id: context_id, browser: self).tap do |context|
@@ -99,18 +98,20 @@ module Rammus
       predicate ||= block
 
       existing_target = targets.detect(&predicate)
-      return Promise.resolve(existing_target) unless existing_target.nil?
+      return Concurrent::Promises.fulfilled_future(existing_target) unless existing_target.nil?
 
-      target_promise, target_resolve, _reject = Promise.create
+      target_promise = Concurrent::Promises.resolvable_future
 
-      check = -> (target) { target_resolve.(target) if predicate.(target) }
+      check = ->(target) do
+        target_promise.fulfill(target) if predicate.(target)
+      end
 
       on :target_created, check
       on :target_changed, check
 
-      Promise.resolve(nil).then do
+      Concurrent::Promises.future do
         begin
-          await target_promise, timeout, error: "waiting for target failed: #{timeout}s exceeded"
+          Util.wait_with_timeout(target_promise, "target", timeout).value!
         ensure
           remove_listener :target_created, check
           remove_listener :target_changed, check
@@ -123,15 +124,17 @@ module Rammus
     # @return [Hash]
     #
     def version
-      await client.command Protocol::Browser.get_version
+      client.command(Protocol::Browser.get_version).value
     end
 
     # Closes the browser and all of its pages (if any were opened). The Browser
     # object itself is considered to be disposed and cannot be used anymore.
     #
     def close
-      @_close_callback.call
-      disconnect
+      Concurrent::Promises.future do
+        @_close_callback.call
+        disconnect
+      end
     end
 
     # Disconnects Rammus from the browser, but leaves the Chromium process
@@ -148,7 +151,7 @@ module Rammus
     #   fails
     #
     def delete_context(context)
-      _response = await client.command(Protocol::Target.dispose_browser_context(browser_context_id: context.id))
+      _response = client.command(Protocol::Target.dispose_browser_context(browser_context_id: context.id)).value!
       @contexts.delete(context.id)
       true
     end
@@ -160,13 +163,24 @@ module Rammus
     # @!visibility private
     #
     def create_page_in_context(context_id)
-      response = await client.command(Protocol::Target.create_target(url: 'about:blank', browser_context_id: context_id))
+      response = client.command(Protocol::Target.create_target(url: 'about:blank', browser_context_id: context_id)).value
       target_id = response["targetId"]
-      target = await wait_for_target { |t| t.target_id == target_id }
+      target = wait_for_target { |t| t.target_id == target_id }.value!
+      target.initialized_promise.wait!
       target.page
     end
 
+    # return [String]
+    #
+    def ws_endpoint
+      client.url
+    end
+
     private
+
+      def event_queue
+        client.send :event_queue
+      end
 
       def target_created(event)
         target_info = event["targetInfo"]
@@ -192,7 +206,7 @@ module Rammus
 
       def target_destroyed(event)
         target = @_targets.delete(event["targetId"])
-        target.initialized_callback.(false)
+        target.initialized_callback.(false, false)
         target._closed_callback.(nil)
         target.initialized_promise.then do |success|
           next unless success

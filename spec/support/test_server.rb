@@ -2,7 +2,6 @@ require 'rack'
 require "zlib"
 
 class TestServer
-  include Rammus::Promise::Await
   HANDLER = Rack::Handler.get('puma')
   HANDLER_NAME = "puma"
   SERVER_SETTINGS = {:Port=>4567, :Host=>"localhost"}
@@ -88,7 +87,8 @@ class TestServer
 
     return promise unless promise.nil?
 
-    subscriber = RequestSubscriber.new(*Rammus::Promise.create)
+    future = Concurrent::Promises.resolvable_future
+    subscriber = RequestSubscriber.new(future, future.method(:fulfill), future.method(:reject))
 
     @_request_subscribers[path] = subscriber
 
@@ -100,13 +100,13 @@ class TestServer
   end
 
   def hang_route(path)
-    promise, resolve, _reject = Rammus::Promise.create
+    future = Concurrent::Promises.resolvable_future
 
     @_routes[path] = ->(req, res) do
-      await promise.then { |response| res.finish }, 0
+      future.then { |response| res.finish }.value!
     end
 
-    resolve
+    future.method(:fulfill)
   end
 
   def set_redirect(from, to)

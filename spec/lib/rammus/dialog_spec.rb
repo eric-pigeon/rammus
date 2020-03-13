@@ -1,6 +1,5 @@
 module Rammus
   RSpec.describe 'Dialog', browser: true do
-    include Promise::Await
     before { @_context = browser.create_context }
     after { @_context.close }
     let(:context) { @_context }
@@ -13,7 +12,7 @@ module Rammus
         expect(dialog.message).to eq 'yo'
         dialog.accept
       end
-      await page.evaluate "alert('yo')"
+      page.evaluate("alert('yo')").wait!
     end
 
     it 'should allow accepting prompts' do
@@ -23,7 +22,7 @@ module Rammus
         expect(dialog.message) .to eq 'question?'
         dialog.accept 'answer!'
       end
-      result = await page.evaluate_function "() => prompt('question?', 'yes.')"
+      result = page.evaluate_function("() => prompt('question?', 'yes.')").value!
       expect(result).to eq 'answer!'
     end
 
@@ -31,7 +30,7 @@ module Rammus
       page.on :dialog do |dialog|
         dialog.dismiss
       end
-      result = await page.evaluate_function "() => prompt('question?')"
+      result = page.evaluate_function("() => prompt('question?')").value!
       expect(result).to eq nil
     end
   end

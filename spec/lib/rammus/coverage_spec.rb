@@ -1,6 +1,5 @@
 module Rammus
   RSpec.describe 'Coverage', browser: true do
-    include Promise::Await
     before { @_context = browser.create_context }
     after { @_context.close }
     let(:context) { @_context }
@@ -9,7 +8,7 @@ module Rammus
     describe 'JSCoverage' do
       it 'should work' do
         page.coverage.start_js_coverage
-        await page.goto server.domain + 'jscoverage/simple.html', wait_until: :networkidle0
+        page.goto(server.domain + 'jscoverage/simple.html', wait_until: :networkidle0).wait!
         coverage = page.coverage.stop_js_coverage
         expect(coverage.length).to eq 1
         expect(coverage[0][:url]).to include '/jscoverage/simple.html'
@@ -21,7 +20,7 @@ module Rammus
 
       it 'should report source_urls' do
         page.coverage.start_js_coverage
-        await page.goto server.domain + 'jscoverage/sourceurl.html'
+        page.goto(server.domain + 'jscoverage/sourceurl.html').wait!
         coverage = page.coverage.stop_js_coverage
         expect(coverage.length).to eq 1
         expect(coverage[0][:url]).to eq 'nicename.js'
@@ -29,14 +28,14 @@ module Rammus
 
       it 'should ignore eval() scripts by default' do
         page.coverage.start_js_coverage
-        await page.goto server.domain + 'jscoverage/eval.html'
+        page.goto(server.domain + 'jscoverage/eval.html').wait!
         coverage = page.coverage.stop_js_coverage
         expect(coverage.length).to eq 1
       end
 
       it 'shouldn\'t ignore eval() scripts if reportAnonymousScripts is true' do
         page.coverage.start_js_coverage report_anonymous_scripts: true
-        await page.goto server.domain + 'jscoverage/eval.html'
+        page.goto(server.domain + 'jscoverage/eval.html').wait!
         coverage = page.coverage.stop_js_coverage
         expect(coverage.detect { |entry| entry[:url].start_with? 'debugger://' }).not_to be_nil
         expect(coverage.length).to eq 2
@@ -44,16 +43,16 @@ module Rammus
 
       it 'should ignore pptr internal scripts if reportAnonymousScripts is true' do
         page.coverage.start_js_coverage report_anonymous_scripts: true
-        await page.goto server.empty_page
-        await page.evaluate 'console.log("foo")'
-        await page.evaluate_function "() => console.log('bar')"
+        page.goto(server.empty_page).wait!
+        page.evaluate('console.log("foo")').wait!
+        page.evaluate_function("() => console.log('bar')").wait!
         coverage = page.coverage.stop_js_coverage
         expect(coverage.length).to eq 0
       end
 
       it 'should report multiple scripts' do
         page.coverage.start_js_coverage
-        await page.goto server.domain + 'jscoverage/multiple.html'
+        page.goto(server.domain + 'jscoverage/multiple.html').wait!
         coverage = page.coverage.stop_js_coverage
         expect(coverage.length).to eq 2
         coverage.sort! { |a, b| a[:url] <=> b[:url] }
@@ -63,7 +62,7 @@ module Rammus
 
       it 'should report right ranges' do
         page.coverage.start_js_coverage
-        await page.goto server.domain + 'jscoverage/ranges.html'
+        page.goto(server.domain + 'jscoverage/ranges.html').wait!
         coverage = page.coverage.stop_js_coverage
         expect(coverage.length).to eq 1
         entry = coverage[0]
@@ -74,7 +73,7 @@ module Rammus
 
       it 'should report scripts that have no coverage' do
         page.coverage.start_js_coverage
-        await page.goto server.domain + 'jscoverage/unused.html'
+        page.goto(server.domain + 'jscoverage/unused.html').wait!
         coverage = page.coverage.stop_js_coverage
         expect(coverage.length).to eq 1
         entry = coverage[0]
@@ -84,7 +83,7 @@ module Rammus
 
       it 'should work with conditionals' do
         page.coverage.start_js_coverage
-        await page.goto server.domain + 'jscoverage/involved.html'
+        page.goto(server.domain + 'jscoverage/involved.html').wait!
         coverage = page.coverage.stop_js_coverage
         coverage.each { |part| part[:url].gsub!(/:\d{4}\//, ':<PORT>/') }
         expected = [
@@ -121,16 +120,16 @@ module Rammus
       describe '#reset_on_navigation' do
         it 'should report scripts across navigations when disabled' do
           page.coverage.start_js_coverage reset_on_navigation: false
-          await page.goto server.domain + 'jscoverage/multiple.html'
-          await page.goto server.empty_page
+          page.goto(server.domain + 'jscoverage/multiple.html').wait!
+          page.goto(server.empty_page).wait!
           coverage = page.coverage.stop_js_coverage
           expect(coverage.length).to eq 2
         end
 
         it 'should NOT report scripts across navigations when enabled' do
           page.coverage.start_js_coverage
-          await page.goto server.domain + 'jscoverage/multiple.html'
-          await page.goto server.empty_page
+          page.goto(server.domain + 'jscoverage/multiple.html').wait!
+          page.goto(server.empty_page).wait!
           coverage = page.coverage.stop_js_coverage
           expect(coverage.length).to eq 0
         end
@@ -149,7 +148,7 @@ module Rammus
     describe 'CSSCoverage' do
       it 'should work' do
         page.coverage.start_css_coverage
-        await page.goto server.domain + 'csscoverage/simple.html'
+        page.goto(server.domain + 'csscoverage/simple.html').wait!
         coverage = page.coverage.stop_css_coverage
         expect(coverage.length).to eq 1
         expect(coverage[0][:url]).to include '/csscoverage/simple.html'
@@ -160,7 +159,7 @@ module Rammus
 
       it 'should report sourceURLs' do
         page.coverage.start_css_coverage
-        await page.goto server.domain + 'csscoverage/sourceurl.html'
+        page.goto(server.domain + 'csscoverage/sourceurl.html').wait!
         coverage = page.coverage.stop_css_coverage
         expect(coverage.length).to eq 1
         expect(coverage[0][:url]).to eq 'nicename.css'
@@ -168,7 +167,7 @@ module Rammus
 
       it 'should report multiple stylesheets' do
         page.coverage.start_css_coverage
-        await page.goto server.domain + 'csscoverage/multiple.html'
+        page.goto(server.domain + 'csscoverage/multiple.html').wait!
         coverage = page.coverage.stop_css_coverage
         expect(coverage.length).to eq 2
         coverage.sort! { |a, b| a[:url] <=> b[:url] }
@@ -178,7 +177,7 @@ module Rammus
 
       it 'should report stylesheets that have no coverage' do
         page.coverage.start_css_coverage
-        await page.goto server.domain + 'csscoverage/unused.html'
+        page.goto(server.domain + 'csscoverage/unused.html').wait!
         coverage = page.coverage.stop_css_coverage
         expect(coverage.length).to eq 1
         expect(coverage[0][:url]).to eq 'unused.css'
@@ -187,7 +186,7 @@ module Rammus
 
       it 'should work with media queries' do
         page.coverage.start_css_coverage
-        await page.goto server.domain + 'csscoverage/media.html'
+        page.goto(server.domain + 'csscoverage/media.html').wait!
         coverage = page.coverage.stop_css_coverage
         expect(coverage.length).to eq 1
         expect(coverage[0][:url]).to include '/csscoverage/media.html'
@@ -196,7 +195,7 @@ module Rammus
 
       it 'should work with complicated usecases' do
         page.coverage.start_css_coverage
-        await page.goto server.domain + 'csscoverage/involved.html'
+        page.goto(server.domain + 'csscoverage/involved.html').wait!
         coverage = page.coverage.stop_css_coverage
         coverage.each { |part| part[:url].gsub!(/:\d{4}\//, ':<PORT>/') }
         expected = [
@@ -240,7 +239,7 @@ module Rammus
         page.coverage.start_css_coverage
         page.add_style_tag content: 'body { margin: 10px;}'
         # trigger style recalc
-        margin = await page.evaluate_function("() => window.getComputedStyle(document.body).margin")
+        margin = page.evaluate_function("() => window.getComputedStyle(document.body).margin").value!
         expect(margin).to eq '10px'
         coverage = page.coverage.stop_css_coverage
         expect(coverage.length).to eq 0
@@ -249,16 +248,16 @@ module Rammus
       describe 'reset_on_navigation' do
         it 'should report stylesheets across navigations' do
           page.coverage.start_css_coverage reset_on_navigation: false
-          await page.goto server.domain + 'csscoverage/multiple.html'
-          await page.goto server.empty_page
+          page.goto(server.domain + 'csscoverage/multiple.html').wait!
+          page.goto(server.empty_page).wait!
           coverage = page.coverage.stop_css_coverage
           expect(coverage.length).to eq 2
         end
 
         it 'should NOT report scripts across navigations' do
           page.coverage.start_css_coverage
-          await page.goto server.domain + 'csscoverage/multiple.html'
-          await page.goto server.empty_page
+          page.goto(server.domain + 'csscoverage/multiple.html').wait!
+          page.goto(server.empty_page).wait!
           coverage = page.coverage.stop_css_coverage
           expect(coverage.length).to eq 0
         end

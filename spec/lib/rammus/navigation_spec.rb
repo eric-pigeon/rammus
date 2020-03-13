@@ -1,6 +1,5 @@
 module Rammus
   RSpec.describe 'Navigation', browser: true do
-    include Promise::Await
     before { @_context = browser.create_context }
     after { @_context.close }
     let(:context) { @_context }
@@ -8,33 +7,33 @@ module Rammus
 
     describe 'Page.goto' do
       it 'should work' do
-        await page.goto server.empty_page
+        page.goto(server.empty_page).wait!
         expect(page.url).to eq server.empty_page
       end
 
       it 'should work with anchor navigation' do
-        await page.goto server.empty_page
+        page.goto(server.empty_page).wait!
         expect(page.url).to eq server.empty_page
-        await page.goto server.empty_page + '#foo'
+        page.goto(server.empty_page + '#foo').wait!
         expect(page.url).to eq server.empty_page + '#foo'
-        await page.goto server.empty_page + '#bar'
+        page.goto(server.empty_page + '#bar').wait!
         expect(page.url).to eq server.empty_page + '#bar'
       end
 
       it 'should work with redirects' do
         server.set_redirect '/redirect/1.html', '/redirect/2.html'
         server.set_redirect '/redirect/2.html', '/empty.html'
-        await page.goto server.domain + 'redirect/1.html'
+        page.goto(server.domain + 'redirect/1.html').wait!
         expect(page.url).to eq server.empty_page
       end
 
       it 'should navigate to about:blank' do
-        response = await page.goto 'about:blank'
+        response = page.goto('about:blank').value!
         expect(response).to eq nil
       end
 
       it 'should return response when page changes its URL after load' do
-        response = await page.goto server.domain + 'historyapi.html'
+        response = page.goto(server.domain + 'historyapi.html').value!
         expect(response.status).to eq 200
       end
 
@@ -43,7 +42,7 @@ module Rammus
           res.status = 204
           res.finish
         end
-        await page.goto server.domain + 'frames/one-frame.html'
+        page.goto(server.domain + 'frames/one-frame.html').wait!
       end
 
       it 'should fail when server returns 204' do
@@ -51,35 +50,36 @@ module Rammus
           res.status = 204
           res.finish
         end
-        expect { await page.goto server.empty_page }.to raise_error(/net::ERR_ABORTED/)
+        expect { page.goto(server.empty_page).value! }
+          .to raise_error(/net::ERR_ABORTED/)
       end
 
       it 'should navigate to empty page with domcontentloaded' do
-        response = await page.goto server.empty_page, wait_until: :domcontentloaded
+        response = page.goto(server.empty_page, wait_until: :domcontentloaded).value!
         expect(response.status).to eq 200
       end
 
       it 'should work when page calls history API in beforeunload' do
-        await page.goto server.empty_page
-        await page.evaluate_function "() => {
+        page.goto(server.empty_page).wait!
+        page.evaluate_function("() => {
           window.addEventListener('beforeunload', () => history.replaceState(null, 'initial', window.location.href), false);
-        }"
-        response = await page.goto server.domain + 'grid.html'
+        }").wait!
+        response = page.goto(server.domain + 'grid.html').value!
         expect(response.status).to eq 200
       end
 
       it 'should navigate to empty page with networkidle0' do
-        response = await page.goto server.empty_page, wait_until: :networkidle0
+        response = page.goto(server.empty_page, wait_until: :networkidle0).value!
         expect(response.status).to eq 200
       end
 
       it 'should navigate to empty page with networkidle2' do
-        response = await page.goto server.empty_page, wait_until: :networkidle2
+        response = page.goto(server.empty_page, wait_until: :networkidle2).value!
         expect(response.status).to eq 200
       end
 
       it 'should fail when navigating to bad url' do
-        expect { await page.goto('asdfasdf') }.to raise_error(/Cannot navigate to invalid URL/)
+        expect { page.goto('asdfasdf').wait! }.to raise_error(/Cannot navigate to invalid URL/)
       end
 
       xit 'should fail when navigating to bad SSL' do
@@ -110,7 +110,7 @@ module Rammus
       end
 
       it 'should fail when main resources failed to load' do
-        expect { await page.goto 'http://localhost:44123/non-existing-url' }
+        expect { page.goto('http://localhost:44123/non-existing-url').wait! }
           .to raise_error(/net::ERR_CONNECTION_REFUSED/)
       end
 
@@ -118,10 +118,13 @@ module Rammus
         # Hang for request to the empty.html
         finish_response = nil
         server.set_route '/empty.html' do |_req, res|
-          await Promise.new { |resolve, _reject| finish_response = resolve }
+          Concurrent::Promises
+            .resolvable_future
+            .tap { |future| finish_response = future.method(:fulfill) }
             .then { res.finish }
+            .value!
         end
-        expect { await page.goto server.domain + 'empty.html', timeout: 0.1 }
+        expect { page.goto(server.domain + 'empty.html', timeout: 0.1).wait! }
           .to raise_error(Errors::TimeoutError, /Navigation Timeout Exceeded: 0.1s/)
         finish_response.(nil)
       end
@@ -130,11 +133,14 @@ module Rammus
         # Hang for request to the empty.html
         finish_response = nil
         server.set_route '/empty.html' do |_req, res|
-          await Promise.new { |resolve, _reject| finish_response = resolve }
+          Concurrent::Promises
+            .resolvable_future
+            .tap { |future| finish_response = future.method(:fulfill) }
             .then { res.finish }
+            .value!
         end
         page.set_default_navigation_timeout 0.1
-        expect { await page.goto server.domain + 'empty.html' }
+        expect { page.goto(server.domain + 'empty.html').value! }
           .to raise_error(Errors::TimeoutError, /Navigation Timeout Exceeded: 0.1s/)
         finish_response.(nil)
       end
@@ -143,11 +149,14 @@ module Rammus
         # Hang for request to the empty.html
         finish_response = nil
         server.set_route '/empty.html' do |_req, res|
-          await Promise.new { |resolve, _reject| finish_response = resolve }
+          Concurrent::Promises
+            .resolvable_future
+            .tap { |future| finish_response = future.method(:fulfill) }
             .then { res.finish }
+            .value
         end
         page.set_default_timeout 0.1
-        expect { await page.goto server.domain + 'empty.html' }
+        expect { page.goto(server.domain + 'empty.html').wait! }
           .to raise_error(Errors::TimeoutError, /Navigation Timeout Exceeded: 0.1s/)
         finish_response.(nil)
       end
@@ -156,12 +165,15 @@ module Rammus
         # Hang for request to the empty.html
         finish_response = nil
         server.set_route '/empty.html' do |_req, res|
-          await Promise.new { |resolve, _reject| finish_response = resolve }
+          Concurrent::Promises
+            .resolvable_future
+            .tap { |future| finish_response = future.method(:fulfill) }
             .then { res.finish }
+            .value!
         end
         page.set_default_timeout 0
         page.set_default_navigation_timeout 0.1
-        expect { await page.goto server.domain + 'empty.html' }
+        expect { page.goto(server.domain + 'empty.html').value! }
           .to raise_error(Errors::TimeoutError, /Navigation Timeout Exceeded: 0.1s/)
         finish_response.(nil)
       end
@@ -169,22 +181,22 @@ module Rammus
       it 'should disable timeout when its set to 0' do
         loaded = false
         page.once :load, -> (_event) { loaded = true }
-        await page.goto server.domain + 'grid.html', timeout: 0, wait_until: [:load]
+        page.goto(server.domain + 'grid.html', timeout: 0, wait_until: [:load]).wait!
         expect(loaded).to eq true
       end
 
       it 'should work when navigating to valid url' do
-        response = await page.goto server.empty_page
+        response = page.goto(server.empty_page).value!
         expect(response.ok?).to eq true
       end
 
       it 'should work when navigating to data url' do
-        response = await page.goto 'data:text/html,hello'
+        response = page.goto('data:text/html,hello').value!
         expect(response.ok?).to eq true
       end
 
       it 'should work when navigating to 404' do
-        response = await page.goto server.domain + 'not-found'
+        response = page.goto(server.domain + 'not-found').value!
         expect(response.ok?).to eq false
         expect(response.status).to eq 404
       end
@@ -193,7 +205,7 @@ module Rammus
         server.set_redirect '/redirect/1.html', '/redirect/2.html'
         server.set_redirect '/redirect/2.html', '/redirect/3.html'
         server.set_redirect '/redirect/3.html', server.empty_page
-        response = await page.goto server.domain + 'redirect/1.html'
+        response = page.goto(server.domain + 'redirect/1.html').value!
         expect(response.ok?).to eq true
         expect(response.url).to eq server.empty_page
       end
@@ -264,7 +276,7 @@ module Rammus
           requests << request
         end
         data_url = 'data:text/html,<div>yo</div>'
-        response = await page.goto data_url
+        response = page.goto(data_url).value!
         expect(response.status).to eq 200
         expect(requests.length).to eq 1
         expect(requests[0].url).to eq data_url
@@ -276,7 +288,7 @@ module Rammus
           next if is_favicon request
           requests << request
         end
-        response = await page.goto server.empty_page + '#hash'
+        response = page.goto(server.empty_page + '#hash').value!
         expect(response.status).to eq 200
         expect(response.url).to eq server.empty_page
         expect(requests.length).to eq 1
@@ -284,7 +296,7 @@ module Rammus
       end
 
       it 'should work with self requesting page' do
-        response = await page.goto server.domain + 'self-request.html'
+        response = page.goto(server.domain + 'self-request.html').value!
         expect(response.status).to eq 200
         expect(response.url).to include 'self-request.html'
       end
@@ -302,11 +314,11 @@ module Rammus
       end
 
       it 'should send referer' do
-        request1, request2 = await Promise.all(
+        request1, request2 = Concurrent::Promises.zip(
           server.wait_for_request('/grid.html'),
           server.wait_for_request('/digits/1.png'),
           page.goto(server.domain + 'grid.html', referer: 'http://google.com/')
-        )
+        ).value!
         expect(request1.headers['referer']).to eq 'http://google.com/'
         # Make sure subresources do not inherit referer.
         expect(request2.headers['referer']).to eq server.domain + 'grid.html'
@@ -315,86 +327,87 @@ module Rammus
 
     describe 'Page#wait_for_navigation' do
       it 'should work' do
-        await page.goto server.empty_page
-        response, _ = await Promise.all(
+        page.goto(server.empty_page).wait!
+        response, _ = Concurrent::Promises.zip(
           page.wait_for_navigation,
           page.evaluate_function('url => window.location.href = url', server.domain + 'grid.html')
-        )
+        ).value!
         expect(response.ok?).to eq true
         expect(response.url).to include 'grid.html'
       end
 
       it 'should work with both domcontentloaded and load' do
-        response = nil
-        server.set_route('/one-style.css') { |req, res| response = res }
+        #response = nil
+        #server.set_route('/one-style.css') { |req, res| response = res }
+        response = server.hang_route('/one-style.css')
 
         dom_content_loaded_promise = page.wait_for_navigation wait_until: :domcontentloaded
 
         both_fired = false
-        both_fired_promise = page.wait_for_navigation(wait_until: [:load, :domcontentloaded]).then do
-          both_fired = true
-        end
+        both_fired_promise = page
+          .wait_for_navigation(wait_until: [:load, :domcontentloaded])
+          .then { both_fired = true }
 
         request_promise = server.wait_for_request '/one-style.css'
 
         navigation_promise = page.goto(server.domain + 'one-style.html')
 
-        await request_promise
-        await dom_content_loaded_promise
+        request_promise.wait!
+        dom_content_loaded_promise.wait!
 
         expect(both_fired).to eq(false)
 
-        response.finish
-        await both_fired_promise
-        await navigation_promise
+        response.('')
+        both_fired_promise.wait!
+        navigation_promise.wait!
       end
 
       it 'should work with clicking on anchor links' do
-        await page.goto server.empty_page
-        await page.set_content "<a href='#foobar'>foobar</a>"
-        response, _ = await Promise.all(
+        page.goto(server.empty_page).wait!
+        page.set_content("<a href='#foobar'>foobar</a>").wait!
+        response, _ = Concurrent::Promises.zip(
           page.wait_for_navigation,
-          page.click('a')
-        )
+          Concurrent::Promises.future { page.click('a') }
+        ).value!
         expect(response).to eq nil
         expect(page.url).to eq server.empty_page + '#foobar'
       end
 
       it 'should work with history.pushState()' do
-        await page.goto server.empty_page
-        await page.set_content("
+        page.goto(server.empty_page).wait!
+        page.set_content("
           <a onclick='javascript:pushState()'>SPA</a>
           <script>
             function pushState() { history.pushState({}, '', 'wow.html') }
           </script>
-        ")
-        response, _ = await Promise.all(
+        ").wait!
+        response, _ = Concurrent::Promises.zip(
           page.wait_for_navigation,
-          page.click('a')
-        )
+          Concurrent::Promises.future { page.click('a') }
+        ).value!
         expect(response).to eq nil
         expect(page.url).to eq server.domain + 'wow.html'
       end
 
       it 'should work with history.replaceState()' do
-        await page.goto server.empty_page
-        await page.set_content("
+        page.goto(server.empty_page).wait!
+        page.set_content("
           <a onclick='javascript:replaceState()'>SPA</a>
           <script>
             function replaceState() { history.replaceState({}, '', '/replaced.html') }
           </script>
-        ")
-        response, _ = await Promise.all(
+        ").wait!
+        response, _ = Concurrent::Promises.zip(
           page.wait_for_navigation,
-          page.click('a')
-        )
+          Concurrent::Promises.future { page.click('a') }
+        ).value!
         expect(response).to eq nil
         expect(page.url).to eq server.domain + 'replaced.html'
       end
 
       it 'should work with DOM history.back()/history.forward()' do
-        await page.goto server.empty_page
-        await page.set_content("
+        page.goto(server.empty_page).wait!
+        page.set_content("
           <a id=back onclick='javascript:goBack()'>back</a>
           <a id=forward onclick='javascript:goForward()'>forward</a>
           <script>
@@ -403,18 +416,18 @@ module Rammus
             history.pushState({}, '', '/first.html');
             history.pushState({}, '', '/second.html');
           </script>
-        ")
+                         ").wait!
         expect(page.url).to eq server.domain + 'second.html'
-        back_response, _  = await Promise.all(
+        back_response, _  = Concurrent::Promises.zip(
           page.wait_for_navigation,
-          page.click('a#back')
-        )
+          Concurrent::Promises.future { page.click('a#back') }
+        ).value!
         expect(back_response).to eq nil
         expect(page.url).to eq server.domain + 'first.html'
-        forward_response, _ = await Promise.all(
+        forward_response, _ = Concurrent::Promises.zip(
           page.wait_for_navigation,
-          page.click('a#forward'),
-        )
+          Concurrent::Promises.future { page.click('a#forward') }
+        ).value!
         expect(forward_response).to eq nil
         expect(page.url).to eq server.domain + 'second.html'
       end
@@ -422,21 +435,21 @@ module Rammus
       it 'should work when subframe issues window.stop()' do
         finish_response = server.hang_route '/frames/style.css'
 
-        await Promise.all(
+        Concurrent::Promises.zip(
           wait_event(page, :frame_attached).then do |frame|
-            await(wait_event(page, :frame_navigated) { |f| f == frame })
+            wait_event(page, :frame_navigated) { |f| f == frame }.wait!
             frame.evaluate_function "() => window.stop()"
           end,
           page.goto(server.domain + 'frames/one-frame.html')
-        )
+        ).wait!
         finish_response.(nil)
       end
     end
 
     describe 'Page#go_back' do
       it 'should work' do
-        await page.goto server.empty_page
-        await page.goto server.domain + 'grid.html'
+        page.goto(server.empty_page).wait!
+        page.goto(server.domain + 'grid.html').wait!
 
         response = page.go_back
         expect(response.ok?).to eq true
@@ -451,11 +464,11 @@ module Rammus
       end
 
       it 'should work with HistoryAPI' do
-        await page.goto server.empty_page
-        await page.evaluate_function "() => {
+        page.goto(server.empty_page).wait!
+        page.evaluate_function("() => {
           history.pushState({}, '', '/first.html');
           history.pushState({}, '', '/second.html');
-        }"
+        }").wait!
         browser.wait_for_target { |target| target.url == server.domain + 'second.html' }
         expect(page.url).to eq server.domain + 'second.html'
 
@@ -470,31 +483,34 @@ module Rammus
 
     describe 'Frame#goto' do
       it 'should navigate subframes' do
-        await page.goto server.domain + 'frames/one-frame.html'
+        page.goto(server.domain + 'frames/one-frame.html').wait!
         expect(page.frames[0].url).to include '/frames/one-frame.html'
         expect(page.frames[1].url).to include '/frames/frame.html'
 
-        response = await page.frames[1].goto server.empty_page
+        response = page.frames[1].goto(server.empty_page).value!
         expect(response.ok?).to eq true
         expect(response.frame).to eq page.frames[1]
       end
 
       it 'should reject when frame detaches' do
-        await page.goto server.domain + 'frames/one-frame.html'
+        page.goto(server.domain + 'frames/one-frame.html').wait!
 
         finish_response = nil
         server.set_route '/empty.html' do |_req, res|
-          await Promise.new { |resolve, _reject| finish_response = resolve }
+          Concurrent::Promises
+            .resolvable_future
+            .tap { |future| finish_response = future.method(:fulfill) }
             .then { res.finish }
+            .value!
         end
 
         expect do
-          await Promise.all(
+          Concurrent::Promises.zip(
             server.wait_for_request('/empty.html').then do
               page.query_selector_evaluate_function('iframe', 'frame => frame.remove()')
             end,
             page.frames[1].goto(server.empty_page)
-          )
+          ).wait!
         end.to raise_error 'Navigating frame was detached'
 
         finish_response.(nil)
@@ -503,45 +519,47 @@ module Rammus
       it 'should return matching responses' do
         # Disable cache: otherwise, chromium will cache similar requests.
         page.set_cache_enabled false
-        await page.goto server.empty_page
+        page.goto(server.empty_page).wait!
         # Attach three frames.
-        frames = await Promise.all(
+        frames = Concurrent::Promises.zip(
           attach_frame(page, 'frame1', server.empty_page),
           attach_frame(page, 'frame2', server.empty_page),
           attach_frame(page, 'frame3', server.empty_page),
-        )
+        ).value!
         # Navigate all frames to the same URL.
         server_responses = []
         server.set_route '/one-style.html' do |req, res|
-          promise, resolve, _reject = Promise.create
-          server_responses << resolve
-          await promise.then { |val| res.write(val); res.finish }
+          Concurrent::Promises
+            .resolvable_future
+            .tap { |future| server_responses << future.method(:fulfill) }
+            .then { |val| res.write(val); res.finish }
+            .value!
         end
 
         navigations = []
         3.times do |i|
           navigations << (frames[i].goto server.domain + 'one-style.html')
-          await server.wait_for_request '/one-style.html'
+          server.wait_for_request('/one-style.html').wait!
         end
 
         # Respond from server out-of-order.
         server_responses.zip(navigations, frames, ['AAA', 'BBB', 'CCC']).each do |server, navigation, frame, text|
           server.call text
-          response = await navigation
+          response = navigation.value!
           expect(response.frame).to eq frame
-          expect(await response.text).to eq text
+          expect(response.text.value!).to eq text
         end
       end
     end
 
     describe 'Frame.wait_for_navigation' do
       it 'should work' do
-        await page.goto server.domain + '/frames/one-frame.html'
+        page.goto(server.domain + '/frames/one-frame.html').wait!
         frame = page.frames[1]
-        response, _ = await Promise.all(
+        response, _ = Concurrent::Promises.zip(
           frame.wait_for_navigation,
           frame.evaluate_function('url => window.location.href = url', server.domain + 'grid.html')
-        )
+        ).value!
         expect(response.ok?).to eq true
         expect(response.url).to include 'grid.html'
         expect(response.frame).to eq frame
@@ -549,32 +567,35 @@ module Rammus
       end
 
       it 'should fail when frame detaches' do
-        await page.goto server.domain + 'frames/one-frame.html'
+        page.goto(server.domain + 'frames/one-frame.html').wait!
         frame = page.frames[1]
 
         finish_response = nil
         server.set_route '/empty.html' do |_req, res|
-          await Promise.new { |resolve, _reject| finish_response = resolve }
+          Concurrent::Promises
+            .resolvable_future
+            .tap { |future| finish_response = future.method(:fulfill) }
             .then { res.finish }
+            .value!
         end
 
-        navigation_promise = frame.wait_for_navigation.catch { |error| error }
-        await Promise.all(
+        navigation_promise = frame.wait_for_navigation.rescue { |error| error }
+        Concurrent::Promises.zip(
           server.wait_for_request('/empty.html'),
           frame.evaluate_function("() => window.location = '/empty.html'")
-        )
+        ).wait!
         page.query_selector_evaluate_function('iframe', "frame => frame.remove()")
-        expect((await navigation_promise).message).to eq 'Navigating frame was detached'
+        expect(navigation_promise.value!.message).to eq 'Navigating frame was detached'
         finish_response.(nil)
       end
     end
 
     describe 'Page.reload' do
       it 'should work' do
-        await page.goto server.empty_page
-        await page.evaluate_function'() => window._foo = 10'
-        await page.reload
-        expect(await page.evaluate_function '() => window._foo').to eq(nil)
+        page.goto(server.empty_page).wait!
+        page.evaluate_function('() => window._foo = 10').wait!
+        page.reload.wait!
+        expect(page.evaluate_function('() => window._foo').value!).to eq(nil)
       end
     end
   end

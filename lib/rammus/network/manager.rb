@@ -4,8 +4,6 @@ module Rammus
     #
     class Manager
       include EventEmitter
-      include Promise::Await
-
       attr_reader :client, :frame_manager
 
       # @param client [Rammus::CDPSession]
@@ -46,9 +44,11 @@ module Rammus
       end
 
       def start
-        await client.command Protocol::Network.enable
-        if @_ignore_https_errors
-          await client.command Protocol::Security.set_ignore_certificate_errors ignore: true
+        Concurrent::Promises.future do
+          client.command(Protocol::Network.enable).wait!
+          if @_ignore_https_errors
+            client.command(Protocol::Security.set_ignore_certificate_errors(ignore: true)).wait!
+          end
         end
       end
 
@@ -84,7 +84,7 @@ module Rammus
           raise "Expected value of header '#{key}' to be String, but '#{value.class}' is found." unless value.is_a? String
           [key.downcase, value]
         end.to_h
-        await client.command Protocol::Network.set_extra_http_headers headers: @_extra_http_headers
+        client.command(Protocol::Network.set_extra_http_headers(headers: @_extra_http_headers)).wait!
         nil
       end
 
@@ -103,7 +103,7 @@ module Rammus
         @_offline = value
 
         # values of 0 remove any active throttling. crbug.com/456324#c9
-        await client.command Protocol::Network.emulate_network_conditions offline: @_offline, latency: 0, download_throughput: -1, upload_throughput: -1
+        client.command(Protocol::Network.emulate_network_conditions(offline: @_offline, latency: 0, download_throughput: -1, upload_throughput: -1)).wait!
         nil
       end
 
@@ -114,7 +114,7 @@ module Rammus
       # @return [nil]
       #
       def set_user_agent(user_agent)
-        await client.command Protocol::Network.set_user_agent_override user_agent: user_agent
+        client.command(Protocol::Network.set_user_agent_override(user_agent: user_agent)).wait!
         nil
       end
 
@@ -141,7 +141,7 @@ module Rammus
       #       intercepted_request.continue
       #     end
       #   end
-      #   await page.goto 'https://example.com'
+      #   page.goto('https://example.com').wait!
       #
       # @note Enabling request interception disables page caching.
       #
@@ -156,6 +156,10 @@ module Rammus
       end
 
       private
+
+        def event_queue
+          client.send :event_queue
+        end
 
         # @param {!Protocol.Network.requestWillBeSentPayload} event
         #
@@ -259,15 +263,15 @@ module Rammus
 
           @_protocol_request_interception_enabled = enabled
           if enabled
-            await Promise.all(
+            Concurrent::Promises.zip(
               update_protocol_cache_disabled,
               client.command(Protocol::Fetch.enable(handle_auth_requests: true, patterns: [urlPattern: '*']))
-            )
+            ).wait!
           else
-            await Promise.all(
+            Concurrent::Promises.zip(
               update_protocol_cache_disabled,
               client.command(Protocol::Fetch.disable)
-            )
+            ).wait!
           end
         end
 
@@ -276,7 +280,7 @@ module Rammus
         def on_request_paused(event)
           if !@_user_request_interception_enabled && @_protocol_request_interception_enabled
             client.command(Protocol::Fetch.continue_request(request_id: event["requestId"]))
-              .catch { |error| Util.debug_error error }
+              .rescue { |error| Util.debug_error error }
           end
 
           request_id = event["networkId"]
@@ -308,7 +312,7 @@ module Rammus
           client.command(Protocol::Fetch.continue_with_auth(
             request_id: event["requestId"],
             auth_challenge_response: { response: response, username: username, password: password }.compact
-          )).catch { |error| Util.debug_error error }
+          )).rescue { |error| Util.debug_error error }
         end
 
         # @param {!Protocol.Network.loadingFailedPayload} event

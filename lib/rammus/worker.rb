@@ -1,7 +1,5 @@
 module Rammus
   class Worker
-    include Promise::Await
-
     attr_reader :url
 
     # @param {Puppeteer.CDPSession} client
@@ -13,7 +11,8 @@ module Rammus
       # super();
       @_client = client
       @url = url
-      @_execution_context_promise, @_execution_context_callback = Promise.create
+      @_execution_context_promise = Concurrent::Promises.resolvable_future
+      @_execution_context_callback = @_execution_context_promise.method(:fulfill)
       # @type {function(!Protocol.Runtime.RemoteObject):!JSHandle}
       @_js_handle_factory = nil
       client.once Protocol::Runtime.execution_context_created, method(:on_execution_context_created)
@@ -25,7 +24,7 @@ module Rammus
     end
 
     def execution_context
-      await @_execution_context_promise
+      @_execution_context_promise.value!
     end
 
     # @param {Function|string} pageFunction

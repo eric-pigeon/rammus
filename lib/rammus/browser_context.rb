@@ -22,7 +22,6 @@ module Rammus
   #    context.close
   #
   class BrowserContext
-    include Promise::Await
     include EventEmitter
 
     attr_reader :id, :browser, :client
@@ -82,7 +81,15 @@ module Rammus
     # Override browser permissions
     #
     # @param origin [String] The origin to grant permissions to, e.g. "https://example.com".
-    # @param permissions [Array<String>] An array of permissions to grant. All permissions that are not listed here will be automatically denied. Permissions can be one of the following values: ['geolocation' 'midi' 'midi-sysex' (system-exclusive midi) 'notifications' 'push' 'camera' 'microphone' 'background-sync' 'ambient-light-sensor' 'accelerometer' 'gyroscope' 'magnetometer' 'accessibility-events' 'clipboard-read' 'clipboard-write' 'payment-handler']
+    # @param permissions [Array<String>] An array of permissions to grant. All
+    #   permissions that are not listed here will be automatically denied. Permissions
+    #   can be one of the following values: ['geolocation' 'midi' 'midi-sysex'
+    #   (system-exclusive midi) 'notifications' 'push' 'camera' 'microphone'
+    #   'background-sync' 'ambient-light-sensor' 'accelerometer' 'gyroscope'
+    #   'magnetometer' 'accessibility-events' 'clipboard-read' 'clipboard-write'
+    #   'payment-handler']
+    #
+    # @return [nil]
     #
     # @example Allowing geolocation
     #   context = browser.default_context
@@ -94,7 +101,8 @@ module Rammus
         raise "Unknown permission: #{permission}" if protocol_permission.nil?
         protocol_permission
       end
-      await client.command Protocol::Browser.grant_permissions origin: origin, browser_context_id: id || nil, permissions: permissions
+      client.command(Protocol::Browser.grant_permissions origin: origin, browser_context_id: id || nil, permissions: permissions).wait!
+      nil
     end
 
     # Clears all permission overrides for the browser context.
@@ -104,8 +112,11 @@ module Rammus
     #    context.override_permissions 'https://example.com', ['clipboard-read']
     #    context.clear_permission_overrides
     #
+    # @return [nil]
+    #
     def clear_permission_overrides
-      await client.command Protocol::Browser.reset_permissions browser_context_id: id || nil
+      client.command(Protocol::Browser.reset_permissions browser_context_id: id || nil).wait!
+      nil
     end
 
     # Search for a target in this context
@@ -135,6 +146,10 @@ module Rammus
     end
 
     private
+
+      def event_queue
+        client.send :event_queue
+      end
 
       WEB_PERMISSION_TO_PROTOCOL = {
         'geolocation' => 'geolocation',

@@ -4,8 +4,6 @@ module Rammus
   # An example of using Dialog class:
   #
   class Dialog
-    include Promise::Await
-
     ALERT = :alert
     BEFORE_UNLOAD = :beforeunload
     CONFIRM = :confirm
@@ -41,16 +39,22 @@ module Rammus
 
     # @param prompt_text [String]
     #
+    # @return [nil]
+    #
     def accept(prompt_text = nil)
       raise 'Cannot accept dialog which is already handled!' if @_handled
       @_handled = true
-      await @_client.command Protocol::Page.handle_java_script_dialog accept: true, prompt_text: prompt_text
+      @_client.command(Protocol::Page.handle_java_script_dialog accept: true, prompt_text: prompt_text).wait!
+      nil
     end
 
+    # @return [nil]
+    #
     def dismiss
       raise 'Cannot dismiss dialog which is already handled!' if @_handled
       @_handled = true
-      await @_client.command Protocol::Page.handle_java_script_dialog accept: false
+      @_client.command(Protocol::Page.handle_java_script_dialog accept: false).wait!
+      nil
     end
   end
 end

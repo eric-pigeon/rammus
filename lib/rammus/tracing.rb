@@ -9,8 +9,6 @@ module Rammus
   #   await page.tracing.stop
   #
   class Tracing
-    include Promise::Await
-
     # @!visibility private
     #
     attr_reader :client
@@ -48,10 +46,10 @@ module Rammus
 
       @_path = path
       @_recording = true
-      await client.command Protocol::Tracing.start(
+      client.command(Protocol::Tracing.start(
         transfer_mode: 'ReturnAsStream',
         categories: categories.join(',')
-      )
+      )).wait!
       if block_given?
         yield
         stop
@@ -63,13 +61,13 @@ module Rammus
     # @return [String] trace data
     #
     def stop
-      content_promise, fulfill, _ = Promise.create
+      content_promise = Concurrent::Promises.resolvable_future
       client.once Protocol::Tracing.tracing_complete, -> (event) do
-        fulfill.call read_stream event["stream"], @_path
+        content_promise.fulfill read_stream event["stream"], @_path
       end
-      await client.command Protocol::Tracing.end
+      client.command(Protocol::Tracing.end).wait!
       @_recording = false
-      await content_promise
+      content_promise.value!
     end
 
     private
@@ -102,7 +100,7 @@ module Rammus
 
         result =  ''
         while !eof do
-          response = await client.command Protocol::IO.read handle: handle
+          response = client.command(Protocol::IO.read handle: handle).value!
           eof = response["eof"]
           result << response["data"]
           if path
@@ -113,7 +111,7 @@ module Rammus
         if path
           file.close
         end
-        await client.command Protocol::IO.close handle: handle
+        client.command(Protocol::IO.close handle: handle).wait!
 
         result
       end

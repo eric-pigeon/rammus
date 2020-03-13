@@ -1,7 +1,5 @@
 module Rammus
   RSpec.describe BrowserContext, browser: true do
-    include Promise::Await
-
     after(:each) do
       browser.browser_contexts.select(&:incognito?).each(&:close)
       browser.pages[1..-1]&.each(&:close)
@@ -15,7 +13,7 @@ module Rammus
         context.close
         expect(browser.browser_contexts.size).to eq 1
 
-        response = await browser.client.command Protocol::Target.get_browser_contexts
+        response = browser.client.command(Protocol::Target.get_browser_contexts).value!
         expect(response["browserContextIds"].size).to eq 0
       end
 

@@ -32,4 +32,8 @@ module Rammus
   def self.launch(headless: true, args: [])
     Launcher.launch headless: headless, args: args
   end
+
+  def self.connect(ws_endpoint:)
+    Launcher.connect ws_endpoint: ws_endpoint
+  end
 end

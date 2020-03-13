@@ -5,8 +5,6 @@ module Rammus
   #
   class DOMWorld
     extend Forwardable
-    include Promise::Await
-
     attr_reader :frame_manager, :frame, :timeout_settings, :wait_tasks
 
     # @param frame_manager [Rammus::FrameManager]
@@ -42,7 +40,7 @@ module Rammus
     #
     def execution_context
       raise "Execution Context is not available in detached frame \"#{frame.url}\" (are you trying to evaluate?)" if @_detached
-      await @_context_promise
+      @_context_promise.value
     end
 
     # (see Rammus::ExecutionContext#evaluate_handle)
@@ -82,7 +80,7 @@ module Rammus
     # @return [Rammus::ElementHandle]
     #
     def document
-      (await execution_context.evaluate_handle('document')).as_element
+      execution_context.evaluate_handle('document').value.as_element
       # if (this._documentPromise)
       #   return this._documentPromise;
       # this._documentPromise = this.executionContext().then(async context => {
@@ -169,7 +167,7 @@ module Rammus
         return retVal;
       }
       JAVASCRIPT
-      await evaluate_function function
+      evaluate_function(function).value
     end
 
     # @param html [String] HTML markup to assign to the page.
@@ -203,13 +201,13 @@ module Rammus
         document.close();
       }
       JAVASCRIPT
-      await evaluate_function function, html
+      evaluate_function(function, html).wait!
 
-      Promise.resolve(nil).then do
-        error = await Promise.race(
+      Concurrent::Promises.future do
+        error = Concurrent::Promises.any(
           watcher.timeout_or_termination_promise,
           watcher.lifecycle_promise
-        )
+        ).value
         watcher.dispose
         raise error if error
         nil
@@ -248,7 +246,7 @@ module Rammus
 
       if url != nil
         begin
-          return (await execution_context.evaluate_handle_function(add_script_url, url, type)).as_element
+          return execution_context.evaluate_handle_function(add_script_url, url, type).value.as_element
         rescue => _error
           raise "Loading script from #{url} failed"
         end
@@ -276,11 +274,11 @@ module Rammus
       if path != nil
         contents = File.read path
         contents += '//# sourceURL=' + path.gsub(/\n/, '')
-        return (await execution_context.evaluate_handle_function(add_script_content, contents, type)).as_element
+        return execution_context.evaluate_handle_function(add_script_content, contents, type).value.as_element
       end
 
       if content != nil
-        return (await execution_context.evaluate_handle_function(add_script_content, content, type)).as_element
+        return execution_context.evaluate_handle_function(add_script_content, content, type).value.as_element
       end
 
       raise 'Provide an object with a `url`, `path` or `content` property'
@@ -336,7 +334,7 @@ module Rammus
 
       unless url.nil?
         begin
-          return (await execution_context.evaluate_handle_function(add_style_url, url)).as_element
+          return execution_context.evaluate_handle_function(add_style_url, url).value!.as_element
         rescue => _error
           raise "Loading style from #{url} failed"
         end
@@ -345,11 +343,11 @@ module Rammus
       unless path.nil?
         contents = File.read path
         contents += '//# sourceURL=' + path.gsub(/\n/, '')
-        return (await execution_context.evaluate_handle_function(add_style_content, contents)).as_element
+        return execution_context.evaluate_handle_function(add_style_content, contents).value!.as_element
       end
 
       unless content.nil?
-        return (await execution_context.evaluate_handle_function(add_style_content, content)).as_element
+        return execution_context.evaluate_handle_function(add_style_content, content).value!.as_element
       end
 
       raise "Provide a `url`, `path` or `content`"
@@ -365,10 +363,10 @@ module Rammus
     # pattern for click and wait for navigation is the following:
     #
     # @example
-    #    response, _ = await Rammus::Promise.all(
+    #    response, _ = Concurrent::Promises.zip(
     #      page.wait_for_navigation(wait_options),
     #      frame.click(selector, click_options),
-    #    )
+    #    ).value!
     #
     # @param selector [String] A selector to search for element to click. If there are multiple elements satisfying the selector, the first will be clicked.
     # @param delay [Integer] Time to wait between mousedown and mouseup in milliseconds. Defaults to 0.
@@ -457,7 +455,7 @@ module Rammus
       }
       JAVASCRIPT
 
-      await query_selector_evaluate_function selector, select_values, values
+      query_selector_evaluate_function(selector, select_values, values).value!
     end
 
     # This method fetches an element with selector, scrolls it into view if
@@ -565,7 +563,7 @@ module Rammus
     # @return [String]
     #
     def title
-      await evaluate('document.title')
+      evaluate('document.title').value
     end
 
     def _detach
@@ -584,9 +582,10 @@ module Rammus
         if context
           @_context_resolve_callback.(context)
           @_context_resolve_callback = nil
-          wait_tasks.each { |wait_task| Concurrent.global_io_executor.post { wait_task.rerun } }
+          wait_tasks.each { |wait_task| wait_task.rerun }
         else
-          @_context_promise, @_context_resolve_callback, _reject = Promise.create
+          @_context_promise = Concurrent::Promises.resolvable_future
+          @_context_resolve_callback = @_context_promise.method(:fulfill)
           # this._documentPromise = null;
         end
       end
@@ -640,8 +639,8 @@ module Rammus
         title = "#{is_xpath ? 'XPath' : 'selector'} \"#{selector_or_xpath}\"#{wait_for_hidden ? ' to be hidden' : ''}"
         wait_task = WaitTask.new(self, PREDICATE, title, polling, timeout, selector_or_xpath, is_xpath, wait_for_visible, wait_for_hidden)
 
-        Promise.resolve(nil).then do
-          handle = await wait_task.promise, 0
+        Concurrent::Promises.future do
+          handle = wait_task.promise.value!
 
           if !handle.as_element
             handle.dispose

@@ -2,7 +2,6 @@ module Rammus
   # @!visibility private
   #
   class CSSCoverage
-    include Promise::Await
     attr_reader :client
 
     # @param client [Rammus::CDPSession]
@@ -31,11 +30,11 @@ module Rammus
         Util.add_event_listener(client, Protocol::CSS.style_sheet_added, method(:on_style_sheet)),
         Util.add_event_listener(client, Protocol::Runtime.execution_contexts_cleared, method(:on_execution_contexts_cleared))
       ]
-      await Promise.all(
+      Concurrent::Promises.zip(
         client.command(Protocol::DOM.enable),
         client.command(Protocol::CSS.enable),
         client.command(Protocol::CSS.start_rule_usage_tracking),
-      )
+      ).wait!
       nil
     end
 
@@ -46,11 +45,11 @@ module Rammus
     def stop
       raise 'CSSCoverage is not enabled' unless @_enabled
       @_enabled = false
-      rule_tracking_response = await client.command Protocol::CSS.stop_rule_usage_tracking
-      await Promise.all(
+      rule_tracking_response = client.command(Protocol::CSS.stop_rule_usage_tracking).value!
+      Concurrent::Promises.zip(
         client.command(Protocol::CSS.disable),
         client.command(Protocol::DOM.disable),
-      )
+      ).wait!
       Util.remove_event_listeners @_event_listeners
 
       # aggregate by styleSheetId
@@ -87,7 +86,7 @@ module Rammus
         # Ignore anonymous scripts
         return if header["sourceURL"] == ""
         begin
-          response = await client.command Protocol::CSS.get_style_sheet_text(style_sheet_id: header["styleSheetId"])
+          response = client.command(Protocol::CSS.get_style_sheet_text(style_sheet_id: header["styleSheetId"])).value!
           @_stylesheet_urls[header["styleSheetId"]] = header["sourceURL"]
           @_stylesheet_sources[header["styleSheetId"]] = response["text"]
         rescue => error

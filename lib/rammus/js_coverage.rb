@@ -2,8 +2,6 @@ module Rammus
   # @!visibility private
   #
   class JSCoverage
-    include Promise::Await
-
     attr_reader :client
 
     # @!visibility private
@@ -38,12 +36,12 @@ module Rammus
         Util.add_event_listener(client, Protocol::Debugger.script_parsed, method(:on_script_parsed)),
         Util.add_event_listener(client, Protocol::Runtime.execution_contexts_cleared, method(:on_execution_contexts_cleared))
       ]
-      await Promise.all(
+      Concurrent::Promises.zip(
         client.command(Protocol::Profiler.enable),
         client.command(Protocol::Profiler.start_precise_coverage call_count: false, detailed: true),
         client.command(Protocol::Debugger.enable),
         client.command(Protocol::Debugger.set_skip_all_pauses skip: true)
-      )
+      ).wait!
     end
 
     # Get coverage report
@@ -53,12 +51,12 @@ module Rammus
     def stop
       raise 'JSCoverage is not enabled' unless @_enabled
       @_enabled = false
-      profile_response, _ = await Promise.all(
+      profile_response, _ = Concurrent::Promises.zip(
         @client.command(Protocol::Profiler.take_precise_coverage),
         @client.command(Protocol::Profiler.stop_precise_coverage),
         @client.command(Protocol::Profiler.disable),
         @client.command(Protocol::Debugger.disable),
-      )
+      ).value!
       Util.remove_event_listeners @_event_listeners
 
       coverage = []
@@ -87,7 +85,7 @@ module Rammus
         return if event["url"] == "" && !@_report_anonymous_scripts
 
         begin
-          response = await client.command Protocol::Debugger.get_script_source(script_id: event["scriptId"])
+          response = client.command(Protocol::Debugger.get_script_source(script_id: event["scriptId"])).value!
           @_script_urls[event["scriptId"]] = event["url"]
           @_script_sources[event["scriptId"]] = response["scriptSource"]
         rescue => error

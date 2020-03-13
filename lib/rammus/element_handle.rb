@@ -12,7 +12,6 @@ module Rammus
   # {Page#evaluate_function} methods.
   #
   class ElementHandle < JSHandle
-    include Promise::Await
     attr_reader :page, :frame_manager
 
     # @param context [Rammus::ExecutionContext]
@@ -39,9 +38,9 @@ module Rammus
     # @return [Rammus::Frame, nil]
     #
     def content_frame
-      node_info = await client.command Protocol::DOM.describe_node(
+      node_info = client.command(Protocol::DOM.describe_node(
         object_id: remote_object["objectId"]
-      )
+      )).value
       return unless node_info.dig("node", "frameId").is_a? String
 
       frame_manager.frame node_info.dig("node", "frameId")
@@ -73,10 +72,13 @@ module Rammus
 
     # @param file_paths [Array<String>] paths to files to upload
     #
+    # @return [nil]
+    #
     def upload_file(*file_paths)
       files = file_paths.map { |file_path| File.expand_path file_path }
       object_id = remote_object["objectId"]
-      await client.command Protocol::DOM.set_file_input_files(object_id: object_id, files: files)
+      client.command(Protocol::DOM.set_file_input_files(object_id: object_id, files: files)).wait!
+      nil
     end
 
     # This method scrolls element into view if needed, and then uses
@@ -89,8 +91,11 @@ module Rammus
       page.touchscreen.tap point[:x], point[:y]
     end
 
+    # @return [nil]
+    #
     def focus
-      await execution_context.evaluate_function 'element => element.focus()', self
+      execution_context.evaluate_function('element => element.focus()', self).wait!
+      nil
     end
 
     # Focuses the element, and then sends a `keydown`, `keypress/input`, and
@@ -192,7 +197,7 @@ module Rammus
       raise 'Node has 0 width.' if bounding_box[:width].zero?
       raise 'Node has 0 height.' if bounding_box[:height].zero?
 
-      result = await client.command Protocol::Page.get_layout_metrics
+      result = client.command(Protocol::Page.get_layout_metrics).value
       page_x = result.dig "layoutViewport", "pageX"
       page_y = result.dig "layoutViewport", "pageY"
 
@@ -212,11 +217,11 @@ module Rammus
     # @return {!Promise<?ElementHandle>}
     #
     def query_selector(selector)
-      handle = await execution_context.evaluate_handle_function(
+      handle = execution_context.evaluate_handle_function(
         '(element, selector) => element.querySelector(selector)',
         self,
         selector
-      )
+      ).value
       element = handle.as_element
 
       if element
@@ -231,11 +236,11 @@ module Rammus
     # @return {!Promise<!Array<!ElementHandle>>}
     #
     def query_selector_all(selector)
-      array_handle = await execution_context.evaluate_handle_function(
+      array_handle = execution_context.evaluate_handle_function(
         "(element, selector) => element.querySelectorAll(selector)",
         self,
         selector
-      )
+      ).value
       properties = array_handle.get_properties
       array_handle.dispose
 
@@ -269,13 +274,13 @@ module Rammus
     # @return {!Promise<(!Object|undefined)>}
     #
     def query_selector_all_evaluate_function(selector, page_function, *args)
-      array_handle = await execution_context.evaluate_handle_function(
+      array_handle = execution_context.evaluate_handle_function(
         "(element, selector) => Array.from(element.querySelectorAll(selector))",
         self,
         selector
-      )
+      ).value
 
-      result = await execution_context.evaluate_function page_function, array_handle, *args
+      result = execution_context.evaluate_function(page_function, array_handle, *args).value
       array_handle.dispose
       result
     end
@@ -295,7 +300,7 @@ module Rammus
         return array;
       }
       JAVASCRIPT
-      array_handle = await execution_context.evaluate_handle_function function, self, expression
+      array_handle = execution_context.evaluate_handle_function(function, self, expression).value
 
       properties = array_handle.get_properties
       array_handle.dispose
@@ -324,7 +329,7 @@ module Rammus
         return visibleRatio > 0;
       }
       JAVASCRIPT
-      await execution_context.evaluate_function function, self
+      execution_context.evaluate_function(function, self).value
     end
 
     private
@@ -353,17 +358,17 @@ module Rammus
             return false;
           }
         JAVASCRIPT
-        error = await execution_context.evaluate_function function, self, page.javascript_enabled
+        error = execution_context.evaluate_function(function, self, page.javascript_enabled).value
         raise error if error
       end
 
       # @return {!Promise<!{x: number, y: number}>}
       #
       def clickable_point
-        result, layout_metrics = await Promise.all(
-          client.command(Protocol::DOM.get_content_quads object_id: remote_object["objectId"]).catch { |error| Util.debug_error error },
+        result, layout_metrics = Concurrent::Promises.zip(
+          client.command(Protocol::DOM.get_content_quads object_id: remote_object["objectId"]).rescue { |error| Util.debug_error error },
           client.command(Protocol::Page.get_layout_metrics)
-        )
+        ).value!
 
         if !result || !result.fetch("quads", []).length
           raise 'Node is either not visible or not an HTMLElement'
@@ -433,9 +438,9 @@ module Rammus
       # @return {!Promise<void|Protocol.DOM.getBoxModelReturnValue>}
       #
       def get_box_model
-        await client.command(Protocol::DOM.get_box_model(
+        client.command(Protocol::DOM.get_box_model(
           object_id: remote_object["objectId"]
-        )).catch { |error| Util.debug_error error }
+        )).rescue { |error| Util.debug_error error }.value
       end
   end
 end

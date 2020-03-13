@@ -1,6 +1,5 @@
 module Rammus
   RSpec.describe 'Request Interception', browser: true do
-    include Promise::Await
     before { @_context = browser.create_context }
     after { @_context.close }
     let(:context) { @_context }
@@ -24,14 +23,14 @@ module Rammus
           expect(request.frame.url).to eq 'about:blank'
           request.continue
         end
-        response = await page.goto server.empty_page
+        response = page.goto(server.empty_page).value!
         expect(response.ok?).to eq true
         expect(response.remote_address[:port]).to eq server.port
       end
 
       it 'should work when POST is redirected with 302' do
         server.set_redirect '/rredirect', '/empty.html'
-        await page.goto server.empty_page
+        page.goto(server.empty_page).wait!
         page.set_request_interception true
         page.on :request, -> (request) { request.continue }
         content = <<~HTML
@@ -39,11 +38,11 @@ module Rammus
             <input type="hidden" id="foo" name="foo" value="FOOBAR">
           </form>
         HTML
-        await page.set_content content
-        Promise.all(
+        page.set_content(content).wait!
+        Concurrent::Promises.zip(
           page.wait_for_navigation,
           page.query_selector_evaluate_function('form', 'form => form.submit()')
-        )
+        ).wait!
       end
 
       # @see https://github.com/GoogleChrome/puppeteer/issues/3973
@@ -54,7 +53,7 @@ module Rammus
           headers = request.headers.merge foo: 'bar'
           request.continue headers: headers
         end
-        await page.goto server.domain + 'rrredirect'
+        page.goto(server.domain + 'rrredirect').wait!
       end
 
       it 'should contain referer header' do
@@ -64,29 +63,29 @@ module Rammus
           requests << request unless is_favicon request
           request.continue
         end
-        await page.goto server.domain + 'one-style.html'
+        page.goto(server.domain + 'one-style.html').wait!
         expect(requests[1].url).to include '/one-style.css'
         expect(requests[1].headers["referer"]).to include '/one-style.html'
       end
 
       it 'should properly return navigation response when URL has cookies' do
         # Setup cookie.
-        await page.goto server.empty_page
+        page.goto(server.empty_page).wait!
         page.set_cookie name: 'foo', value: 'bar'
 
         # Setup request interception.
         page.set_request_interception true
         page.on :request, -> (request) { request.continue }
-        response = await page.reload
+        response = page.reload.value!
         expect(response.status).to eq 200
       end
 
       it 'should stop intercepting' do
         page.set_request_interception true
         page.once :request, -> (request) { request.continue }
-        await page.goto server.empty_page
+        page.goto(server.empty_page).wait!
         page.set_request_interception false
-        await page.goto server.empty_page
+        page.goto(server.empty_page).wait!
       end
 
       it 'should show custom HTTP headers' do
@@ -96,13 +95,13 @@ module Rammus
           expect(request.headers['foo']).to eq 'bar'
           request.continue
         end
-        response = await page.goto server.empty_page
+        response = page.goto(server.empty_page).value!
         expect(response.ok?).to eq true
       end
 
       # @see https://github.com/GoogleChrome/puppeteer/issues/4337
       xit 'should work with redirect inside sync XHR' do
-        await page.goto server.empty_page
+        page.goto(server.empty_page).wait!
         server.set_redirect '/logo.png', '/pptr.png'
         page.set_request_interception true
         page.on :request, -> (request) { request.continue }
@@ -122,7 +121,7 @@ module Rammus
           expect(request.headers['referer']).to eq server.empty_page
           request.continue
         end
-        response = await page.goto server.empty_page
+        response = page.goto(server.empty_page).value!
         expect(response.ok?).to eq true
       end
 
@@ -137,7 +136,7 @@ module Rammus
         end
         failed_requests = 0
         page.on :request_failed, -> (_event) { failed_requests += 1 }
-        response = await page.goto server.domain + 'one-style.html'
+        response = page.goto(server.domain + 'one-style.html').value!
         expect(response.ok?).to eq true
         expect(response.request.failure).to eq nil
         expect(failed_requests).to eq 1
@@ -150,7 +149,7 @@ module Rammus
         end
         failed_request = nil
         page.on :request_failed, -> (request) { failed_request = request }
-        await page.goto server.empty_page rescue nil
+        page.goto(server.empty_page).wait! rescue nil
         expect(failed_request).not_to be_nil
         expect(failed_request.failure[:error_text]).to eq 'net::ERR_INTERNET_DISCONNECTED'
       end
@@ -159,17 +158,17 @@ module Rammus
         page.set_extra_http_headers referer: 'http://google.com/'
         page.set_request_interception true
         page.on :request, -> (request) { request.continue }
-        request, _ = await Promise.all(
+        request, _ = Concurrent::Promises.zip(
           server.wait_for_request('/grid.html'),
           page.goto(server.domain + 'grid.html')
-        )
+        ).value!
         expect(request.headers['referer']).to eq 'http://google.com/'
       end
 
       it 'should fail navigation when aborting main resource' do
         page.set_request_interception true
         page.on :request, -> (request) { request.abort }
-        expect { await page.goto server.empty_page }
+        expect { page.goto(server.empty_page).wait! }
           .to raise_error(/net::ERR_FAILED/)
       end
 
@@ -184,7 +183,7 @@ module Rammus
         server.set_redirect '/non-existing-page-2.html', '/non-existing-page-3.html'
         server.set_redirect '/non-existing-page-3.html', '/non-existing-page-4.html'
         server.set_redirect '/non-existing-page-4.html', '/empty.html'
-        response = await page.goto server.domain + 'non-existing-page.html'
+        response = page.goto(server.domain + 'non-existing-page.html').value!
         expect(response.status).to eq 200
         expect(response.url).to include 'empty.html'
         expect(requests.length).to eq 5
@@ -215,7 +214,7 @@ module Rammus
           res.finish
         end
 
-        response = await page.goto server.domain + 'one-style.html'
+        response = page.goto(server.domain + 'one-style.html').value!
         expect(response.status).to eq 200
         expect(response.url).to include 'one-style.html'
         expect(requests.length).to eq 5
@@ -239,19 +238,19 @@ module Rammus
             request.continue
           end
         end
-        await page.goto server.empty_page
-        result = await page.evaluate_function("async() => {
+        page.goto(server.empty_page).wait!
+        result = page.evaluate_function("async() => {
           try {
             await fetch('/non-existing.json');
           } catch (e) {
             return e.message;
           }
-        }")
+        }").value!
         expect(result).to include 'Failed to fetch'
       end
 
       it 'should work with equal requests' do
-        await page.goto server.empty_page
+        page.goto(server.empty_page).wait!
         response_count = 1
         server.set_route '/zzz' do |req, res|
           res.write(response_count * 11)
@@ -268,11 +267,11 @@ module Rammus
           spinner ? request.abort : request.continue
           spinner = !spinner
         end
-        results = await page.evaluate_function("() => Promise.all([
+        results = page.evaluate_function("() => Promise.all([
           fetch('/zzz').then(response => response.text()).catch(e => 'FAILED'),
           fetch('/zzz').then(response => response.text()).catch(e => 'FAILED'),
           fetch('/zzz').then(response => response.text()).catch(e => 'FAILED'),
-        ])")
+        ])").value!
         expect(results).to eq ['11', 'FAILED', '22']
       end
 
@@ -284,14 +283,14 @@ module Rammus
           request.continue
         end
         data_url = 'data:text/html,<div>yo</div>'
-        response = await page.goto data_url
+        response = page.goto(data_url).value!
         expect(response.status).to eq 200
         expect(requests.length).to eq 1
         expect(requests[0].url).to eq data_url
       end
 
       it 'should be able to fetch data_url and fire data_url requests' do
-        await page.goto server.empty_page
+        page.goto(server.empty_page).wait!
         page.set_request_interception true
         requests = []
         page.on :request, -> (request) do
@@ -299,7 +298,7 @@ module Rammus
           request.continue
         end
         data_url = 'data:text/html,<div>yo</div>'
-        text = await page.evaluate_function "url => fetch(url).then(r => r.text())", data_url
+        text = page.evaluate_function("url => fetch(url).then(r => r.text())", data_url).value!
         expect(text).to eq '<div>yo</div>'
         expect(requests.length).to eq 1
         expect(requests[0].url).to eq data_url
@@ -312,7 +311,7 @@ module Rammus
           requests << request
           request.continue
         end
-        response = await page.goto server.empty_page + '#hash'
+        response = page.goto(server.empty_page + '#hash').value!
         expect(response.status).to eq 200
         expect(response.url).to eq server.empty_page
         expect(requests.length).to eq 1
@@ -324,7 +323,7 @@ module Rammus
         # report URL as-is. @see crbug.com/759388
         page.set_request_interception true
         page.on :request, -> (request) { request.continue }
-        response = await page.goto server.domain + ' some nonexisting page'
+        response = page.goto(server.domain + ' some nonexisting page').value!
         expect(response.status).to eq 404
       end
 
@@ -332,7 +331,7 @@ module Rammus
         page.set_request_interception true
         server.set_route('/malformed') { |_req, res| res.finish }
         page.on :request, -> (request) { request.continue }
-        response = await page.goto server.domain + 'malformed?rnd=%911'
+        response = page.goto(server.domain + 'malformed?rnd=%911').value!
         expect(response.status).to eq 200
       end
 
@@ -345,22 +344,22 @@ module Rammus
           request.continue
           requests << request
         end
-        response = await page.goto "data:text/html,<link rel=\"stylesheet\" href=\"#{server.domain}/fonts?helvetica|arial\"/>"
+        response = page.goto("data:text/html,<link rel=\"stylesheet\" href=\"#{server.domain}/fonts?helvetica|arial\"/>").value!
         expect(response.status).to eq 200
         expect(requests.length).to eq 2
         expect(requests[1].response.status).to eq 404
       end
 
       it 'should not throw "Invalid Interception Id" if the request was cancelled' do
-        await page.set_content '<iframe></iframe>'
+        page.set_content('<iframe></iframe>').wait!
         page.set_request_interception true
         request = nil
         page.on :request, -> (r) { request = r }
-        await Promise.all(
+        Concurrent::Promises.zip(
           # Wait for request interception.
           wait_event(page, :request),
           page.query_selector_evaluate_function('iframe', "(frame, url) => frame.src = url", server.empty_page)
-        )
+        ).wait!
         # Delete frame to cause request to be canceled.
         page.query_selector_evaluate_function('iframe', "frame => frame.remove()")
         request.continue
@@ -369,7 +368,7 @@ module Rammus
       it 'should throw if interception is not enabled' do
         expect do
           page.on :request, -> (request) { request.continue }
-          await page.goto server.empty_page
+          page.goto(server.empty_page).wait!
         end.to raise_error(/Request Interception is not enabled/)
       end
 
@@ -381,7 +380,7 @@ module Rammus
           request.continue
         end
         file_path = File.expand_path("../../../support/public/one-style.html", __FILE__)
-        await page.goto path_to_file_url file_path
+        page.goto(path_to_file_url file_path).wait!
         expect(urls.size).to eq 2
         expect(urls).to include 'one-style.html'
         expect(urls).to include 'one-style.css'
@@ -392,7 +391,7 @@ module Rammus
       it 'should work' do
         page.set_request_interception true
         page.on :request, -> (request) { request.continue }
-        await page.goto server.empty_page
+        page.goto(server.empty_page).wait!
       end
 
       it 'should amend HTTP headers' do
@@ -402,11 +401,11 @@ module Rammus
           headers['FOO'] = 'bar'
           request.continue headers: headers
         end
-        await page.goto server.empty_page
-        request, _ = await Promise.all(
+        page.goto(server.empty_page).wait!
+        request, _ = Concurrent::Promises.zip(
           server.wait_for_request('/sleep.zzz'),
           page.evaluate_function("() => fetch('/sleep.zzz')")
-        )
+        ).value!
         expect(request.headers['foo']).to eq 'bar'
       end
 
@@ -418,36 +417,36 @@ module Rammus
         end
         console_message = nil
         page.on :console, -> (msg) { console_message = msg }
-        await page.goto server.empty_page
+        page.goto(server.empty_page).wait!
         expect(page.url).to eq server.empty_page
         expect(console_message.text).to eq('yellow');
       end
 
       it 'should amend method' do
-        await page.goto server.empty_page
+        page.goto(server.empty_page).wait!
 
         page.set_request_interception true
         page.on :request, -> (request) do
           request.continue method: 'POST'
         end
-        request, _ = await Promise.all(
+        request, _ = Concurrent::Promises.zip(
           server.wait_for_request('/sleep.zzz'),
           page.evaluate_function("() => fetch('/sleep.zzz')")
-        )
+        ).value!
         expect(request.method).to eq 'POST'
       end
 
       it 'should amend post data' do
-        await page.goto server.empty_page
+        page.goto(server.empty_page).wait!
 
         page.set_request_interception true
         page.on :request, -> (request) do
           request.continue post_data: 'doggo'
         end
-        server_request, _ = await Promise.all(
+        server_request, _ = Concurrent::Promises.zip(
           server.wait_for_request('/sleep.zzz'),
           page.evaluate_function("() => fetch('/sleep.zzz', { method: 'POST', body: 'birdy' })")
-        )
+        ).value!
         expect(server_request.post_body).to eq 'doggo'
       end
 
@@ -456,10 +455,10 @@ module Rammus
         page.on :request, -> (request) do
           request.continue method: 'POST', post_data: 'doggo'
         end
-        server_request, _ = await Promise.all(
+        server_request, _ = Concurrent::Promises.zip(
           server.wait_for_request('/empty.html'),
           page.goto(server.empty_page)
-        )
+        ).value!
         expect(server_request.method).to eq 'POST'
         expect(server_request.post_body).to eq 'doggo'
       end
@@ -471,10 +470,11 @@ module Rammus
         page.on :request, -> (request) do
           request.respond status: 201, headers: { foo: 'bar' }, body: 'Yo, page!'
         end
-        response = await page.goto server.empty_page
+        response = page.goto(server.empty_page).value!
         expect(response.status).to eq 201
         expect(response.headers["foo"]).to eq 'bar'
-        expect(await page.evaluate_function("() => document.body.textContent")).to eq 'Yo, page!'
+        expect(page.evaluate_function("() => document.body.textContent").value!)
+          .to eq 'Yo, page!'
       end
 
       it 'should work with status code 422' do
@@ -482,10 +482,11 @@ module Rammus
         page.on :request, -> (request) do
           request.respond status: 422, body: 'Yo, page!'
         end
-        response = await page.goto server.empty_page
+        response = page.goto(server.empty_page).value!
         expect(response.status).to eq 422
         expect(response.status_text).to eq 'Unprocessable Entity'
-        expect(await page.evaluate_function("() => document.body.textContent")).to eq 'Yo, page!'
+        expect(page.evaluate_function("() => document.body.textContent").value!)
+          .to eq 'Yo, page!'
       end
 
       it 'should redirect' do
@@ -497,7 +498,7 @@ module Rammus
           end
           request.respond status: 302, headers: { location: server.empty_page }
         end
-        response = await page.goto server.domain + 'rrredirect'
+        response = page.goto(server.domain + 'rrredirect').value!
         expect(response.request.redirect_chain.length).to eq 1
         expect(response.request.redirect_chain[0].url).to eq server.domain + 'rrredirect'
         expect(response.url).to eq server.empty_page
@@ -524,11 +525,12 @@ module Rammus
         page.on :request, -> (request) do
           request.respond status: 200, headers: { 'foo': true }, body: 'Yo, page!'
         end
-        response = await page.goto server.empty_page
+        response = page.goto(server.empty_page).value!
         expect(response.status).to eq 200
         headers = response.headers
         expect(headers['foo']).to eq 'true'
-        expect(await page.evaluate_function("() => document.body.textContent")).to eq 'Yo, page!'
+        expect(page.evaluate_function("() => document.body.textContent").value!)
+          .to eq 'Yo, page!'
       end
     end
 

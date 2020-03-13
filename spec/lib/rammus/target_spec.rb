@@ -1,6 +1,5 @@
 module Rammus
   RSpec.describe Target, browser: true do
-    include Promise::Await
     before { @_context = browser.create_context }
     after { @_context.close }
     let(:context) { @_context }
@@ -33,29 +32,29 @@ module Rammus
         # The pages will be the testing page and the original newtab page
         all_pages = browser.pages
         original_page = all_pages.detect { |p| p != page }
-        expect(await original_page.evaluate_function "() => ['Hello', 'world'].join(' ')").to eq 'Hello world'
+        expect(original_page.evaluate_function("() => ['Hello', 'world'].join(' ')").value).to eq 'Hello world'
         expect(original_page.query_selector 'body').not_to be_nil
       end
 
       it 'should report when a new page is created and closed' do
-        other_page, _ = await Promise.all(
+        other_page, _ = Concurrent::Promises.zip(
           context.wait_for_target { |target| target.url == server.cross_process_domain + 'empty' }.then { |target| target.page },
           page.evaluate_function("url => { window.open(url) }", server.cross_process_domain + 'empty')
-        )
+        ).value
         expect(other_page.url).to include server.cross_process_domain
 
-        expect(await other_page.evaluate_function "() => ['Hello', 'world'].join(' ')").to eq 'Hello world'
+        expect(other_page.evaluate_function("() => ['Hello', 'world'].join(' ')").value).to eq 'Hello world'
         expect(other_page.query_selector 'body').not_to be_nil
 
         all_pages = context.pages
         expect(all_pages).to include page
         expect(all_pages).to include other_page
 
-        close_page_promise = Promise.new do |resolve, _reject|
-          context.once :target_destroyed, -> (target) { resolve.(target.page) }
+        close_page_promise = Concurrent::Promises.resolvable_future.tap do |future|
+          context.once :target_destroyed, -> (target) { future.fulfill(target.page) }
         end
         other_page.close
-        expect(await close_page_promise).to eq other_page
+        expect(close_page_promise.value).to eq other_page
 
         all_pages = context.targets.map { |target| target.page }.compact
         expect(all_pages).to include page
@@ -63,54 +62,53 @@ module Rammus
       end
 
       it 'should report when a service worker is created and destroyed' do
-        await page.goto server.empty_page
-        created_target = Promise.new do |resolve, _reject|
-          context.once :target_created, -> target { resolve.(target) }
+        page.goto(server.empty_page).wait!
+        created_target = Concurrent::Promises.resolvable_future.tap do |future|
+          context.once :target_created, -> target { future.fulfill(target) }
         end
 
-        await page.goto server.domain + 'serviceworkers/empty/sw.html'
+        page.goto(server.domain + 'serviceworkers/empty/sw.html').wait!
 
-        expect((await created_target).type).to eq 'service_worker'
-        expect((await created_target).url).to eq server.domain + 'serviceworkers/empty/sw.js'
+        expect((created_target.value!).type).to eq 'service_worker'
+        expect((created_target.value!).url).to eq server.domain + 'serviceworkers/empty/sw.js'
 
-        destroyed_target = Promise.new do |resolve, _reject|
-          context.once :target_destroyed, -> (target) { resolve.(target) }
+        destroyed_target = Concurrent::Promises.resolvable_future.tap do |future|
+          context.once :target_destroyed, -> (target) { future.fulfill(target) }
         end
-        await page.evaluate_function '() => window.registrationPromise.then(registration => registration.unregister())'
-        expect(await destroyed_target).to eq(await created_target)
+        page.evaluate_function('() => window.registrationPromise.then(registration => registration.unregister())').wait!
+        expect(destroyed_target.value).to eq(created_target.value)
       end
 
       xit 'should create a worker from a service worker' do
         # TODO
-        await page.goto server.domain + 'serviceworkers/empty/sw.html'
+        page.goto(server.domain + 'serviceworkers/empty/sw.html').wait!
 
-        target = await context.wait_for_target { |t| t.type == 'service_worker' }
+        target = context.wait_for_target { |t| t.type == 'service_worker' }.value
         worker = target.worker
-        expect(await worker.evaluate_function '() => self.toString()').to eq '[object ServiceWorkerGlobalScope]'
+        expect(worker.evaluate_function('() => self.toString()').value).to eq '[object ServiceWorkerGlobalScope]'
       end
 
       xit 'should create a worker from a shared worker' do
-        await page.goto server.empty_page
-        await page.evaluate_function "() => { new SharedWorker('data:text/javascript,console.log(\"hi\")'); }"
-        target = await context.wait_for_target { |t| t.type == 'shared_worker' }
-        worker = await target.worker
-        expect(await worker.evaluate_function('() => self.toString()')).to eq '[object SharedWorkerGlobalScope]'
+        page.goto(server.empty_page).wait!
+        page.evaluate_function("() => { new SharedWorker('data:text/javascript,console.log(\"hi\")'); }").wait!
+        target = context.wait_for_target { |t| t.type == 'shared_worker' }.value
+        worker = target.worker.value
+        expect(worker.evaluate_function('() => self.toString()').value).to eq '[object SharedWorkerGlobalScope]'
       end
 
       it 'should report when a target url changes' do
-        await page.goto server.empty_page
-        changed_target = Promise.new do |resolve, _reject|
-          context.once :target_changed, -> (target) { resolve.(target) }
+        page.goto(server.empty_page).wait!
+        changed_target = Concurrent::Promises.resolvable_future.tap do |future|
+          context.once :target_changed, -> (target) { future.fulfill(target) }
         end
-        await page.goto server.cross_process_domain
-        expect((await changed_target).url).to eq server.cross_process_domain
+        page.goto(server.cross_process_domain).wait!
+        expect((changed_target.value).url).to eq server.cross_process_domain
 
-
-        changed_target = Promise.new do |resolve, _reject|
-          context.once :target_changed, -> (target) { resolve.(target) }
+        changed_target = Concurrent::Promises.resolvable_future.tap do |future|
+          context.once :target_changed, -> (target) { future.fulfill(target) }
         end
-        await page.goto server.empty_page
-        expect((await changed_target).url).to eq server.empty_page
+        page.goto(server.empty_page).wait!
+        expect((changed_target.value).url).to eq server.empty_page
       end
 
       it 'should not report uninitialized pages' do
@@ -118,19 +116,19 @@ module Rammus
         listener = -> (_target) { target_changed = true }
         context.on :target_changed, listener
 
-        target_promise = Promise.new do |resolve, _reject|
-          context.once :target_created, -> (target) { resolve.(target) }
+        target_promise = Concurrent::Promises.resolvable_future.tap do |future|
+          context.once :target_created, -> (target) { future.fulfill(target) }
         end
         new_page = context.new_page
-        target = await target_promise
+        target = target_promise.value
         expect(target.url).to eq 'about:blank'
 
-        target_promise_2 = Promise.new do |resolve, _reject|
-          context.once :target_created, -> (t) { resolve.(t) }
+        target_promise_2 = Concurrent::Promises.resolvable_future.tap do |future|
+          context.once :target_created, -> (target) { future.fulfill(target) }
         end
-        await new_page.evaluate_function "() => { window.open('about:blank') }"
+        new_page.evaluate_function("() => { window.open('about:blank') }").wait!
 
-        target_2 = await target_promise_2
+        target_2 = target_promise_2.value
         expect(target_2.url).to eq 'about:blank'
         new_page.close
         expect(target_changed).to eq false
@@ -140,20 +138,22 @@ module Rammus
       it 'should not crash while redirecting if original request was missed' do
         server_response = nil
         server.set_route '/one-style.css' do |_req, res|
-          await(Promise.new { |resolve, _| server_response = resolve }
-            .then { res.redirect '/injectedstyle.css'; res.finish })
+          Concurrent::Promises.resolvable_future
+            .tap { |f| server_response = f.method :fulfill }
+            .then { res.redirect '/injectedstyle.css'; res.finish }
+            .value!
         end
         # Open a new page. Use window.open to connect to the page later.
-        await Promise.all(
+        Concurrent::Promises.zip(
           page.evaluate_function("url => window.open(url)", server.domain + 'one-style.html'),
           server.wait_for_request('/one-style.css')
-        )
+        ).wait!
         # Connect to the opened page.
-        target = await context.wait_for_target { |target| target.url.include?('one-style.html') }
+        target = context.wait_for_target { |target| target.url.include?('one-style.html') }.value
         new_page = target.page
         server_response.call nil
         # Wait for the new page to load.
-        await wait_event(new_page, :load)
+        wait_event(new_page, :load).wait!
         # Cleanup.
         new_page.close
       end
@@ -188,8 +188,8 @@ module Rammus
 
       it 'should timeout waiting for a non-existent target' do
         expect do
-          await browser.wait_for_target(timeout: 0.10) { |target| target.url == server.empty_page }
-        end.to raise_error Timeout::Error, "waiting for target failed: 0.1s exceeded"
+          browser.wait_for_target(timeout: 0.10) { |target| target.url == server.empty_page }.wait!
+        end.to raise_error Timeout::Error, "waiting for target failed: timeout 0.1s exceeded."
       end
     end
   end

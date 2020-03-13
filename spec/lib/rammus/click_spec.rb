@@ -1,15 +1,14 @@
 module Rammus
   RSpec.describe 'Click', browser: true do
-    include Promise::Await
     before { @_context = browser.create_context }
     after { @_context.close }
     let(:context) { @_context }
     let!(:page) { context.new_page }
 
     it 'can click buttons' do
-      await page.goto server.domain + 'input/button.html'
+      page.goto(server.domain + 'input/button.html').wait!
       page.click 'button'
-      expect(await page.evaluate 'result').to eq 'Clicked'
+      expect(page.evaluate('result').value!).to eq 'Clicked'
     end
 
     it 'should click svg' do
@@ -19,16 +18,16 @@ module Rammus
         </svg>
       SVG
       page
-      await page.set_content content
+      page.set_content(content).wait!
       page.click 'circle'
-      expect(await page.evaluate 'window.__CLICKED').to eq 42
+      expect(page.evaluate('window.__CLICKED').value!).to eq 42
     end
 
     it 'should click the button if window.Node is removed' do
-      await page.goto server.domain + 'input/button.html'
-      await page.evaluate 'delete window.Node'
+      page.goto(server.domain + 'input/button.html').wait!
+      page.evaluate('delete window.Node').wait!
       page.click 'button'
-      expect(await page.evaluate 'result').to eq 'Clicked'
+      expect(page.evaluate('result').value!).to eq 'Clicked'
     end
 
     it 'should click on a span with an inline element inside' do
@@ -40,26 +39,26 @@ module Rammus
         </style>
         <span onclick='javascript:window.CLICKED=42'></span>
       HTML
-      await page.set_content content
+      page.set_content(content).wait!
       page.click 'span'
-      expect(await page.evaluate 'window.CLICKED').to eq 42
+      expect(page.evaluate('window.CLICKED').value!).to eq 42
     end
 
     it 'should click the button after navigation ' do
-      await page.goto server.domain + 'input/button.html'
+      page.goto(server.domain + 'input/button.html').wait!
       page.click 'button'
-      await page.goto server.domain + 'input/button.html'
+      page.goto(server.domain + 'input/button.html').wait!
       page.click 'button'
-      expect(await page.evaluate 'result').to eq 'Clicked'
+      expect(page.evaluate('result').value!).to eq 'Clicked'
     end
 
     it 'should click with disabled javascript' do
       page.set_javascript_enabled false
-      await page.goto server.domain + 'wrappedlink.html'
-      await Promise.all(
+      page.goto(server.domain + 'wrappedlink.html').wait!
+      Concurrent::Promises.zip(
         page.wait_for_navigation,
-        page.click('a')
-      )
+        Concurrent::Promises.future { page.click('a') }
+      ).wait!
       expect(page.url).to eq server.domain + 'wrappedlink.html#clicked'
     end
 
@@ -73,13 +72,13 @@ module Rammus
         </style>
         <span onclick='javascript:window.CLICKED = 42;'><i>woof</i><b>doggo</b></span>
       HTML
-      await page.set_content content
+      page.set_content(content).wait!
       page.click 'span'
-      expect(await page.evaluate 'window.CLICKED').to eq 42
+      expect(page.evaluate('window.CLICKED').value!).to eq 42
     end
 
     it 'should select the text by triple clicking' do
-      await page.goto server.domain + 'input/textarea.html'
+      page.goto(server.domain + 'input/textarea.html').wait!
       page.focus 'textarea'
       text = "This is the text that we are going to try to select. Let's see how it goes."
       page.keyboard.type text
@@ -92,16 +91,16 @@ module Rammus
         return textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
       }
       JAVASCRIPT
-      expect(await page.evaluate_function function).to eq text
+      expect(page.evaluate_function(function).value!).to eq text
     end
 
     it 'should click offscreen buttons' do
-      await page.goto server.domain + 'offscreenbuttons.html'
+      page.goto(server.domain + 'offscreenbuttons.html').wait!
       messages = []
       page.on :console, -> (msg) { messages << msg.text }
       11.times do |i|
         # We might've scrolled to click a button - reset to (0, 0).
-        await page.evaluate_function "() => window.scrollTo(0, 0)"
+        page.evaluate_function("() => window.scrollTo(0, 0)").wait!
         page.click("#btn#{i}")
       end
       expect(messages).to eq [
@@ -120,17 +119,17 @@ module Rammus
     end
 
     it 'should click wrapped links' do
-      await page.goto server.domain + 'wrappedlink.html'
+      page.goto(server.domain + 'wrappedlink.html').wait!
       page.click 'a'
-      expect(await page.evaluate 'window.__clicked').to eq true
+      expect(page.evaluate('window.__clicked').value!).to eq true
     end
 
     it 'should click on checkbox input and toggle' do
-      await page.goto server.domain + 'input/checkbox.html'
-      expect(await page.evaluate 'result.check').to eq nil
+      page.goto(server.domain + 'input/checkbox.html').wait!
+      expect(page.evaluate('result.check').value!).to eq nil
       page.click 'input#agree'
-      expect(await page.evaluate 'result.check').to eq true
-      expect(await page.evaluate 'result.events').to eq [
+      expect(page.evaluate('result.check').value!).to eq true
+      expect(page.evaluate('result.events').value!).to eq [
         'mouseover',
         'mouseenter',
         'mousemove',
@@ -141,25 +140,25 @@ module Rammus
         'change',
       ]
       page.click 'input#agree'
-      expect(await page.evaluate 'result.check').to eq false
+      expect(page.evaluate('result.check').value!).to eq false
     end
 
     it 'should click on checkbox label and toggle' do
-      await page.goto server.domain + 'input/checkbox.html'
-      expect(await page.evaluate 'result.check').to eq nil
+      page.goto(server.domain + 'input/checkbox.html').wait!
+      expect(page.evaluate('result.check').value!).to eq nil
       page.click 'label[for="agree"]'
-      expect(await page.evaluate 'result.check').to eq true
-      expect(await page.evaluate 'result.events').to eq [
+      expect(page.evaluate('result.check').value!).to eq true
+      expect(page.evaluate('result.events').value!).to eq [
         'click',
         'input',
         'change',
       ]
       page.click 'label[for="agree"]'
-      expect(await page.evaluate 'result.check').to eq false
+      expect(page.evaluate('result.check').value!).to eq false
     end
 
     it 'should fail to click a missing button' do
-      await page.goto server.domain + 'input/checkbox.html'
+      page.goto(server.domain + 'input/checkbox.html').wait!
       expect { page.click 'button.does-not-exist' }
         .to raise_error 'No node found for selector: button.does-not-exist'
     end
@@ -173,15 +172,15 @@ module Rammus
     end
 
     it 'should scroll and click the button' do
-      await page.goto server.domain + 'input/scrollable.html'
+      page.goto(server.domain + 'input/scrollable.html').wait!
       page.click '#button-5'
-      expect(await page.evaluate "document.querySelector('#button-5').textContent").to eq 'clicked'
+      expect(page.evaluate("document.querySelector('#button-5').textContent").value!).to eq 'clicked'
       page.click '#button-80'
-      expect(await page.evaluate "document.querySelector('#button-80').textContent").to eq 'clicked'
+      expect(page.evaluate("document.querySelector('#button-80').textContent").value!).to eq 'clicked'
     end
 
     it 'should double click the button' do
-      await page.goto server.domain + 'input/button.html'
+      page.goto(server.domain + 'input/button.html').wait!
       function = <<~JAVASCRIPT
       () => {
         window.double = false;
@@ -191,15 +190,15 @@ module Rammus
         });
       }
       JAVASCRIPT
-      await page.evaluate_function function
+      page.evaluate_function(function).wait!
       button = page.query_selector 'button'
       button.click click_count: 2
-      expect(await page.evaluate 'double').to eq true
-      expect(await page.evaluate 'result').to eq 'Clicked'
+      expect(page.evaluate('double').value!).to eq true
+      expect(page.evaluate('result').value!).to eq 'Clicked'
     end
 
     it 'should click a partially obscured button' do
-      await page.goto server.domain + 'input/button.html'
+      page.goto(server.domain + 'input/button.html').wait!
       function = <<~JAVASCRIPT
       () => {
         const button = document.querySelector('button');
@@ -208,38 +207,38 @@ module Rammus
         button.style.left = '368px';
       }
       JAVASCRIPT
-      await page.evaluate_function function
+      page.evaluate_function(function).wait!
       page.click 'button'
-      expect(await page.evaluate 'window.result').to eq 'Clicked'
+      expect(page.evaluate('window.result').value!).to eq 'Clicked'
     end
 
     it 'should click a rotated button' do
-      await page.goto server.domain + 'input/rotatedButton.html'
+      page.goto(server.domain + 'input/rotatedButton.html').wait!
       page.click 'button'
-      expect(await page.evaluate 'window.result').to eq 'Clicked'
+      expect(page.evaluate('window.result').value!).to eq 'Clicked'
     end
 
     it 'should fire contextmenu event on right click' do
-      await page.goto server.domain + 'input/scrollable.html'
+      page.goto(server.domain + 'input/scrollable.html').wait!
       page.click '#button-8', button: 'right'
-      expect(await page.evaluate "document.querySelector('#button-8').textContent").to eq 'context menu'
+      expect(page.evaluate("document.querySelector('#button-8').textContent").value!).to eq 'context menu'
     end
 
     # @see https://github.com/GoogleChrome/puppeteer/issues/206
     it 'should click links which cause navigation' do
-      await page.set_content("<a href='#{server.domain}'>empty.html</a>");
-      # This await should not hang.
+      page.set_content("<a href='#{server.domain}'>empty.html</a>").wait!
+      # This should not hang.
       page.click 'a'
     end
 
     it 'should click the button inside an iframe' do
-      await page.goto server.domain
-      await page.set_content '<div style="width:100px;height:100px">spacer</div>'
-      attach_frame page, 'button-test', server.domain + 'input/button.html'
+      page.goto(server.domain).wait!
+      page.set_content('<div style="width:100px;height:100px">spacer</div>').wait!
+      attach_frame(page, 'button-test', server.domain + 'input/button.html').wait!
       frame = page.frames[1]
       button = frame.query_selector 'button'
       button.click
-      expect(await frame.evaluate 'window.result').to eq 'Clicked'
+      expect(frame.evaluate('window.result').value!).to eq 'Clicked'
     end
 
     # TODO
@@ -257,13 +256,13 @@ module Rammus
 
     it 'should click the button with device_scale_factor set' do
       page.set_viewport width: 400, height: 400, device_scale_factor: 5
-      expect(await page.evaluate 'window.devicePixelRatio').to eq 5
-      await page.set_content '<div style="width:100px;height:100px">spacer</div>'
-      attach_frame page, 'button-test', server.domain + 'input/button.html'
+      expect(page.evaluate('window.devicePixelRatio').value!).to eq 5
+      page.set_content('<div style="width:100px;height:100px">spacer</div>').wait!
+      attach_frame(page, 'button-test', server.domain + 'input/button.html').wait!
       frame = page.frames[1]
       button = frame.query_selector 'button'
       button.click
-      expect(await frame.evaluate 'window.result').to eq 'Clicked'
+      expect(frame.evaluate('window.result').value!).to eq 'Clicked'
     end
   end
 end

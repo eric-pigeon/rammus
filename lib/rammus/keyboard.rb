@@ -27,8 +27,6 @@ module Rammus
   #    page.keyboard.up 'Shift'
   #
   class Keyboard
-    include Promise::Await
-
     # @!visibility private
     #
     attr_reader :client, :modifiers
@@ -74,7 +72,7 @@ module Rammus
 
       text ||= description[:text]
 
-      await client.command(Protocol::Input.dispatch_key_event(
+      client.command(Protocol::Input.dispatch_key_event(
         type: text != "" ? 'keyDown' : 'rawKeyDown',
         modifiers: modifiers,
         windows_virtual_key_code: description[:key_code],
@@ -85,7 +83,7 @@ module Rammus
         auto_repeat: auto_repeat,
         location: description[:location],
         is_keypad: description[:location] == 3
-      ))
+      )).value!
       nil
     end
 
@@ -102,14 +100,14 @@ module Rammus
       @modifiers &= ~(modifier_bit description[:key])
       @_pressed_keys.delete description[:code]
 
-      await client.command(Protocol::Input.dispatch_key_event(
+      client.command(Protocol::Input.dispatch_key_event(
         type: 'keyUp',
         modifiers: modifiers,
         key: description[:key],
         windows_virtual_key_code: description[:key_code],
         code: description[:code],
         location: description[:location]
-      ))
+      )).wait!
     end
 
     # Dispatches a keypress and input event. This does not send a keydown or keyup event.
@@ -125,7 +123,7 @@ module Rammus
     # @return [nil]
     #
     def send_character(char)
-      await client.command(Protocol::Input.insert_text text: char)
+      client.command(Protocol::Input.insert_text text: char).wait!
       nil
     end
 
