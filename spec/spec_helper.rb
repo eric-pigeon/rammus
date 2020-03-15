@@ -5,12 +5,19 @@ if ENV['TRAVIS']
   end
 end
 require 'rammus'
+require 'puma'
 require 'support/test_server'
 require 'support/match_screenshot'
 require 'support/test_emitter'
 if RUBY_ENGINE != "jruby"
   require 'byebug'
 end
+
+# Disable Puma from trapping signals and preventing ctrl-c test suite
+module PumaSignalDisable
+  def setup_signals; end
+end
+Puma::Launcher.prepend PumaSignalDisable
 
 class Server
   def domain
