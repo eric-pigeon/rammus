@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   # ConsoleMessage objects are dispatched by page via the 'console' event.
   #

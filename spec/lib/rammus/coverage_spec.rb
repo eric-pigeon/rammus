@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   RSpec.describe 'Coverage', browser: true do
     before { @_context = browser.create_context }
@@ -12,10 +14,10 @@ module Rammus
         coverage = page.coverage.stop_js_coverage
         expect(coverage.length).to eq 1
         expect(coverage[0][:url]).to include '/jscoverage/simple.html'
-        expect(coverage[0][:ranges]).to eq([
+        expect(coverage[0][:ranges]).to eq [
           { start: 0, end: 17 },
-          { start: 35, end: 61 },
-        ])
+          { start: 35, end: 61 }
+        ]
       end
 
       it 'should report source_urls' do
@@ -85,7 +87,7 @@ module Rammus
         page.coverage.start_js_coverage
         page.goto(server.domain + 'jscoverage/involved.html').wait!
         coverage = page.coverage.stop_js_coverage
-        coverage.each { |part| part[:url].gsub!(/:\d{4}\//, ':<PORT>/') }
+        coverage.each { |part| part[:url].gsub!(%r{:\d{4}/}, ':<PORT>/') }
         expected = [
           {
             url: "http://localhost:<PORT>/jscoverage/involved.html",
@@ -98,19 +100,19 @@ module Rammus
             ],
             text: <<~TEXT
 
-            function foo() {
-              if (1 > 2)
-                console.log(1);
-              if (1 < 2)
-                console.log(2);
-              let x = 1 > 2 ? 'foo' : 'bar';
-              let y = 1 < 2 ? 'foo' : 'bar';
-              let z = () => {};
-              let q = () => {};
-              q();
-            }
+              function foo() {
+                if (1 > 2)
+                  console.log(1);
+                if (1 < 2)
+                  console.log(2);
+                let x = 1 > 2 ? 'foo' : 'bar';
+                let y = 1 < 2 ? 'foo' : 'bar';
+                let z = () => {};
+                let q = () => {};
+                q();
+              }
 
-            foo();
+              foo();
             TEXT
           }
         ]
@@ -136,12 +138,12 @@ module Rammus
       end
 
       xit 'should not hang when there is a debugger statement' do
-        #await page.coverage.startJSCoverage();
-        #await page.goto(server.empty_page);
-        #await page.evaluate(() => {
+        # await page.coverage.startJSCoverage();
+        # await page.goto(server.empty_page);
+        # await page.evaluate(() => {
         #  debugger;
-        #});
-        #await page.coverage.stopJSCoverage();
+        # });
+        # await page.coverage.stopJSCoverage();
       end
     end
 
@@ -152,7 +154,7 @@ module Rammus
         coverage = page.coverage.stop_css_coverage
         expect(coverage.length).to eq 1
         expect(coverage[0][:url]).to include '/csscoverage/simple.html'
-        expect(coverage[0][:ranges]).to eq [{ start: 1, end: 22 } ]
+        expect(coverage[0][:ranges]).to eq [{ start: 1, end: 22 }]
         range = coverage[0][:ranges][0]
         expect(coverage[0][:text][range[:start]...range[:end]]).to eq 'div { color: green; }'
       end
@@ -197,7 +199,7 @@ module Rammus
         page.coverage.start_css_coverage
         page.goto(server.domain + 'csscoverage/involved.html').wait!
         coverage = page.coverage.stop_css_coverage
-        coverage.each { |part| part[:url].gsub!(/:\d{4}\//, ':<PORT>/') }
+        coverage.each { |part| part[:url].gsub!(%r{:\d{4}/}, ':<PORT>/') }
         expected = [
           {
             url: "http://localhost:<PORT>/csscoverage/involved.html",
@@ -207,27 +209,27 @@ module Rammus
             ],
             text: <<~TEXT
 
-            @charset \"utf-8\";
-            @namespace svg url(http://www.w3.org/2000/svg);
-            @font-face {
-              font-family: \"Example Font\";
-              src: url(\"./Dosis-Regular.ttf\");
-            }
-
-            #fluffy {
-              border: 1px solid black;
-              z-index: 1;
-              /* -webkit-disabled-property: rgb(1, 2, 3) */
-              -lol-cats: \"dogs\" /* non-existing property */
-            }
-
-            @media (min-width: 1px) {
-              span {
-                -webkit-border-radius: 10px;
+              @charset \"utf-8\";
+              @namespace svg url(http://www.w3.org/2000/svg);
+              @font-face {
                 font-family: \"Example Font\";
-                animation: 1s identifier;
+                src: url(\"./Dosis-Regular.ttf\");
               }
-            }
+
+              #fluffy {
+                border: 1px solid black;
+                z-index: 1;
+                /* -webkit-disabled-property: rgb(1, 2, 3) */
+                -lol-cats: \"dogs\" /* non-existing property */
+              }
+
+              @media (min-width: 1px) {
+                span {
+                  -webkit-border-radius: 10px;
+                  font-family: \"Example Font\";
+                  animation: 1s identifier;
+                }
+              }
             TEXT
           }
         ]

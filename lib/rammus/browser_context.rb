@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   # BrowserContexts provide a way to operate multiple independent browser
   # sessions. When a browser is launched, it has a single BrowserContext used
@@ -45,6 +47,7 @@ module Rammus
     #
     def close
       raise Errors::UncloseableContext unless id
+
       browser.delete_context(self)
       nil
     end
@@ -54,7 +57,7 @@ module Rammus
     # @return [Rammus::Page]
     #
     def new_page
-      browser.create_page_in_context(self.id)
+      browser.create_page_in_context(id)
     end
 
     # An array of all open pages. Non visible pages, such as "background_page",
@@ -99,9 +102,10 @@ module Rammus
       permissions = permissions.map do |permission|
         protocol_permission = WEB_PERMISSION_TO_PROTOCOL[permission]
         raise "Unknown permission: #{permission}" if protocol_permission.nil?
+
         protocol_permission
       end
-      client.command(Protocol::Browser.grant_permissions origin: origin, browser_context_id: id || nil, permissions: permissions).wait!
+      client.command(Protocol::Browser.grant_permissions(origin: origin, browser_context_id: id || nil, permissions: permissions)).wait!
       nil
     end
 
@@ -115,7 +119,7 @@ module Rammus
     # @return [nil]
     #
     def clear_permission_overrides
-      client.command(Protocol::Browser.reset_permissions browser_context_id: id || nil).wait!
+      client.command(Protocol::Browser.reset_permissions(browser_context_id: id || nil)).wait!
       nil
     end
 
@@ -169,6 +173,6 @@ module Rammus
         'payment-handler' => 'paymentHandler',
         # chrome-specific permissions we have.
         'midi-sysex' => 'midiSysex'
-      }
+      }.freeze
   end
 end

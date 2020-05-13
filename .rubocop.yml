@@ -5,10 +5,41 @@ require:
 
 AllCops:
   TargetRubyVersion: 2.6
+  Exclude:
+    - 'lib/rammus/protocol/*'
+    - 'generate_protocol.rb'
+    - 'spec/support/test_server.rb' # TODO cut down on noise
+
+# TODO: cutting down on noise
+Naming/AccessorMethodName:
+  Enabled: false
+
+# TODO: cutting down on noise
+Naming/PredicateName:
+  Enabled: false
+
+# TODO: cut down on noise
+Style/ExpandPathArguments:
+  Enabled: false
+
+Style/DoubleNegation:
+  Enabled: false
+
+Style/Documentation:
+  Enabled: false
+
+Style/AsciiComments:
+  Enabled: false
 
 Style/StringLiterals:
   Enabled: false
   EnforcedStyle: double_quotes
+
+Style/Semicolon:
+  Enabled: false
+
+Style/RescueModifier:
+  Enabled: false
 
 Layout/IndentationConsistency:
   Enabled: true
@@ -17,16 +48,103 @@ Layout/IndentationConsistency:
 Layout/LineLength:
   Enabled: false
 
+Layout/MultilineMethodCallIndentation:
+  EnforcedStyle: indented
+
+Layout/HashAlignment:
+  Exclude:
+    - 'lib/rammus/protocol_logger.rb'
+
+Layout/RescueEnsureAlignment:
+  Exclude:
+    - 'lib/rammus/web_socket_client.rb'
+
+Layout/ArgumentAlignment:
+  Enabled: false
+
+Lint/Void:
+  Enabled: false
+
+Lint/SuppressedException:
+  Enabled: false
+
+Lint/ShadowedException:
+  Enabled: false
+
+Metrics/ParameterLists:
+  Enabled: false
+
+Metrics/ClassLength:
+  Enabled: false
+
 Metrics/MethodLength:
+  Enabled: false
+
+Metrics/ModuleLength:
   Enabled: false
 
 Metrics/BlockLength:
   Enabled: false
 
-Metrics/PercievedComplexity:
+Metrics/AbcSize:
   Enabled: false
 
+Metrics/CyclomaticComplexity:
+  Enabled: false
+
+Metrics/PerceivedComplexity:
+  Enabled: false
+
+Style/MultilineBlockChain:
+  Exclude:
+    - 'lib/rammus/web_socket_client.rb'
+    - 'lib/rammus/lifecycle_watcher.rb'
+
 Style/LambdaCall:
+  Enabled: false
+
+Style/Lambda:
+  EnforcedStyle: literal
+
+Style/TrailingUnderscoreVariable:
+  Enabled: false
+
+Style/IfUnlessModifier:
+  Enabled: false
+
+Style/WordArray:
+  Enabled: false
+
+Style/CommentAnnotation:
+  Enabled: false
+
+Style/ParallelAssignment:
+  Enabled: false
+
+Style/SymbolArray:
+  Enabled: false
+
+Style/RescueStandardError:
+  Enabled: false
+
+Style/BlockComments:
+  Enabled: false
+
+Naming/MethodParameterName:
+  Exclude:
+    - 'lib/rammus/mouse.rb'
+    - 'lib/rammus/touchscreen.rb'
+
+Naming/MemoizedInstanceVariableName:
+  Enabled: false
+
+Naming/RescuedExceptionsVariableName:
+  Enabled: false
+
+Naming/VariableNumber:
+  EnforcedStyle: snake_case
+
+Performance/RedundantBlockCall:
   Enabled: false
 
 #Naming/PredicateName:

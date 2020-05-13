@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   RSpec.describe Browser, browser: true do
     after(:each) do
@@ -41,7 +43,7 @@ module Rammus
         context = BrowserContext.new(client: browser.client, browser: browser, id: "FAKEID")
 
         expect { browser.delete_context context }
-         .to raise_error(/Failed to find context with id FAKEID/)
+          .to raise_error(/Failed to find context with id FAKEID/)
       end
     end
 

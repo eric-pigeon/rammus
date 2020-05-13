@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   # @!visibility private
   #
@@ -14,7 +16,7 @@ module Rammus
     # @param [Hash] object
     #
     def self.create_protocol_error(method, object)
-      message = "Protocol error (#{method}): #{object.dig("error", "message")}"
+      message = "Protocol error (#{method}): #{object.dig('error', 'message')}"
       message += object.dig("error", "data").to_s
       Errors::ProtocolError.new message
     end
@@ -27,7 +29,7 @@ module Rammus
       super()
       @web_socket = web_socket
       web_socket.on_message = method :on_message
-      web_socket.on_close  = method :on_close
+      web_socket.on_close = method :on_close
       @_sessions = {}
       @_last_id = 0
       @command_mutex = Mutex.new
@@ -147,9 +149,9 @@ module Rammus
           @_sessions.fetch(message["sessionId"]).send(:on_message, message)
         elsif message["id"]
           ProtocolLogger.puts_command_response message
-          if callback = @_command_callbacks.delete(message["id"])
-            if message.has_key? "error"
-              callback.reject.(ChromeClient.create_protocol_error callback.method, message)
+          if (callback = @_command_callbacks.delete(message["id"]))
+            if message.key? "error"
+              callback.reject.(ChromeClient.create_protocol_error(callback.method, message))
             else
               callback.resolve.(message["result"])
             end

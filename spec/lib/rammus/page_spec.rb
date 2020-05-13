@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   RSpec.describe Page, page: true do
     describe '#close' do
@@ -78,7 +80,7 @@ module Rammus
       it 'should throw when page crashes' do
         skip "Travis version of chrome doesn't send Inspector.targetCrashed on chrome://crash" if ENV["TRAVIS"] == "true"
         error = nil
-        page.on :error, -> (err) { error = err }
+        page.on :error, ->(err) { error = err }
         Concurrent::Promises.zip(
           wait_event(page, :error),
           page.goto('chrome://crash').rescue { |_err| }
@@ -133,7 +135,7 @@ module Rammus
         page.set_content('<a target=_blank rel=noopener href="/one-style.html">yo</a>').wait!
         popup, _ = Concurrent::Promises.zip(
           Concurrent::Promises.resolvable_future.tap { |future| page.once :popup, future.method(:fulfill) },
-          Concurrent::Promises.future { page.click('a') },
+          Concurrent::Promises.future { page.click('a') }
         ).value!
         expect(page.evaluate_function("() => !!window.opener").value!).to eq false
         expect(popup.evaluate_function("() => !!window.opener").value!).to eq false
@@ -149,13 +151,13 @@ module Rammus
 
       it 'should be prompt by default' do
         page.goto(server.empty_page).wait!
-        expect(get_permission page, 'geolocation').to eq 'prompt'
+        expect(get_permission(page, 'geolocation')).to eq 'prompt'
       end
 
       it 'should deny permission when not listed' do
         page.goto(server.empty_page).wait!
         context.override_permissions server.empty_page, []
-        expect(get_permission page, 'geolocation').to eq 'denied'
+        expect(get_permission(page, 'geolocation')).to eq 'denied'
       end
 
       it 'should fail when bad permission is given' do
@@ -167,7 +169,7 @@ module Rammus
       it 'should grant permission when listed' do
         page.goto(server.empty_page).wait!
         context.override_permissions server.empty_page, ['geolocation']
-        expect(get_permission page, 'geolocation').to eq 'granted'
+        expect(get_permission(page, 'geolocation')).to eq 'granted'
       end
 
       it 'should reset permissions' do
@@ -203,17 +205,17 @@ module Rammus
         other_context = browser.create_context
         other_page = other_context.new_page
         other_page.goto(server.empty_page).wait!
-        expect(get_permission page, 'geolocation').to eq 'prompt'
-        expect(get_permission other_page, 'geolocation').to eq 'prompt'
+        expect(get_permission(page, 'geolocation')).to eq 'prompt'
+        expect(get_permission(other_page, 'geolocation')).to eq 'prompt'
 
         context.override_permissions server.empty_page, []
         other_context.override_permissions server.empty_page, ['geolocation']
-        expect(get_permission page, 'geolocation').to eq 'denied'
-        expect(get_permission other_page, 'geolocation').to eq 'granted'
+        expect(get_permission(page, 'geolocation')).to eq 'denied'
+        expect(get_permission(other_page, 'geolocation')).to eq 'granted'
 
         context.clear_permission_overrides
-        expect(get_permission page, 'geolocation').to eq 'prompt'
-        expect(get_permission other_page, 'geolocation').to eq 'granted'
+        expect(get_permission(page, 'geolocation')).to eq 'prompt'
+        expect(get_permission(other_page, 'geolocation')).to eq 'granted'
 
         other_context.close
       end
@@ -291,7 +293,7 @@ module Rammus
     describe 'Page.Events.Console' do
       it 'should work' do
         message = nil
-        page.once :console, -> (m) { message = m }
+        page.once :console, ->(m) { message = m }
         Concurrent::Promises.zip(
           page.evaluate_function("() => console.log('hello', 5, {foo: 'bar'})"),
           wait_event(page, :console)
@@ -305,7 +307,7 @@ module Rammus
 
       it 'should work for different console API calls' do
         messages = []
-        page.on :console, -> (msg) { messages << msg }
+        page.on :console, ->(msg) { messages << msg }
         # All console events will be reported before `page.evaluate` is finished.
         page.evaluate_function("() => {
           // A pair of time/timeEnd generates only one Console API call.
@@ -319,7 +321,7 @@ module Rammus
         }").wait!
         expect(messages.map(&:type)).to eq ['timeEnd', 'trace', 'dir', 'warning', 'error', 'log']
         expect(messages[0].text).to include 'calling console.time'
-        expect(messages.tap { |m| m.shift }.map(&:text)).to eq [
+        expect(messages.tap(&:shift).map(&:text)).to eq [
           'calling console.trace',
           'calling console.dir',
           'calling console.warn',
@@ -330,7 +332,7 @@ module Rammus
 
       it 'should not fail for window object' do
         message = nil
-        page.once :console, -> (msg) { message = msg }
+        page.once :console, ->(msg) { message = msg }
         Concurrent::Promises.zip(
           wait_event(page, :console),
           page.evaluate_function("() => console.error(window)")
@@ -354,7 +356,7 @@ module Rammus
         page.goto(server.empty_page).wait!
         message, _ = Concurrent::Promises.zip(
           wait_event(page, :console),
-          page.set_content("<script>fetch('http://wat');</script>"),
+          page.set_content("<script>fetch('http://wat');</script>")
         ).value!
         expect(message.text).to include "ERR_NAME_NOT_RESOLVED"
         expect(message.type).to eq 'error'
@@ -415,7 +417,7 @@ module Rammus
           'ScriptDuration',
           'TaskDuration',
           'JSHeapUsedSize',
-          'JSHeapTotalSize',
+          'JSHeapTotalSize'
         ]
         metrics.each do |name, metric|
           expect(metrics_to_check.include?(name)).to eq true
@@ -459,7 +461,7 @@ module Rammus
       it 'should work with predicate' do
         page.goto(server.empty_page).wait!
         request, _ = Concurrent::Promises.zip(
-          page.wait_for_request { |r| r.url() == server.domain + 'digits/2.png' },
+          page.wait_for_request { |r| r.url == server.domain + 'digits/2.png' },
           page.evaluate_function("() => {
             fetch('/digits/1.png');
             fetch('/digits/2.png');
@@ -527,7 +529,7 @@ module Rammus
     describe 'Page#expose_function' do
       it 'should work' do
         page.expose_function 'compute' do |a, b|
-           a * b
+          a * b
         end
         result = page.evaluate_function("async function() {
           return await compute(9, 4);
@@ -621,7 +623,7 @@ module Rammus
     describe 'Page.Events.PageError' do
       it 'should fire' do
         error = nil
-        page.once :page_error, -> (e) { error = e }
+        page.once :page_error, ->(e) { error = e }
         Concurrent::Promises.zip(
           wait_event(page, :page_error),
           page.goto(server.domain + 'error.html')
@@ -646,7 +648,7 @@ module Rammus
         page.set_user_agent('foobar')
         request, _ = Concurrent::Promises.zip(
           server.wait_for_request('/empty.html'),
-          attach_frame(page, 'frame1', server.empty_page),
+          attach_frame(page, 'frame1', server.empty_page)
         ).value!
         expect(request.headers['user-agent']).to eq 'foobar'
       end
@@ -684,7 +686,7 @@ module Rammus
 
       it 'should respect timeout' do
         img_path = 'timeout-img.png'
-        server.set_route("/#{img_path}") { |req, res| Concurrent::Promises.resolvable_future.wait! }
+        server.set_route("/#{img_path}") { |_req, _res| Concurrent::Promises.resolvable_future.wait! }
         expect do
           page.set_content("<img src='#{server.domain + img_path}'></img>", timeout: 0.01).wait!
         end.to raise_error(Errors::TimeoutError, /Navigation Timeout Exceeded/)
@@ -694,7 +696,7 @@ module Rammus
         page.set_default_navigation_timeout 1
         img_path = 'img.png'
         # stall for image
-        server.set_route("/#{img_path}") { |req, res| Concurrent::Promises.resolvable_future.wait! }
+        server.set_route("/#{img_path}") { |_req, _res| Concurrent::Promises.resolvable_future.wait! }
         expect { page.set_content("<img src='#{server.domain + img_path}'></img>").wait! }
           .to raise_error(Errors::TimeoutError, /Navigation Timeout Exceeded/)
       end
@@ -705,7 +707,7 @@ module Rammus
 
         loaded = false
         image_requested = server.wait_for_request(img_path)
-        content_promise = page.set_content("<img src='#{server.domain + "img.png"}'></img>").then { loaded = true }
+        content_promise = page.set_content("<img src='#{server.domain + 'img.png'}'></img>").then { loaded = true }
         image_requested.wait!
 
         expect(loaded).to eq false
@@ -742,10 +744,7 @@ module Rammus
       it 'should bypass CSP meta tag' do
         # Make sure CSP prohibits add_script_tag.
         page.goto(server.domain + 'csp.html').wait!
-        begin
-          page.add_script_tag content: 'window.__injected = 42;'
-        rescue => _err
-        end
+        page.add_script_tag content: 'window.__injected = 42;'
         expect(page.evaluate_function("() => window.__injected").value!).to eq nil
 
         ## By-pass CSP and try one more time.
@@ -759,10 +758,7 @@ module Rammus
         # Make sure CSP prohibits add_script_tag.
         server.set_content_security_policy '/empty.html', 'default-src "self"'
         page.goto(server.empty_page).wait!
-        begin
-          page.add_script_tag content: 'window.__injected = 42;'
-        rescue => _err
-        end
+        page.add_script_tag content: 'window.__injected = 42;'
         expect(page.evaluate_function("() => window.__injected").value!).to eq nil
 
         # By-pass CSP and try one more time.
@@ -788,10 +784,7 @@ module Rammus
 
         # Make sure CSP prohibits add_script_tag in an iframe.
         frame = attach_frame(page, 'frame1', server.domain + 'csp.html').value!
-        begin
-          frame.add_script_tag content: 'window.__injected = 42;'
-        rescue => _err
-        end
+        frame.add_script_tag content: 'window.__injected = 42;'
         expect(frame.evaluate_function("() => window.__injected").value!).to eq nil
 
         # By-pass CSP and try one more time.
@@ -840,7 +833,7 @@ module Rammus
       end
 
       it 'should throw an error if loading from url fail' do
-         page.goto server.empty_page
+        page.goto(server.empty_page).wait!
         expect { page.add_script_tag url: '/nonexistfile.js' }
           .to raise_error 'Loading script from /nonexistfile.js failed'
       end
@@ -962,7 +955,7 @@ module Rammus
 
     describe 'Page#set_cache_enabled' do
       it 'should enable or disable the cache based on the state passed' do
-       page.goto(server.domain + 'cached/one-style.html').wait!
+        page.goto(server.domain + 'cached/one-style.html').wait!
         cached_request, _ = Concurrent::Promises.zip(
           server.wait_for_request('/cached/one-style.html'),
           page.reload
@@ -997,7 +990,7 @@ module Rammus
         output_file = File.expand_path("../../tmp/output.pdf", File.dirname(__FILE__))
 
         page.pdf path: output_file
-        expect(File.size output_file).to be > 0
+        expect(File.size(output_file)).to be > 0
         File.delete output_file
       end
     end
@@ -1029,7 +1022,7 @@ module Rammus
         page.query_selector_evaluate_function 'select', "select => select.addEventListener('input', () => window.location = '/empty.html')"
         Concurrent::Promises.zip(
           page.wait_for_navigation,
-          Concurrent::Promises.future { page.select('select', 'blue') },
+          Concurrent::Promises.future { page.select('select', 'blue') }
         ).wait!
         expect(page.url).to include 'empty.html'
       end
@@ -1056,20 +1049,20 @@ module Rammus
 
       it 'should return [] on no matched values' do
         page.goto(server.domain + 'input/select.html').wait!
-        result = page.select 'select','42','abc'
+        result = page.select 'select', '42', 'abc'
         expect(result).to eq []
       end
 
       it 'should return an array of matched values' do
         page.goto(server.domain + 'input/select.html').wait!
         page.evaluate_function("() => makeMultiple()").wait!
-        result = page.select 'select','blue','black','magenta'
+        result = page.select 'select', 'blue', 'black', 'magenta'
         expect(result).to match_array(['blue', 'black', 'magenta'])
       end
 
       it 'should return an array of one element when multiple is not set' do
         page.goto(server.domain + 'input/select.html').wait!
-        result = page.select 'select','42','blue','black','magenta'
+        result = page.select 'select', '42', 'blue', 'black', 'magenta'
         expect(result.length).to eq 1
       end
 
@@ -1082,7 +1075,7 @@ module Rammus
       it 'should deselect all options when passed no values for a multiple select' do
         page.goto(server.domain + 'input/select.html').wait!
         page.evaluate_function("() => makeMultiple()").wait!
-        page.select 'select','blue','black','magenta'
+        page.select 'select', 'blue', 'black', 'magenta'
         page.select 'select'
         result = page.query_selector_evaluate_function('select', "select => Array.from(select.options).every(option => !option.selected)").value!
         expect(result).to eq true
@@ -1090,7 +1083,7 @@ module Rammus
 
       it 'should deselect all options when passed no values for a select without multiple' do
         page.goto(server.domain + 'input/select.html').wait!
-        page.select 'select','blue','black','magenta'
+        page.select 'select', 'blue', 'black', 'magenta'
         page.select 'select'
         result = page.query_selector_evaluate_function('select', "select => Array.from(select.options).every(option => !option.selected)").value!
         expect(result).to eq true
@@ -1114,8 +1107,8 @@ module Rammus
 
     describe 'Page.Events.Close' do
       it 'should work with window.close' do
-        new_page_promise = Concurrent::Promises.resolvable_future.tap  do |future|
-          context.once :target_created, -> (target) { future.fulfill target.page }
+        new_page_promise = Concurrent::Promises.resolvable_future.tap do |future|
+          context.once :target_created, ->(target) { future.fulfill target.page }
         end
         page.evaluate_function("() => window['new_page'] = window.open('about:blank')").wait!
         new_page = new_page_promise.value!

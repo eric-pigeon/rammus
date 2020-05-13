@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   # @!visibility private
   #
@@ -13,8 +15,8 @@ module Rammus
       magenta: 35,
       cyan:    36,
       white:   37,
-      bold:    1,
-     }
+      bold:    1
+    }.freeze
 
     def puts_command(text)
       # puts wrap "SEND ► #{text}", :magenta

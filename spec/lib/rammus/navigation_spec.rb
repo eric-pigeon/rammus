@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   RSpec.describe 'Navigation', browser: true do
     before { @_context = browser.create_context }
@@ -38,7 +40,7 @@ module Rammus
       end
 
       it 'should work with subframes return 204' do
-        server.set_route '/frames/frame.html' do |req, res|
+        server.set_route '/frames/frame.html' do |_req, res|
           res.status = 204
           res.finish
         end
@@ -46,7 +48,7 @@ module Rammus
       end
 
       it 'should fail when server returns 204' do
-        server.set_route '/empty.html' do |req, res|
+        server.set_route '/empty.html' do |_req, res|
           res.status = 204
           res.finish
         end
@@ -86,26 +88,26 @@ module Rammus
         # TODO
         # Make sure that network events do not emit 'undefined'.
         # @see https://crbug.com/750469
-        #page.on('request', request => expect(request).to eqTruthy());
-        #page.on('requestfinished', request => expect(request).to eqTruthy());
-        #page.on('requestfailed', request => expect(request).to eqTruthy());
-        #let error = null;
-        #await page.goto(httpsServer.empty_page).catch(e => error = e);
-        #if (CHROME)
+        # page.on('request', request => expect(request).to eqTruthy());
+        # page.on('requestfinished', request => expect(request).to eqTruthy());
+        # page.on('requestfailed', request => expect(request).to eqTruthy());
+        # let error = null;
+        # await page.goto(httpsServer.empty_page).catch(e => error = e);
+        # if (CHROME)
         #  expect(error.message).toContain('net::ERR_CERT_AUTHORITY_INVALID');
-        #else
+        # else
         #  expect(error.message).toContain('SSL_ERROR_UNKNOWN');
       end
 
       xit 'should fail when navigating to bad SSL after redirects' do
         # TODO
-        #server.setRedirect('/redirect/1.html', '/redirect/2.html');
-        #server.setRedirect('/redirect/2.html', '/empty.html');
-        #let error = null;
-        #await page.goto(httpsServer.domain + '/redirect/1.html').catch(e => error = e);
-        #if (CHROME)
+        # server.setRedirect('/redirect/1.html', '/redirect/2.html');
+        # server.setRedirect('/redirect/2.html', '/empty.html');
+        # let error = null;
+        # await page.goto(httpsServer.domain + '/redirect/1.html').catch(e => error = e);
+        # if (CHROME)
         #  expect(error.message).toContain('net::ERR_CERT_AUTHORITY_INVALID');
-        #else
+        # else
         #  expect(error.message).toContain('SSL_ERROR_UNKNOWN');
       end
 
@@ -155,7 +157,7 @@ module Rammus
             .then { res.finish }
             .value
         end
-        page.set_default_timeout 0.1
+        page.default_timeout = 0.1
         expect { page.goto(server.domain + 'empty.html').wait! }
           .to raise_error(Errors::TimeoutError, /Navigation Timeout Exceeded: 0.1s/)
         finish_response.(nil)
@@ -171,7 +173,7 @@ module Rammus
             .then { res.finish }
             .value!
         end
-        page.set_default_timeout 0
+        page.default_timeout = 0
         page.set_default_navigation_timeout 0.1
         expect { page.goto(server.domain + 'empty.html').value! }
           .to raise_error(Errors::TimeoutError, /Navigation Timeout Exceeded: 0.1s/)
@@ -180,7 +182,7 @@ module Rammus
 
       it 'should disable timeout when its set to 0' do
         loaded = false
-        page.once :load, -> (_event) { loaded = true }
+        page.once :load, ->(_event) { loaded = true }
         page.goto(server.domain + 'grid.html', timeout: 0, wait_until: [:load]).wait!
         expect(loaded).to eq true
       end
@@ -212,67 +214,68 @@ module Rammus
 
       xit 'should wait for network idle to succeed navigation' do
         # TODO
-        #responses = []
+        # responses = []
         ## Hold on to a bunch of requests without answering.
-        #server.setRoute('/fetch-request-a.js', (req, res) => responses.push(res));
-        #server.setRoute('/fetch-request-b.js', (req, res) => responses.push(res));
-        #server.setRoute('/fetch-request-c.js', (req, res) => responses.push(res));
-        #server.setRoute('/fetch-request-d.js', (req, res) => responses.push(res));
-        #initialFetchResourcesRequested = Promise.all([
+        # server.setRoute('/fetch-request-a.js', (req, res) => responses.push(res));
+        # server.setRoute('/fetch-request-b.js', (req, res) => responses.push(res));
+        # server.setRoute('/fetch-request-c.js', (req, res) => responses.push(res));
+        # server.setRoute('/fetch-request-d.js', (req, res) => responses.push(res));
+        # initialFetchResourcesRequested = Promise.all([
         #  server.waitForRequest('/fetch-request-a.js'),
         #  server.waitForRequest('/fetch-request-b.js'),
         #  server.waitForRequest('/fetch-request-c.js'),
-        #]);
-        #secondFetchResourceRequested = server.waitForRequest('/fetch-request-d.js');
+        # ]);
+        # secondFetchResourceRequested = server.waitForRequest('/fetch-request-d.js');
 
         ## Navigate to a page which loads immediately and then does a bunch of
         ## requests via javascript's fetch method.
-        #navigationPromise = await page.goto(server.domain + '/networkidle.html', {
+        # navigationPromise = await page.goto(server.domain + '/networkidle.html', {
         #  waitUntil: 'networkidle0',
-        #end
+        # end
         ## Track when the navigation gets completed.
-        #let navigationFinished = false;
-        #navigationPromise.then(() => navigationFinished = true);
+        # let navigationFinished = false;
+        # navigationPromise.then(() => navigationFinished = true);
 
         ## Wait for the page's 'load' event.
-        #await new Promise(fulfill => page.once('load', fulfill));
-        #expect(navigationFinished).to eq(false);
+        # await new Promise(fulfill => page.once('load', fulfill));
+        # expect(navigationFinished).to eq(false);
 
         ## Wait for the initial three resources to be requested.
-        #await initialFetchResourcesRequested;
+        # await initialFetchResourcesRequested;
 
         ## Expect navigation still to be not finished.
-        #expect(navigationFinished).to eq(false);
+        # expect(navigationFinished).to eq(false);
 
         ## Respond to initial requests.
-        #for (response of responses) {
+        # for (response of responses) {
         #  response.statusCode = 404;
         #  response.end(`File not found`);
-        #}
+        # }
 
         ## Reset responses array
-        #responses = [];
+        # responses = [];
 
         ## Wait for the second round to be requested.
-        #await secondFetchResourceRequested;
+        # await secondFetchResourceRequested;
         ## Expect navigation still to be not finished.
-        #expect(navigationFinished).to eq(false);
+        # expect(navigationFinished).to eq(false);
 
         ## Respond to requests.
-        #for (response of responses) {
+        # for (response of responses) {
         #  response.statusCode = 404;
         #  response.end(`File not found`);
-        #}
+        # }
 
-        #response = await navigationPromise;
+        # response = await navigationPromise;
         ## Expect navigation to succeed.
-        #expect(response.ok()).to eq(true);
+        # expect(response.ok()).to eq(true);
       end
 
       it 'should navigate to dataURL and fire dataURL requests' do
         requests = []
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           next if is_favicon request
+
           requests << request
         end
         data_url = 'data:text/html,<div>yo</div>'
@@ -284,8 +287,9 @@ module Rammus
 
       it 'should navigate to URL with hash and fire requests without hash' do
         requests = []
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           next if is_favicon request
+
           requests << request
         end
         response = page.goto(server.empty_page + '#hash').value!
@@ -303,25 +307,25 @@ module Rammus
 
       xit 'should fail when navigating and show the url at the error message' do
         # TODO
-        #url = httpsServer.domain + '/redirect/1.html';
-        #let error = null;
-        #try {
+        # url = httpsServer.domain + '/redirect/1.html';
+        # let error = null;
+        # try {
         #  await page.goto(url);
-        #} catch (e) {
+        # } catch (e) {
         #  error = e;
-        #}
-        #expect(error.message).toContain(url);
+        # }
+        # expect(error.message).toContain(url);
       end
 
       it 'should send referer' do
-        request1, request2 = Concurrent::Promises.zip(
+        request_1, request_2 = Concurrent::Promises.zip(
           server.wait_for_request('/grid.html'),
           server.wait_for_request('/digits/1.png'),
           page.goto(server.domain + 'grid.html', referer: 'http://google.com/')
         ).value!
-        expect(request1.headers['referer']).to eq 'http://google.com/'
+        expect(request_1.headers['referer']).to eq 'http://google.com/'
         # Make sure subresources do not inherit referer.
-        expect(request2.headers['referer']).to eq server.domain + 'grid.html'
+        expect(request_2.headers['referer']).to eq server.domain + 'grid.html'
       end
     end
 
@@ -337,8 +341,8 @@ module Rammus
       end
 
       it 'should work with both domcontentloaded and load' do
-        #response = nil
-        #server.set_route('/one-style.css') { |req, res| response = res }
+        # response = nil
+        # server.set_route('/one-style.css') { |req, res| response = res }
         response = server.hang_route('/one-style.css')
 
         dom_content_loaded_promise = page.wait_for_navigation wait_until: :domcontentloaded
@@ -418,7 +422,7 @@ module Rammus
           </script>
                          ").wait!
         expect(page.url).to eq server.domain + 'second.html'
-        back_response, _  = Concurrent::Promises.zip(
+        back_response, _ = Concurrent::Promises.zip(
           page.wait_for_navigation,
           Concurrent::Promises.future { page.click('a#back') }
         ).value!
@@ -524,11 +528,11 @@ module Rammus
         frames = Concurrent::Promises.zip(
           attach_frame(page, 'frame1', server.empty_page),
           attach_frame(page, 'frame2', server.empty_page),
-          attach_frame(page, 'frame3', server.empty_page),
+          attach_frame(page, 'frame3', server.empty_page)
         ).value!
         # Navigate all frames to the same URL.
         server_responses = []
-        server.set_route '/one-style.html' do |req, res|
+        server.set_route '/one-style.html' do |_req, res|
           Concurrent::Promises
             .resolvable_future
             .tap { |future| server_responses << future.method(:fulfill) }

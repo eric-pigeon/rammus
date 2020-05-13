@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   # @!visibility private
   #
@@ -10,10 +12,12 @@ module Rammus
     #
     def self.value_from_remote_object(remote_object)
       raise "Cannot extract value when objectId is given" if remote_object["objectId"]
+
       if remote_object["unserializableValue"]
         if remote_object["type"] == 'bigint'
-          return remote_object["unserializableValue"].gsub("n", "").to_i
+          return remote_object["unserializableValue"].delete("n").to_i
         end
+
         case remote_object["unserializableValue"]
         when '-0'
           return -0
@@ -24,11 +28,11 @@ module Rammus
         when '-Infinity'
           return -Float::INFINITY
         else
-          raise "Unsupported unserializable value #{remote_object["unserializableValue"]}"
+          raise "Unsupported unserializable value #{remote_object['unserializableValue']}"
         end
       end
       # return "undefined" if remote_object["type"] == "undefined"
-      return remote_object["value"]
+      remote_object["value"]
     end
 
     EventListener = Struct.new(:emitter, :event_name, :handler)
@@ -52,10 +56,11 @@ module Rammus
       if exception_details["exception"]
         return exception_details.dig("exception", "description") || exception_details.dig("exception", "value")
       end
+
       message = exception_details["text"]
       if exception_details["stackTrace"]
         exception_details["stackTrace"]["callFrames"].each do |call_frame|
-          location = "#{call_frame["url"]}:#{call_frame["lineNumber"]}:#{call_frame["columnNumber"]}"
+          location = "#{call_frame['url']}:#{call_frame['lineNumber']}:#{call_frame['columnNumber']}"
           function_name = call_frame.fetch "functionName", "<anonymous>"
           message += "\n    at #{function_name} (#{location})"
         end
@@ -69,7 +74,7 @@ module Rammus
     def self.release_object(client, remote_object)
       return if remote_object["objectId"].nil?
 
-      client.command(Protocol::Runtime.release_object object_id: remote_object["objectId"]).rescue do |error|
+      client.command(Protocol::Runtime.release_object(object_id: remote_object["objectId"])).rescue do |error|
         # Exceptions might happen in case of a page been navigated or closed.
         # Swallow these since they are harmless and we don't leak anything in this case.
         debug_error error

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rammus/js_coverage'
 require 'rammus/css_coverage'
 
@@ -80,10 +82,12 @@ module Rammus
         next a[:offset] - b[:offset] if a[:offset] != b[:offset]
         # All "end" points should go before "start" points.
         next b[:type] - a[:type] if a[:type] != b[:type]
+
         a_length = a[:range]["endOffset"] - a[:range]["startOffset"]
         b_length = b[:range]["endOffset"] - b[:range]["startOffset"]
         # For two "start" points, the one with longer range goes first.
         next b_length - a_length if a[:type].zero?
+
         # For two "end" points, the one with shorter range goes first.
         a_length - b_length
       end
@@ -93,8 +97,8 @@ module Rammus
       last_offset = 0
       # Run scanning line to intersect all ranges.
       points.each do |point|
-        #if (hitCountStack.length && lastOffset < point.offset && hitCountStack[hitCountStack.length - 1] > 0) {
-        if hit_count_stack.length > 0 && last_offset < point[:offset] && hit_count_stack.last > 0
+        # if (hitCountStack.length && lastOffset < point.offset && hitCountStack[hitCountStack.length - 1] > 0) {
+        if !hit_count_stack.empty? && last_offset < point[:offset] && hit_count_stack.last.positive?
           last_result = results.last
           if last_result && last_result[:end] == last_offset
             last_result[:end] = point[:offset]

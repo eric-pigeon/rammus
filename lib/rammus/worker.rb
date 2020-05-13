@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   class Worker
     attr_reader :url
@@ -19,8 +21,8 @@ module Rammus
       # // This might fail if the target is closed before we recieve all execution contexts.
       @_client.command Protocol::Runtime.enable
 
-      @_client.on Protocol::Runtime.console_api_called, -> (event) { console_api_called.(event["type"], event["args"].map(&@_js_handle_factory), event["stackTrace"]) }
-      @_client.on Protocol::Runtime.exception_thrown, -> (exception) { exception_thrown.(exception["exceptionDetails"]) }
+      @_client.on Protocol::Runtime.console_api_called, ->(event) { console_api_called.(event["type"], event["args"].map(&@_js_handle_factory), event["stackTrace"]) }
+      @_client.on Protocol::Runtime.exception_thrown, ->(exception) { exception_thrown.(exception["exceptionDetails"]) }
     end
 
     def execution_context
@@ -31,9 +33,9 @@ module Rammus
     # @param {!Array<*>} args
     # @return {!Promise<*>}
     #
-    #async evaluate(pageFunction, ...args) {
+    # async evaluate(pageFunction, ...args) {
     #  return (await this._executionContextPromise).evaluate(pageFunction, ...args);
-    #}
+    # }
 
     def evaluate_function(page_function, *args)
       execution_context.evaluate_function page_function, *args
@@ -43,13 +45,13 @@ module Rammus
     # @param {!Array<*>} args
     # @return {!Promise<!JSHandle>}
     #
-    #async evaluateHandle(pageFunction, ...args) {
+    # async evaluateHandle(pageFunction, ...args) {
     #  return (await this._executionContextPromise).evaluateHandle(pageFunction, ...args);
-    #}
+    # }
 
     def evaluate_handle_function(page_function, *args)
       execution_context.evaluate_handle_function page_function, *args
-      #TODO
+      # TODO
     end
 
     private

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   RSpec.describe 'Request Interception', browser: true do
     before { @_context = browser.create_context }
@@ -8,7 +10,7 @@ module Rammus
     describe 'Page#set_request_interception' do
       it 'should intercept' do
         page.set_request_interception true
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           if is_favicon request
             request.continue
             renxt
@@ -32,7 +34,7 @@ module Rammus
         server.set_redirect '/rredirect', '/empty.html'
         page.goto(server.empty_page).wait!
         page.set_request_interception true
-        page.on :request, -> (request) { request.continue }
+        page.on :request, ->(request) { request.continue }
         content = <<~HTML
           <form action='/rredirect' method='post'>
             <input type="hidden" id="foo" name="foo" value="FOOBAR">
@@ -49,7 +51,7 @@ module Rammus
       it 'should work when header manipulation headers with redirect' do
         server.set_redirect '/rrredirect', '/empty.html'
         page.set_request_interception true
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           headers = request.headers.merge foo: 'bar'
           request.continue headers: headers
         end
@@ -59,7 +61,7 @@ module Rammus
       it 'should contain referer header' do
         page.set_request_interception true
         requests = []
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           requests << request unless is_favicon request
           request.continue
         end
@@ -75,14 +77,14 @@ module Rammus
 
         # Setup request interception.
         page.set_request_interception true
-        page.on :request, -> (request) { request.continue }
+        page.on :request, ->(request) { request.continue }
         response = page.reload.value!
         expect(response.status).to eq 200
       end
 
       it 'should stop intercepting' do
         page.set_request_interception true
-        page.once :request, -> (request) { request.continue }
+        page.once :request, ->(request) { request.continue }
         page.goto(server.empty_page).wait!
         page.set_request_interception false
         page.goto(server.empty_page).wait!
@@ -91,7 +93,7 @@ module Rammus
       it 'should show custom HTTP headers' do
         page.set_extra_http_headers foo: 'bar'
         page.set_request_interception true
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           expect(request.headers['foo']).to eq 'bar'
           request.continue
         end
@@ -104,7 +106,7 @@ module Rammus
         page.goto(server.empty_page).wait!
         server.set_redirect '/logo.png', '/pptr.png'
         page.set_request_interception true
-        page.on :request, -> (request) { request.continue }
+        page.on :request, ->(request) { request.continue }
         status = await page.evaluate_function("async() => {
           const request = new XMLHttpRequest();
           request.open('GET', '/logo.png', false);  // `false` makes the request synchronous
@@ -117,7 +119,7 @@ module Rammus
       it 'should works with customizing referer headers' do
         page.set_extra_http_headers 'referer': server.empty_page
         page.set_request_interception true
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           expect(request.headers['referer']).to eq server.empty_page
           request.continue
         end
@@ -127,7 +129,7 @@ module Rammus
 
       it 'should be abortable' do
         page.set_request_interception true
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           if request.url.end_with? '.css'
             request.abort
           else
@@ -135,7 +137,7 @@ module Rammus
           end
         end
         failed_requests = 0
-        page.on :request_failed, -> (_event) { failed_requests += 1 }
+        page.on :request_failed, ->(_event) { failed_requests += 1 }
         response = page.goto(server.domain + 'one-style.html').value!
         expect(response.ok?).to eq true
         expect(response.request.failure).to eq nil
@@ -144,11 +146,11 @@ module Rammus
 
       it 'should be abortable with custom error codes' do
         page.set_request_interception true
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           request.abort :internet_disconnected
         end
         failed_request = nil
-        page.on :request_failed, -> (request) { failed_request = request }
+        page.on :request_failed, ->(request) { failed_request = request }
         page.goto(server.empty_page).wait! rescue nil
         expect(failed_request).not_to be_nil
         expect(failed_request.failure[:error_text]).to eq 'net::ERR_INTERNET_DISCONNECTED'
@@ -157,7 +159,7 @@ module Rammus
       it 'should send referer' do
         page.set_extra_http_headers referer: 'http://google.com/'
         page.set_request_interception true
-        page.on :request, -> (request) { request.continue }
+        page.on :request, ->(request) { request.continue }
         request, _ = Concurrent::Promises.zip(
           server.wait_for_request('/grid.html'),
           page.goto(server.domain + 'grid.html')
@@ -167,7 +169,7 @@ module Rammus
 
       it 'should fail navigation when aborting main resource' do
         page.set_request_interception true
-        page.on :request, -> (request) { request.abort }
+        page.on :request, ->(request) { request.abort }
         expect { page.goto(server.empty_page).wait! }
           .to raise_error(/net::ERR_FAILED/)
       end
@@ -175,7 +177,7 @@ module Rammus
       it 'should work with redirects' do
         page.set_request_interception true
         requests = []
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           request.continue
           requests << request
         end
@@ -195,14 +197,14 @@ module Rammus
         expect(redirect_chain[2].url).to include '/non-existing-page-3.html'
         redirect_chain.each_with_index do |request, i|
           expect(request.is_navigation_request).to eq true
-          expect(request.redirect_chain.find_index request).to eq i
+          expect(request.redirect_chain.find_index(request)).to eq i
         end
       end
 
       it 'should work with redirects for subresources' do
         page.set_request_interception true
         requests = []
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           request.continue
           requests << request unless is_favicon request
         end
@@ -231,7 +233,7 @@ module Rammus
         page.set_request_interception true
         server.set_redirect '/non-existing.json', '/non-existing-2.json'
         server.set_redirect '/non-existing-2.json', '/simple.html'
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           if request.url.include? 'non-existing-2'
             request.abort
           else
@@ -252,7 +254,7 @@ module Rammus
       it 'should work with equal requests' do
         page.goto(server.empty_page).wait!
         response_count = 1
-        server.set_route '/zzz' do |req, res|
+        server.set_route '/zzz' do |_req, res|
           res.write(response_count * 11)
           response_count += 1
           res.finish
@@ -261,7 +263,7 @@ module Rammus
 
         spinner = false
         # Cancel 2nd request.
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           next request.continue if is_favicon request
 
           spinner ? request.abort : request.continue
@@ -278,7 +280,7 @@ module Rammus
       it 'should navigate to data_url and fire data_url requests' do
         page.set_request_interception true
         requests = []
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           requests << request
           request.continue
         end
@@ -293,7 +295,7 @@ module Rammus
         page.goto(server.empty_page).wait!
         page.set_request_interception true
         requests = []
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           requests << request
           request.continue
         end
@@ -307,7 +309,7 @@ module Rammus
       it 'should navigate to URL with hash and and fire requests without hash' do
         page.set_request_interception true
         requests = []
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           requests << request
           request.continue
         end
@@ -322,7 +324,7 @@ module Rammus
         # The requestWillBeSent will report encoded URL, whereas interception will
         # report URL as-is. @see crbug.com/759388
         page.set_request_interception true
-        page.on :request, -> (request) { request.continue }
+        page.on :request, ->(request) { request.continue }
         response = page.goto(server.domain + ' some nonexisting page').value!
         expect(response.status).to eq 404
       end
@@ -330,7 +332,7 @@ module Rammus
       it 'should work with badly encoded server' do
         page.set_request_interception true
         server.set_route('/malformed') { |_req, res| res.finish }
-        page.on :request, -> (request) { request.continue }
+        page.on :request, ->(request) { request.continue }
         response = page.goto(server.domain + 'malformed?rnd=%911').value!
         expect(response.status).to eq 200
       end
@@ -340,7 +342,7 @@ module Rammus
         # report encoded URL for stylesheet. @see crbug.com/759388
         page.set_request_interception true
         requests = []
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           request.continue
           requests << request
         end
@@ -354,7 +356,7 @@ module Rammus
         page.set_content('<iframe></iframe>').wait!
         page.set_request_interception true
         request = nil
-        page.on :request, -> (r) { request = r }
+        page.on :request, ->(r) { request = r }
         Concurrent::Promises.zip(
           # Wait for request interception.
           wait_event(page, :request),
@@ -367,7 +369,7 @@ module Rammus
 
       it 'should throw if interception is not enabled' do
         expect do
-          page.on :request, -> (request) { request.continue }
+          page.on :request, ->(request) { request.continue }
           page.goto(server.empty_page).wait!
         end.to raise_error(/Request Interception is not enabled/)
       end
@@ -375,12 +377,12 @@ module Rammus
       it 'should work with file URLs' do
         page.set_request_interception true
         urls = Set.new
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           urls << request.url.split('/').last
           request.continue
         end
         file_path = File.expand_path("../../../support/public/one-style.html", __FILE__)
-        page.goto(path_to_file_url file_path).wait!
+        page.goto(path_to_file_url(file_path)).wait!
         expect(urls.size).to eq 2
         expect(urls).to include 'one-style.html'
         expect(urls).to include 'one-style.css'
@@ -390,14 +392,14 @@ module Rammus
     describe 'Request#continue' do
       it 'should work' do
         page.set_request_interception true
-        page.on :request, -> (request) { request.continue }
+        page.on :request, ->(request) { request.continue }
         page.goto(server.empty_page).wait!
       end
 
       it 'should amend HTTP headers' do
         page.set_request_interception true
-        page.on :request, -> (request) do
-          headers =  request.headers
+        page.on :request, ->(request) do
+          headers = request.headers
           headers['FOO'] = 'bar'
           request.continue headers: headers
         end
@@ -411,22 +413,22 @@ module Rammus
 
       it 'should redirect in a way non-observable to page' do
         page.set_request_interception true
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           redirect_url = request.url.include?('/empty.html') ? server.domain + 'consolelog.html' : nil
           request.continue url: redirect_url
         end
         console_message = nil
-        page.on :console, -> (msg) { console_message = msg }
+        page.on :console, ->(msg) { console_message = msg }
         page.goto(server.empty_page).wait!
         expect(page.url).to eq server.empty_page
-        expect(console_message.text).to eq('yellow');
+        expect(console_message.text).to eq('yellow')
       end
 
       it 'should amend method' do
         page.goto(server.empty_page).wait!
 
         page.set_request_interception true
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           request.continue method: 'POST'
         end
         request, _ = Concurrent::Promises.zip(
@@ -440,7 +442,7 @@ module Rammus
         page.goto(server.empty_page).wait!
 
         page.set_request_interception true
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           request.continue post_data: 'doggo'
         end
         server_request, _ = Concurrent::Promises.zip(
@@ -452,7 +454,7 @@ module Rammus
 
       it 'should amend both post data and method on navigation' do
         page.set_request_interception true
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           request.continue method: 'POST', post_data: 'doggo'
         end
         server_request, _ = Concurrent::Promises.zip(
@@ -467,7 +469,7 @@ module Rammus
     describe 'Request#respond' do
       it 'should work' do
         page.set_request_interception true
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           request.respond status: 201, headers: { foo: 'bar' }, body: 'Yo, page!'
         end
         response = page.goto(server.empty_page).value!
@@ -479,7 +481,7 @@ module Rammus
 
       it 'should work with status code 422' do
         page.set_request_interception true
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           request.respond status: 422, body: 'Yo, page!'
         end
         response = page.goto(server.empty_page).value!
@@ -491,7 +493,7 @@ module Rammus
 
       it 'should redirect' do
         page.set_request_interception true
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           unless request.url.include? 'rrredirect'
             request.continue
             next
@@ -506,7 +508,7 @@ module Rammus
 
       it 'should allow mocking binary responses' do
         page.set_request_interception true
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           path = File.expand_path("../../../support/public/pptr.png", __FILE__)
           request.respond content_type: 'image/png', body: File.read(path)
         end
@@ -522,7 +524,7 @@ module Rammus
 
       it 'should stringify intercepted request response headers' do
         page.set_request_interception true
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           request.respond status: 200, headers: { 'foo': true }, body: 'Yo, page!'
         end
         response = page.goto(server.empty_page).value!
@@ -535,10 +537,11 @@ module Rammus
     end
 
     # @param [String] path
+    #
     # @return [String]
     #
     def path_to_file_url(path)
-      path_name = path.gsub(/\\/, '/')
+      path_name = path.tr('\\', '/')
       # Windows drive letter must be prefixed with a slash.
       path_name = '/' + path_name unless path_name.start_with? '/'
       "file://#{path_name}"

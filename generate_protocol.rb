@@ -1,53 +1,58 @@
 #!/usr/local/bin/ruby
+# frozen_string_literal: true
 
 require "json"
 require "erb"
 require "fileutils"
 
-template = <<-RUBY
-module Rammus
-  module Protocol
-    module <%= domain.name %>
-      extend self\
-<% domain.commands.each do |command| -%>
+template = <<~RUBY
+  # frozen_string_literal: true
+
+  module Rammus
+    module Protocol
+      module <%= domain.name %>
+        extend self\
+  <% domain.commands.each do |command| -%>
 
 
-<% if command.description.size > 0 -%>
-<% command.description.lines.each do |line| -%>
-      # <%= line -%>
-<% end %>
-      #
-<% end -%>
-<% if command.has_parameter_descriptions? -%>
-<% command.parameters_with_descriptions.each do |parameter| -%>
-      # <%= parameter.yard_doc %>
-<% end -%>
-      #
-<% end -%>
-      def <%= underscore(command.name) %><%= command.parameters_header %>
-        {
-          method: "<%= domain.name %>.<%= command.name %>"<% if command.has_parameters? then %>,
-          params: { <%= command.parameters_body %> }.compact<% end %>
-        }
-      end\
-<% end %>
-<% domain.events.each do |event| -%>
+  <% if command.description.size > 0 -%>
+  <% command.description.lines.each do |line| -%>
+        # <%= line -%>
+  <% end %>
+        #
+  <% end -%>
+  <% if command.has_parameter_descriptions? -%>
+  <% command.parameters_with_descriptions.each do |parameter| -%>
+        # <%= parameter.yard_doc %>
+  <% end -%>
+        #
+  <% end -%>
+        def <%= underscore(command.name) %><%= command.parameters_header %>
+          {
+            method: "<%= domain.name %>.<%= command.name %>"<% if command.has_parameters? then %>,
+            params: { <%= command.parameters_body %> }.compact<% end %>
+          }
+        end\
+  <% end %>
+  <% domain.events.each do |event| -%>
 
-      def <%= event.method_name %>
-        <%= event.method %>
+        def <%= event.method_name %>
+          <%= event.method %>
+        end
+  <% end -%>
       end
-<% end -%>
     end
   end
-end
 RUBY
 
-protocol_template = <<-RUBY
-module Rammus
-  module Protocol<% protocol.domains.each do |domain| %>
+protocol_template = <<~RUBY
+  # frozen_string_literal: true
+
+  module Rammus
+    module Protocol<% protocol.domains.each do |domain| %>
       autoload :<%= domain.name %>, "rammus/protocol/<%= underscore(domain.name)%>.rb"<% end %>
+    end
   end
-end
 RUBY
 
 Protocol = Struct.new(:domains) do
@@ -60,7 +65,7 @@ Domain = Struct.new(:name, :commands, :events) do
     new(
       json["domain"],
       json["commands"].map { |command| Command.from_json command },
-      json.fetch("events",[]).map { |event| Event.from_json json["domain"], event }
+      json.fetch("events", []).map { |event| Event.from_json json["domain"], event }
     )
   end
 end
@@ -117,6 +122,7 @@ Parameter = Struct.new(:command, :name, :type, :optional, :experimental, :descri
 
   def name
     return self["name"] unless command == "getPossibleBreakpoints" && ["start", "end"].include?(self["name"])
+
     "breakpoint_#{self["name"]}"
   end
 
@@ -154,8 +160,8 @@ end
 
 def underscore(word)
   word
-    .gsub(/([A-Z]+)([A-Z][a-z])/,'\1_\2')
-    .gsub(/([a-z\d])([A-Z])/,'\1_\2')
+    .gsub(/([A-Z]+)([A-Z][a-z])/, '\1_\2')
+    .gsub(/([a-z\d])([A-Z])/, '\1_\2')
     .tr("-", "_")
     .downcase
 end

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   # @!visibility private
   #
@@ -8,8 +10,9 @@ module Rammus
       :lifecycle_promise,
       # Fulfills when the CDP Session is disconnected
       :termination_promise,
+      # TODO: double defined
       # Fulfills when the request timeouts or terminates
-      :timeout_or_termination_promise,
+      # :timeout_or_termination_promise,
       # Fulfills when page navigates on the same page, ie anchor links
       :same_document_navigation_promise,
       # Fulfills when page navigates to new url
@@ -32,9 +35,9 @@ module Rammus
       # @type {?Puppeteer.Request}
       @_navigation_request = nil
       @_event_listeners = [
-        Util.add_event_listener(frame_manager.client, :cdp_session_disconnected, -> (_event) { terminate(StandardError.new('Navigation failed because browser has disconnected!')) }),
-        Util.add_event_listener(frame_manager.client, Protocol::Inspector.target_crashed, -> (_event) { terminate(Errors::PageCrashed.new("Navigation failed because page crashed")) }),
-        Util.add_event_listener(frame_manager, FrameManager.LifecycleEvent, method(:check_lifecycle_complete)),
+        Util.add_event_listener(frame_manager.client, :cdp_session_disconnected, ->(_event) { terminate(StandardError.new('Navigation failed because browser has disconnected!')) }),
+        Util.add_event_listener(frame_manager.client, Protocol::Inspector.target_crashed, ->(_event) { terminate(Errors::PageCrashed.new("Navigation failed because page crashed")) }),
+        Util.add_event_listener(frame_manager, FrameManager.lifecycle_event, method(:check_lifecycle_complete)),
         Util.add_event_listener(frame_manager, :frame_navigated_within_document, method(:navigated_within_document)),
         Util.add_event_listener(frame_manager, :frame_detached, method(:on_frame_detached)),
         Util.add_event_listener(frame_manager.network_manager, :request, method(:on_request))
@@ -51,7 +54,7 @@ module Rammus
 
       @_timeout_task = nil
       @_timeout_promise =
-        if @timeout.nil? || timeout == 0
+        if @timeout.nil? || timeout.zero?
           Concurrent::Promises.resolvable_future
         else
           Concurrent::Promises.resolvable_future.tap do |future|
@@ -80,6 +83,16 @@ module Rammus
       @_timeout_task&.cancel
     end
 
+    # @!visibility: private
+    #
+    # @return [Boolean]
+    #
+    def self.check_lifecycle(frame, expected_lifecycle)
+      expected_lifecycle.subset?(frame.lifecycle_events) && frame.child_frames.all? do |child|
+        LifecycleWatcher.check_lifecycle child, expected_lifecycle
+      end
+    end
+
     private
 
       PROTOCOL_MAPPING = {
@@ -88,14 +101,6 @@ module Rammus
         networkidle0: 'networkIdle',
         networkidle2: 'networkAlmostIdle'
       }.freeze
-
-      # @return [Boolean]
-      #
-      def self.check_lifecycle(frame, expected_lifecycle)
-        expected_lifecycle.subset?(frame.lifecycle_events) && frame.child_frames.all? do |child|
-          LifecycleWatcher.check_lifecycle child, expected_lifecycle
-        end
-      end
 
       def check_lifecycle_complete(_frame)
         return unless LifecycleWatcher.check_lifecycle(frame, @_expected_lifecycle)
@@ -109,22 +114,24 @@ module Rammus
           @_same_document_navigation_complete_callback.(nil, false)
         end
 
-        if @frame.loader_id != @_initial_loader_id
-          @_new_document_navigation_complete_callback.(nil, false)
-        end
+        return unless @frame.loader_id != @_initial_loader_id
+
+        @_new_document_navigation_complete_callback.(nil, false)
       end
 
       # @param {!Puppeteer.Request} request
       #
       def on_request(request)
         return if request.frame != frame || !request.is_navigation_request
+
         @_navigation_request = request
       end
 
       # @param {!Puppeteer.Frame} frame
       #
       def navigated_within_document(frame)
-        return if frame != frame
+        relieturn if self.frame != frame
+
         @_has_same_document_navigation = true
         check_lifecycle_complete nil
       end

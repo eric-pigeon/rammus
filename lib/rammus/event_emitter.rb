@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   # @!visibility private
   #
@@ -6,24 +8,14 @@ module Rammus
       super Queue.new
       @_exectuor = Thread.new do
         loop do
-          begin
-            callback = self.pop
-            callback.call
-          rescue => error
-            # Normally would just set `#abort_on_exception = true` for this thread
-            # but any test that is expecting an error to be raised in an event callback
-            # would swallow the error but this thread would silently die
-            Thread.main.raise error
-          end
+          pop.call
+        rescue => error
+          # Normally would just set `#abort_on_exception = true` for this thread
+          # but any test that is expecting an error to be raised in an event callback
+          # would swallow the error but this thread would silently die
+          Thread.main.raise error
         end
       end
-    end
-
-    # @param [String] session_id
-    #
-    # @return [Concurrent::Promises::ResolvableFuture<nil>]
-    #
-    def wait_for_events(session_id)
     end
 
     def self.wait_for_events(session_id)
@@ -86,6 +78,7 @@ module Rammus
       wrapper = ->(data) {
         emitter.remove_listener event, wrapper
         next if fired
+
         callable.call data
       }
       on event, wrapper

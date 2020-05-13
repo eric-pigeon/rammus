@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   # The Mouse class operates in main-frame CSS pixels relative to the top-left
   # corner of the viewport.
@@ -43,13 +45,15 @@ module Rammus
       @_x = x
       @_y = y
       steps.times do |i|
-        client.command(Protocol::Input.dispatch_mouse_event(
-          type: 'mouseMoved',
-          button: @_button,
-          x: from_x + (@_x - from_x) * ((i + 1).to_f / steps),
-          y: from_y + (@_y - from_y) * ((i + 1).to_f / steps),
-          modifiers: keyboard.modifiers
-        )).wait!
+        client.command(
+          Protocol::Input.dispatch_mouse_event(
+            type: 'mouseMoved',
+            button: @_button,
+            x: from_x + (@_x - from_x) * ((i + 1).to_f / steps),
+            y: from_y + (@_y - from_y) * ((i + 1).to_f / steps),
+            modifiers: keyboard.modifiers
+          )
+        ).wait!
       end
       nil
     end
@@ -85,14 +89,16 @@ module Rammus
     #
     def down(button: Button::LEFT, click_count: 1)
       @_button = button
-      client.command(Protocol::Input.dispatch_mouse_event(
-        type: 'mousePressed',
-        button: button,
-        x: @_x,
-        y: @_y,
-        modifiers: keyboard.modifiers,
-        click_count: click_count
-      )).wait!
+      client.command(
+        Protocol::Input.dispatch_mouse_event(
+          type: 'mousePressed',
+          button: button,
+          x: @_x,
+          y: @_y,
+          modifiers: keyboard.modifiers,
+          click_count: click_count
+        )
+      ).wait!
       nil
     end
 
@@ -106,14 +112,16 @@ module Rammus
     #
     def up(button: Button::LEFT, click_count: 1)
       @_button = 'none'
-      client.command(Protocol::Input.dispatch_mouse_event(
-        type: 'mouseReleased',
-        button: button,
-        x: @_x,
-        y: @_y,
-        modifiers: keyboard.modifiers,
-        click_count: click_count
-      )).wait!
+      client.command(
+        Protocol::Input.dispatch_mouse_event(
+          type: 'mouseReleased',
+          button: button,
+          x: @_x,
+          y: @_y,
+          modifiers: keyboard.modifiers,
+          click_count: click_count
+        )
+      ).wait!
       nil
     end
   end

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   RSpec.describe Tracing, browser: true do
     before { @_context = browser.create_context }
@@ -12,7 +14,7 @@ module Rammus
       page.tracing.start screenshots: true, path: output_file
       page.goto(server.domain + 'grid.html').wait!
       page.tracing.stop
-      expect(File.exist? output_file).to eq true
+      expect(File.exist?(output_file)).to eq true
     end
 
     it 'should run with custom categories if provided' do

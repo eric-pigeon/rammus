@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   KEY_DEFINITIONS = {
     '0' => { key_code: 48, key: '0', code: 'Digit0' },
@@ -22,11 +24,11 @@ module Rammus
     '\r' => { key_code: 13, code: 'Enter', key: 'Enter', text: '\r' },
     '\n' => { key_code: 13, code: 'Enter', key: 'Enter', text: '\r' },
     'ShiftLeft' => { key_code: 16, code: 'ShiftLeft', key: 'Shift', location: 1 },
-    'ShiftRight' => { key_code: 16, code: 'ShiftRight', key: 'Shift', location: 2},
+    'ShiftRight' => { key_code: 16, code: 'ShiftRight', key: 'Shift', location: 2 },
     'ControlLeft' => { key_code: 17, code: 'ControlLeft', key: 'Control', location: 1 },
-    'ControlRight' => { key_code: 17, code: 'ControlRight', key: 'Control', location: 2},
+    'ControlRight' => { key_code: 17, code: 'ControlRight', key: 'Control', location: 2 },
     'AltLeft' => { key_code: 18, code: 'AltLeft', key: 'Alt', location: 1 },
-    'AltRight' => { key_code: 18, code: 'AltRight', key: 'Alt', location: 2},
+    'AltRight' => { key_code: 18, code: 'AltRight', key: 'Alt', location: 2 },
     'Pause' => { key_code: 19, code: 'Pause', key: 'Pause' },
     'CapsLock' => { key_code: 20, code: 'CapsLock', key: 'CapsLock' },
     'Escape' => { key_code: 27, code: 'Escape', key: 'Escape' },
@@ -93,7 +95,7 @@ module Rammus
     'KeyY' => { key_code: 89, code: 'KeyY', shift_key: 'Y', key: 'y' },
     'KeyZ' => { key_code: 90, code: 'KeyZ', shift_key: 'Z', key: 'z' },
     'MetaLeft' => { key_code: 91, code: 'MetaLeft', key: 'Meta', location: 1 },
-    'MetaRight' => { key_code: 92, code: 'MetaRight', key: 'Meta', location: 2},
+    'MetaRight' => { key_code: 92, code: 'MetaRight', key: 'Meta', location: 2 },
     'ContextMenu' => { key_code: 93, code: 'ContextMenu', key: 'ContextMenu' },
     'NumpadMultiply' => { key_code: 106, code: 'NumpadMultiply', key: '*', location: 3 },
     'NumpadAdd' => { key_code: 107, code: 'NumpadAdd', key: '+', location: 3 },
@@ -248,5 +250,5 @@ module Rammus
     '|' => { key_code: 220, key: '|', code: 'Backslash' },
     ' }' => { key_code: 221, key: ' }', code: 'BracketRight' },
     '"' => { key_code: 222, key: '"', code: 'Quote' }
-  }
+  }.freeze
 end

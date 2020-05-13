@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rammus/util'
 
 module Rammus
@@ -26,7 +28,7 @@ module Rammus
 
       if remote_object["subtype"] == 'node' && frame
         frame_manager = frame.frame_manager
-        return  ElementHandle.new context, context.client, remote_object, frame_manager.page, frame_manager
+        return ElementHandle.new context, context.client, remote_object, frame_manager.page, frame_manager
       end
 
       JSHandle.new context, context.client, remote_object
@@ -69,11 +71,11 @@ module Rammus
     #
     def get_property(property_name)
       function = <<~JAVASCRIPT
-      (object, propertyName) => {
-        const result = {__proto__: null};
-        result[propertyName] = object[propertyName];
-        return result;
-      }
+        (object, propertyName) => {
+          const result = {__proto__: null};
+          result[propertyName] = object[propertyName];
+          return result;
+        }
       JAVASCRIPT
       object_handle = execution_context.evaluate_handle_function(function, self, property_name).value!
       properties = object_handle.get_properties
@@ -87,10 +89,12 @@ module Rammus
     # @return [Map<string, JSHandle>>]
     #
     def get_properties
-      response = client.command(Protocol::Runtime.get_properties(
-        object_id: remote_object["objectId"],
-        own_properties: true
-      )).value!
+      response = client.command(
+        Protocol::Runtime.get_properties(
+          object_id: remote_object["objectId"],
+          own_properties: true
+        )
+      ).value!
       response["result"].each_with_object({}) do |property, memo|
         next unless property["enumerable"]
 
@@ -109,12 +113,14 @@ module Rammus
     #
     def json_value
       if remote_object["objectId"]
-        response = client.command(Protocol::Runtime.call_function_on(
-          function_declaration: 'function() { return this; }',
-          object_id: remote_object["objectId"],
-          return_by_value: true,
-          await_promise: true
-        )).value!
+        response = client.command(
+          Protocol::Runtime.call_function_on(
+            function_declaration: 'function() { return this; }',
+            object_id: remote_object["objectId"],
+            return_by_value: true,
+            await_promise: true
+          )
+        ).value!
         return Util.value_from_remote_object response["result"]
       end
 
@@ -140,14 +146,6 @@ module Rammus
       @_disposed = true
       Util.release_object client, remote_object if remote_object["objectId"]
       nil
-    end
-
-    # If this JSHandle is disposed
-    #
-    # @return [Boolean]
-    #
-    def disposed?
-      @_disposed
     end
 
     # String representation of JsHandle

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   RSpec.describe WaitTask, page: true do
     describe 'Frame#wait_for_function' do
@@ -21,8 +23,9 @@ module Rammus
         success = false
         start_time = Time.now
         polling = 100
-        watchdog = page.wait_for_function("() => window.__FOO === 'hit'", polling: polling)
-            .then { success = true }
+        watchdog = page
+          .wait_for_function("() => window.__FOO === 'hit'", polling: polling)
+          .then { success = true }
         page.evaluate_function("() => window.__FOO = 'hit'").wait!
         expect(success).to eq false
         page.evaluate_function("() => document.body.appendChild(document.createElement('div'))").wait!
@@ -32,8 +35,9 @@ module Rammus
 
       it 'should poll on mutation' do
         success = false
-        watchdog = page.wait_for_function("() => window.__FOO === 'hit'", polling: 'mutation')
-            .then { success = true }
+        watchdog = page
+          .wait_for_function("() => window.__FOO === 'hit'", polling: 'mutation')
+          .then { success = true }
         page.evaluate_function("() => window.__FOO = 'hit'").wait!
         expect(success).to eq false
         page.evaluate_function("() => document.body.appendChild(document.createElement('div'))").wait!
@@ -72,7 +76,7 @@ module Rammus
       it 'should return the success value as a JSHandle' do
         # TODO, allow functions in wait for function, passing empty args for now to
         # force a function call
-        expect((page.wait_for_function("() => 5", []).value!).json_value).to eq 5
+        expect(page.wait_for_function("() => 5", []).value!.json_value).to eq 5
       end
 
       it 'should return the window as a success value' do
@@ -95,7 +99,7 @@ module Rammus
       end
 
       it 'should respect default timeout' do
-        page.set_default_timeout 0.1
+        page.default_timeout = 0.1
 
         expect { page.wait_for_function('false', timeout: 0.1).wait! }
           .to raise_error(Errors::TimeoutError, /waiting for function failed: timeout/)
@@ -136,7 +140,7 @@ module Rammus
 
     describe 'Frame#wait_for_selector' do
       let(:add_element) do
-       "tag => document.body.appendChild(document.createElement(tag))"
+        "tag => document.body.appendChild(document.createElement(tag))"
       end
 
       it 'should immediately resolve promise if node exists' do
@@ -190,19 +194,19 @@ module Rammus
       it 'should run in specified frame' do
         attach_frame(page, 'frame1', server.empty_page).wait!
         attach_frame(page, 'frame2', server.empty_page).wait!
-        frame1 = page.frames[1]
-        frame2 = page.frames[2]
-        wait_for_selector_promise = frame2.wait_for_selector 'div'
-        frame1.evaluate_function(add_element, 'div').wait!
-        frame2.evaluate_function(add_element, 'div').wait!
+        frame_1 = page.frames[1]
+        frame_2 = page.frames[2]
+        wait_for_selector_promise = frame_2.wait_for_selector 'div'
+        frame_1.evaluate_function(add_element, 'div').wait!
+        frame_2.evaluate_function(add_element, 'div').wait!
         element_handle = wait_for_selector_promise.value!
-        expect(element_handle.execution_context.frame).to eq frame2
+        expect(element_handle.execution_context.frame).to eq frame_2
       end
 
       it 'should throw when frame is detached' do
         attach_frame(page, 'frame1', server.empty_page).wait!
         frame = page.frames[1]
-        wait_promise = frame.wait_for_selector('.box');
+        wait_promise = frame.wait_for_selector('.box')
         detach_frame page, 'frame1'
         expect { wait_promise.value! }
           .to raise_error(/wait_for_function failed: frame got detached./)
@@ -319,7 +323,7 @@ module Rammus
 
     describe 'Frame#wait_for_xpath' do
       let(:add_element) do
-       "tag => document.body.appendChild(document.createElement(tag))"
+        "tag => document.body.appendChild(document.createElement(tag))"
       end
 
       it 'should support some fancy xpath' do
@@ -336,13 +340,13 @@ module Rammus
       it 'should run in specified frame' do
         attach_frame(page, 'frame1', server.empty_page).wait!
         attach_frame(page, 'frame2', server.empty_page).wait!
-        frame1 = page.frames[1]
-        frame2 = page.frames[2]
-        wait_for_xpath_promise = frame2.wait_for_xpath '//div'
-        frame1.evaluate_function(add_element, 'div').wait!
-        frame2.evaluate_function(add_element, 'div').wait!
+        frame_1 = page.frames[1]
+        frame_2 = page.frames[2]
+        wait_for_xpath_promise = frame_2.wait_for_xpath '//div'
+        frame_1.evaluate_function(add_element, 'div').wait!
+        frame_2.evaluate_function(add_element, 'div').wait!
         element_handle = wait_for_xpath_promise.value!
-        expect(element_handle.execution_context.frame).to eq frame2
+        expect(element_handle.execution_context.frame).to eq frame_2
       end
 
       it 'should throw when frame is detached' do

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'json'
 require 'tmpdir'
 require 'set'
@@ -29,8 +31,8 @@ module Rammus
     DEVICE_DESCRIPTORS
   end
 
-  def self.launch(headless: true, args: [])
-    Launcher.launch headless: headless, args: args
+  def self.launch(headless: true)
+    Launcher.launch headless: headless
   end
 
   def self.connect(ws_endpoint:)

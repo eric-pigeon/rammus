@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'chunky_png'
 
 module MatchScreenshot
@@ -24,16 +26,16 @@ module MatchScreenshot
 
       expected.height.times do |y|
         expected.row(y).each_with_index do |pixel, x|
-          unless pixel == actual[x,y]
-            score = Math.sqrt(
-              (ChunkyPNG::Color.r(actual[x,y]) - ChunkyPNG::Color.r(pixel)) ** 2 +
-              (ChunkyPNG::Color.g(actual[x,y]) - ChunkyPNG::Color.g(pixel)) ** 2 +
-              (ChunkyPNG::Color.b(actual[x,y]) - ChunkyPNG::Color.b(pixel)) ** 2
-            ) / Math.sqrt(ChunkyPNG::Color::MAX ** 2 * 3)
+          next if pixel == actual[x, y]
 
-            output[x,y] = ChunkyPNG::Color.grayscale(ChunkyPNG::Color::MAX - (score * 255).round)
-            @diff << score if score >= THRESHOLD
-          end
+          score = Math.sqrt(
+            (ChunkyPNG::Color.r(actual[x, y]) - ChunkyPNG::Color.r(pixel))**2 +
+            (ChunkyPNG::Color.g(actual[x, y]) - ChunkyPNG::Color.g(pixel))**2 +
+            (ChunkyPNG::Color.b(actual[x, y]) - ChunkyPNG::Color.b(pixel))**2
+          ) / Math.sqrt(ChunkyPNG::Color::MAX**2 * 3)
+
+          output[x, y] = ChunkyPNG::Color.grayscale(ChunkyPNG::Color::MAX - (score * 255).round)
+          @diff << score if score >= THRESHOLD
         end
       end
 
@@ -53,8 +55,8 @@ module MatchScreenshot
       end
 
       <<~MESSAGE
-      Expected screenshot to match #{expected_path}\n
-      Difference image saved to #{@save_path}
+        Expected screenshot to match #{expected_path}\n
+        Difference image saved to #{@save_path}
       MESSAGE
     end
 

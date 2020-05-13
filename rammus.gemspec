@@ -10,8 +10,8 @@ Gem::Specification.new do |spec|
   spec.authors       = ["Eric Pigeon"]
   spec.email         = ["eric.r.pigeon@gmail.com"]
 
-  spec.summary       = %q{meow}
-  spec.description   = %q{meow}
+  spec.summary       = "Chrome Driver"
+  spec.description   = "Library for controlling an instance of Google Chrome browser"
   # spec.homepage      = "TODO: Put your gem's website or public repo URL here."
   spec.license       = "MIT"
 
@@ -30,7 +30,7 @@ Gem::Specification.new do |spec|
 
   # Specify which files should be added to the gem when it is released.
   # The `git ls-files -z` loads the files in the RubyGem that have been added into git.
-  spec.files         = Dir.chdir(File.expand_path(__dir__)) do
+  spec.files = Dir.chdir(File.expand_path(__dir__)) do
     `git ls-files -z`.split("\x0").reject { |f| f.match(%r{^(test|spec|features)/}) }
   end
   spec.bindir        = "exe"

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   RSpec.describe 'Screenshot', browser: true do
     before { @_context = browser.create_context }
@@ -55,7 +57,7 @@ module Rammus
       end
 
       # TODO
-      #it('should run in parallel in multiple pages', async({page, server, context}) => {
+      # it('should run in parallel in multiple pages', async({page, server, context}) => {
       #  const N = 2;
       #  const pages = await Promise.all(Array(N).fill(0).map(async() => {
       #    const page = await context.newPage();
@@ -69,7 +71,7 @@ module Rammus
       #  for (let i = 0; i < N; ++i)
       #    expect(screenshots[i]).toBeGolden(`grid-cell-${i}.png`);
       #  await Promise.all(pages.map(page => page.close()));
-      #});
+      # });
 
       it 'should allow transparency' do
         page.set_viewport width: 100, height: 100
@@ -79,12 +81,12 @@ module Rammus
       end
 
       # TODO need jpeg library
-      #it_fails_ffox('should render white background on jpeg file', async({page, server}) => {
+      # it_fails_ffox('should render white background on jpeg file', async({page, server}) => {
       #  await page.setViewport({ width: 100, height: 100 });
       #  await page.goto(server.EMPTY_PAGE);
       #  const screenshot = await page.screenshot({omitBackground: true, type: 'jpeg'});
       #  expect(screenshot).toBeGolden('white.jpg');
-      #});
+      # });
 
       it 'should work with odd clip size on Retina displays' do
         screenshot = page.screenshot clip: { x: 0, y: 0, width: 11, height: 11 }
@@ -95,7 +97,7 @@ module Rammus
         page.set_viewport width: 500, height: 500
         page.goto(server.domain + 'grid.html').wait!
         screenshot = page.screenshot encoding: 'base64'
-        expect(Base64.decode64 screenshot).to match_screenshot 'screenshot-sanity.png'
+        expect(Base64.decode64(screenshot)).to match_screenshot 'screenshot-sanity.png'
       end
     end
 

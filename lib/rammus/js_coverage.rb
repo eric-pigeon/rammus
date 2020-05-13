@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   # @!visibility private
   #
@@ -27,6 +29,7 @@ module Rammus
     #
     def start(reset_on_navigation: true, report_anonymous_scripts: false)
       raise 'JSCoverage is already enabled' if @_enabled
+
       @_reset_on_navigation = reset_on_navigation
       @_report_anonymous_scripts = report_anonymous_scripts
       @_enabled = true
@@ -38,9 +41,9 @@ module Rammus
       ]
       Concurrent::Promises.zip(
         client.command(Protocol::Profiler.enable),
-        client.command(Protocol::Profiler.start_precise_coverage call_count: false, detailed: true),
+        client.command(Protocol::Profiler.start_precise_coverage(call_count: false, detailed: true)),
         client.command(Protocol::Debugger.enable),
-        client.command(Protocol::Debugger.set_skip_all_pauses skip: true)
+        client.command(Protocol::Debugger.set_skip_all_pauses(skip: true))
       ).wait!
     end
 
@@ -50,12 +53,13 @@ module Rammus
     #
     def stop
       raise 'JSCoverage is not enabled' unless @_enabled
+
       @_enabled = false
       profile_response, _ = Concurrent::Promises.zip(
         @client.command(Protocol::Profiler.take_precise_coverage),
         @client.command(Protocol::Profiler.stop_precise_coverage),
         @client.command(Protocol::Profiler.disable),
-        @client.command(Protocol::Debugger.disable),
+        @client.command(Protocol::Debugger.disable)
       ).value!
       Util.remove_event_listeners @_event_listeners
 
@@ -96,6 +100,7 @@ module Rammus
 
       def on_execution_contexts_cleared(_event)
         return unless @_reset_on_navigation
+
         @_script_urls.clear
         @_script_sources.clear
       end

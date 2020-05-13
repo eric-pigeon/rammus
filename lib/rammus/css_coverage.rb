@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   # @!visibility private
   #
@@ -22,6 +24,7 @@ module Rammus
     #
     def start(reset_on_navigation: true)
       raise 'CSSCoverage is already enabled' if @_enabled
+
       @_reset_on_navigation = reset_on_navigation
       @_enabled = true
       @_stylesheet_urls.clear
@@ -33,7 +36,7 @@ module Rammus
       Concurrent::Promises.zip(
         client.command(Protocol::DOM.enable),
         client.command(Protocol::CSS.enable),
-        client.command(Protocol::CSS.start_rule_usage_tracking),
+        client.command(Protocol::CSS.start_rule_usage_tracking)
       ).wait!
       nil
     end
@@ -44,11 +47,12 @@ module Rammus
     #
     def stop
       raise 'CSSCoverage is not enabled' unless @_enabled
+
       @_enabled = false
       rule_tracking_response = client.command(Protocol::CSS.stop_rule_usage_tracking).value!
       Concurrent::Promises.zip(
         client.command(Protocol::CSS.disable),
-        client.command(Protocol::DOM.disable),
+        client.command(Protocol::DOM.disable)
       ).wait!
       Util.remove_event_listeners @_event_listeners
 
@@ -59,7 +63,7 @@ module Rammus
         ranges << {
           "startOffset" => entry["startOffset"],
           "endOffset" => entry["endOffset"],
-          "count" => entry["used"] ? 1 : 0,
+          "count" => entry["used"] ? 1 : 0
         }
       end
 
@@ -77,6 +81,7 @@ module Rammus
 
       def on_execution_contexts_cleared(_event)
         return unless @_reset_on_navigation
+
         @_stylesheet_urls.clear
         @_stylesheet_sources.clear
       end
@@ -85,6 +90,7 @@ module Rammus
         header = event["header"]
         # Ignore anonymous scripts
         return if header["sourceURL"] == ""
+
         begin
           response = client.command(Protocol::CSS.get_style_sheet_text(style_sheet_id: header["styleSheetId"])).value!
           @_stylesheet_urls[header["styleSheetId"]] = header["sourceURL"]

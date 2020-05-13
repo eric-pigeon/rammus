@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   DEVICE_DESCRIPTORS = {
     "Blackberry PlayBook" => {
@@ -759,6 +761,6 @@ module Rammus
         is_landscape: true
       }
     }
-  }
+  }.freeze
   private_constant :DEVICE_DESCRIPTORS
 end

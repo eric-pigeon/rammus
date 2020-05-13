@@ -1,10 +1,12 @@
+# frozen_string_literal: true
+
 require 'rack'
 require "zlib"
 
 class TestServer
   HANDLER = Rack::Handler.get('puma')
   HANDLER_NAME = "puma"
-  SERVER_SETTINGS = {:Port=>4567, :Host=>"localhost"}
+  SERVER_SETTINGS = { :Port=>4567, :Host=>"localhost" }
   STATIC_PATH = File.dirname(__FILE__) + "/public"
   CONTENT_SECURITY_POLICY = 'Content-Security-Policy'.freeze
   LAST_MODIFIED = 'Last-Modified'.freeze
@@ -102,15 +104,15 @@ class TestServer
   def hang_route(path)
     future = Concurrent::Promises.resolvable_future
 
-    @_routes[path] = ->(req, res) do
-      future.then { |response| res.finish }.value!
+    @_routes[path] = ->(_req, res) do
+      future.then { |_response| res.finish }.value!
     end
 
     future.method(:fulfill)
   end
 
   def set_redirect(from, to)
-    set_route from do |req, res|
+    set_route from do |_req, res|
       res.redirect to
       res.finish
     end
@@ -151,12 +153,12 @@ class TestServer
           response.status = 304
           return response.finish
         end
-        response.headers[Rack::CACHE_CONTROL] =  'public, max-age=31536000'
+        response.headers[Rack::CACHE_CONTROL] = 'public, max-age=31536000'
         response.headers[LAST_MODIFIED] = @_start_time.httpdate
       else
         response.header[Rack::CACHE_CONTROL] = 'no-cache, no-store'
       end
-      if policy = @_content_security_policy[path]
+      if (policy = @_content_security_policy[path])
         response.header[CONTENT_SECURITY_POLICY] = policy
       end
 
@@ -184,116 +186,116 @@ class TestServer
       end
     end
 
-  class Request
-    include Rack::Request::Helpers
-    include Rack::Request::Env
+    class Request
+      include Rack::Request::Helpers
+      include Rack::Request::Env
 
-    def headers
-      @_headers = Headers.new self
+      def headers
+        @_headers = Headers.new self
+      end
+
+      def method
+        headers['REQUEST_METHOD']
+      end
+
+      def post_body
+        body.string
+      end
     end
 
-    def method
-      headers['REQUEST_METHOD']
+    class Headers
+      def initialize(request)
+        @request = request
+      end
+
+      def [](key)
+        @request.get_header env_name key
+      end
+
+      private
+
+       HTTP_HEADER = /\A[A-Za-z0-9-]+\z/.freeze
+       CGI_VARIABLES = Set.new(%W[
+         AUTH_TYPE
+         CONTENT_LENGTH
+         CONTENT_TYPE
+         GATEWAY_INTERFACE
+         HTTPS
+         PATH_INFO
+         PATH_TRANSLATED
+         QUERY_STRING
+         REMOTE_ADDR
+         REMOTE_HOST
+         REMOTE_IDENT
+         REMOTE_USER
+         REQUEST_METHOD
+         SCRIPT_NAME
+         SERVER_NAME
+         SERVER_PORT
+         SERVER_PROTOCOL
+         SERVER_SOFTWARE
+       ]).freeze
+
+        # Converts an HTTP header name to an environment variable name if it is
+        # not contained within the headers hash.
+       def env_name(key)
+         key = key.to_s
+         if key =~ HTTP_HEADER
+           key = key.upcase.tr("-", "_")
+           key = "HTTP_" + key unless CGI_VARIABLES.include?(key)
+         end
+         key
+       end
+
     end
 
-    def post_body
-      body.string
+    class Response < Rack::Response
+      def initialize
+        super
+        @_chunked_queue = nil
+      end
+
+      def set_chunked_response!
+        @_chunked_queue = Queue.new
+        set_header Rack::TRANSFER_ENCODING, CHUNKED
+        [ChunkedBodyWriter.new(@_chunked_queue), [status.to_i, header, ChunkedBodyProxy.new(@_chunked_queue)]]
+
+      end
     end
-  end
 
-  class Headers
-    def initialize(request)
-      @request = request
+    class ChunkedBodyWriter
+      def initialize(queue)
+        @queue = queue
+      end
+
+      def write(chunk)
+        @queue << chunk
+      end
+      alias :<< :write
+
+      def finish
+        @queue.close
+      end
+      alias :end :finish
     end
 
-    def [](key)
-      @request.get_header env_name key
-    end
+    class ChunkedBodyProxy
+      TERM = "\r\n".freeze
+      TAIL = "0#{TERM}#{TERM}".freeze
 
-    private
+      def initialize(queue)
+        @queue = queue
+      end
 
-      HTTP_HEADER = /\A[A-Za-z0-9-]+\z/
-      CGI_VARIABLES = Set.new(%W[
-        AUTH_TYPE
-        CONTENT_LENGTH
-        CONTENT_TYPE
-        GATEWAY_INTERFACE
-        HTTPS
-        PATH_INFO
-        PATH_TRANSLATED
-        QUERY_STRING
-        REMOTE_ADDR
-        REMOTE_HOST
-        REMOTE_IDENT
-        REMOTE_USER
-        REQUEST_METHOD
-        SCRIPT_NAME
-        SERVER_NAME
-        SERVER_PORT
-        SERVER_PROTOCOL
-        SERVER_SOFTWARE
-      ]).freeze
+      def each
+        while (chunk = @queue.pop)
+          size = chunk.bytesize
+          next if size == 0
 
-      # Converts an HTTP header name to an environment variable name if it is
-      # not contained within the headers hash.
-      def env_name(key)
-        key = key.to_s
-        if key =~ HTTP_HEADER
-          key = key.upcase.tr("-", "_")
-          key = "HTTP_" + key unless CGI_VARIABLES.include?(key)
+          chunk = chunk.b
+          yield [size.to_s(16), TERM, chunk, TERM].join
         end
-        key
+        yield TAIL
       end
-
-  end
-
-  class Response < Rack::Response
-    def initialize
-      super
-      @_chunked_queue = nil
     end
-
-    def set_chunked_response!
-      @_chunked_queue = Queue.new
-      set_header Rack::TRANSFER_ENCODING, CHUNKED
-      [ChunkedBodyWriter.new(@_chunked_queue), [status.to_i, header, ChunkedBodyProxy.new(@_chunked_queue)]]
-
-    end
-  end
-
-  class ChunkedBodyWriter
-    def initialize(queue)
-      @queue = queue
-    end
-
-    def write(chunk)
-      @queue << chunk
-    end
-    alias :<< :write
-
-    def finish
-      @queue.close
-    end
-    alias :end :finish
-  end
-
-  class ChunkedBodyProxy
-    TERM = "\r\n"
-    TAIL = "0#{TERM}#{TERM}"
-
-    def initialize(queue)
-      @queue = queue
-    end
-
-    def each
-      while chunk = @queue.pop
-        size = chunk.bytesize
-        next if size == 0
-
-        chunk = chunk.b
-        yield [size.to_s(16), TERM, chunk, TERM].join
-      end
-      yield TAIL
-    end
-  end
 end

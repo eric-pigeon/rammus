@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   # The CDPSession instances are used to talk raw Chrome Devtools Protocol:
   #
@@ -33,11 +35,11 @@ module Rammus
     def command(command)
       if client.nil?
         return Concurrent::Promises.rejected_future(
-          StandardError.new "Protocol error (#{command[:method]}): Session closed. Most likely the #{target_type} has been closed."
+          StandardError.new("Protocol error (#{command[:method]}): Session closed. Most likely the #{target_type} has been closed.")
         )
       end
       @_command_mutex.synchronize do
-        client._raw_send(command.merge sessionId: session_id) do |command_id|
+        client._raw_send(command.merge(sessionId: session_id)) do |command_id|
           Concurrent::Promises.resolvable_future.tap do |future|
             @_command_callbacks[command_id] = CommandCallback.new(
               future.method(:fulfill),
@@ -58,11 +60,11 @@ module Rammus
       # @param [Hash] message
       #
       def on_message(message)
-        if message["id"] && callback = @_command_callbacks.fetch(message["id"])
+        if message["id"] && (callback = @_command_callbacks.fetch(message["id"]))
           ProtocolLogger.puts_command_response message
           @_command_callbacks.delete message["id"]
           if message["error"]
-            callback.reject.(ChromeClient.create_protocol_error callback.method, message)
+            callback.reject.(ChromeClient.create_protocol_error(callback.method, message))
           else
             callback.resolve.(message["result"])
           end

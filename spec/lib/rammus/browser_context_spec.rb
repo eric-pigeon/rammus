@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   RSpec.describe BrowserContext, browser: true do
     after(:each) do
@@ -35,7 +37,7 @@ module Rammus
         context.close
 
         expect(browser.pages.size).to eq 1
-        expect(browser.targets.select { |target| target.type == "page" }.size).to eq 1
+        expect(browser.targets.count { |target| target.type == "page" }).to eq 1
       end
     end
 

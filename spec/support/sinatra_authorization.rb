@@ -1,9 +1,11 @@
+# frozen_string_literal: true
+
 module Sinatra
   module Authorization
     class ProtectedAction
       attr_reader :credentials, :context
 
-      def initialize(context, credentials={})
+      def initialize(context, credentials = {})
         @credentials, @context = credentials, context
       end
 
@@ -20,16 +22,16 @@ module Sinatra
       private
 
         def authorize(username, password)
-          credentials[:username] == username and credentials[:password] == password
+          credentials[:username] == username && credentials[:password] == password
         end
 
         def unauthorized!
-          context.headers['WWW-Authenticate'] =  %(Basic realm="#{credentials[:realm]}")
-          throw :halt, [ 401, 'Authorization Required' ]
+          context.headers['WWW-Authenticate'] = %(Basic realm="#{credentials[:realm]}")
+          throw :halt, [401, 'Authorization Required']
         end
 
         def bad_request!
-          throw :halt, [ 400, 'Bad Request' ]
+          throw :halt, [400, 'Bad Request']
         end
 
         def auth
@@ -40,6 +42,7 @@ module Sinatra
     module Helpers
       def protect!(credentials = {})
         return if authorized?
+
         guard = ProtectedAction.new(self, credentials)
         guard.check!
         request.env['REMOTE_USER'] = guard.remote_user

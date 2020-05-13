@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   # Dialog objects are dispatched by page via the 'dialog' event.
   #
@@ -43,8 +45,9 @@ module Rammus
     #
     def accept(prompt_text = nil)
       raise 'Cannot accept dialog which is already handled!' if @_handled
+
       @_handled = true
-      @_client.command(Protocol::Page.handle_java_script_dialog accept: true, prompt_text: prompt_text).wait!
+      @_client.command(Protocol::Page.handle_java_script_dialog(accept: true, prompt_text: prompt_text)).wait!
       nil
     end
 
@@ -52,8 +55,9 @@ module Rammus
     #
     def dismiss
       raise 'Cannot dismiss dialog which is already handled!' if @_handled
+
       @_handled = true
-      @_client.command(Protocol::Page.handle_java_script_dialog accept: false).wait!
+      @_client.command(Protocol::Page.handle_java_script_dialog(accept: false)).wait!
       nil
     end
   end

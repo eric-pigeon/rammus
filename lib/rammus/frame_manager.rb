@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rammus/execution_context'
 
 module Rammus
@@ -6,9 +8,9 @@ module Rammus
   class FrameManager
     include EventEmitter
 
-    UTILITY_WORLD_NAME = '__puppeteer_utility_world__';
+    UTILITY_WORLD_NAME = '__puppeteer_utility_world__'
 
-    def self.LifecycleEvent
+    def self.lifecycle_event
       'FrameManager.LifecycleEvent'
     end
 
@@ -33,13 +35,13 @@ module Rammus
       @_isolated_worlds = Set.new
       @_main_frame = nil
 
-      client.on Protocol::Page.frame_attached, -> (event) { on_frame_attached event["frameId"], event["parentFrameId"] }
-      client.on Protocol::Page.frame_navigated, -> (event) { on_frame_navigated event["frame"] }
-      client.on Protocol::Page.navigated_within_document, -> (event) { on_frame_navigated_within_document event["frameId"], event["url"] }
-      client.on Protocol::Page.frame_detached, -> (event) { on_frame_detached event["frameId"] }
-      client.on Protocol::Page.frame_stopped_loading, -> (event) { on_frame_stopped_loading event["frameId"] }
-      client.on Protocol::Runtime.execution_context_created, -> (event) { on_execution_context_created event["context"] }
-      client.on Protocol::Runtime.execution_context_destroyed, -> (event) { on_execution_context_destroyed(event["executionContextId"]) }
+      client.on Protocol::Page.frame_attached, ->(event) { on_frame_attached event["frameId"], event["parentFrameId"] }
+      client.on Protocol::Page.frame_navigated, ->(event) { on_frame_navigated event["frame"] }
+      client.on Protocol::Page.navigated_within_document, ->(event) { on_frame_navigated_within_document event["frameId"], event["url"] }
+      client.on Protocol::Page.frame_detached, ->(event) { on_frame_detached event["frameId"] }
+      client.on Protocol::Page.frame_stopped_loading, ->(event) { on_frame_stopped_loading event["frameId"] }
+      client.on Protocol::Runtime.execution_context_created, ->(event) { on_execution_context_created event["context"] }
+      client.on Protocol::Runtime.execution_context_destroyed, ->(event) { on_execution_context_destroyed(event["executionContextId"]) }
       client.on Protocol::Runtime.execution_contexts_cleared, method(:on_execution_contexts_cleared)
       client.on Protocol::Page.lifecycle_event, method(:on_lifecycle_event)
     end
@@ -53,7 +55,7 @@ module Rammus
       ).value
       handle_frame_tree frame_tree["frameTree"]
       Concurrent::Promises.zip(
-        client.command(Protocol::Page.set_lifecycle_events_enabled enabled: true),
+        client.command(Protocol::Page.set_lifecycle_events_enabled(enabled: true)),
         client.command(Protocol::Runtime.enable).then { ensure_isolated_world UTILITY_WORLD_NAME },
         network_manager.start
       )
@@ -119,17 +121,16 @@ module Rammus
       timeout ||= timeout_settings.navigation_timeout
       watcher = LifecycleWatcher.new frame_manager: self, frame: frame, wait_until: wait_until, timeout: timeout
       Concurrent::Promises.future do
-        begin
-          error = Concurrent::Promises.any(
-            watcher.timeout_or_termination_promise,
-            watcher.same_document_navigation_promise,
-            watcher.new_document_navigation_promise
-          ).value!
-          raise error unless error.nil?
-          watcher.navigation_response
-        ensure
-          watcher.dispose
-        end
+        error = Concurrent::Promises.any(
+          watcher.timeout_or_termination_promise,
+          watcher.same_document_navigation_promise,
+          watcher.new_document_navigation_promise
+        ).value!
+        raise error unless error.nil?
+
+        watcher.navigation_response
+      ensure
+        watcher.dispose
       end
     end
 
@@ -162,17 +163,15 @@ module Rammus
 
       def navigate(url, referrer, frame_id)
         Concurrent::Promises.future do
-          begin
-            response = client.command(Protocol::Page.navigate url: url, referrer: referrer, frame_id: frame_id).value!
-            ensure_new_document_navigation = !!response["loaderId"]
-            if response["errorText"]
-              [StandardError.new("#{response["errorText"]} at #{url}"), ensure_new_document_navigation]
-            else
-              [nil, ensure_new_document_navigation]
-            end
-          rescue => error
-            [error, false]
+          response = client.command(Protocol::Page.navigate(url: url, referrer: referrer, frame_id: frame_id)).value!
+          ensure_new_document_navigation = !!response["loaderId"]
+          if response["errorText"]
+            [StandardError.new("#{response['errorText']} at #{url}"), ensure_new_document_navigation]
+          else
+            [nil, ensure_new_document_navigation]
           end
+        rescue => error
+          [error, false]
         end
       end
 
@@ -185,6 +184,7 @@ module Rammus
         on_frame_navigated frame_tree["frame"]
 
         return unless frame_tree["childFrames"]
+
         frame_tree["childFrames"].each { |child| handle_frame_tree child }
       end
 
@@ -194,33 +194,33 @@ module Rammus
         return if @_isolated_worlds.member? name
 
         @_isolated_worlds << name
-        client.command(Protocol::Page.add_script_to_evaluate_on_new_document(
-          source: "//# sourceURL=#{ExecutionContext::EVALUATION_SCRIPT_URL}",
-          world_name: name
-        )).wait!
+        client.command(
+          Protocol::Page.add_script_to_evaluate_on_new_document(
+            source: "//# sourceURL=#{ExecutionContext::EVALUATION_SCRIPT_URL}",
+            world_name: name
+          )
+        ).wait!
         Concurrent::Promises.zip(
-         *frames.map do |frame|
-           client.command Protocol::Page.create_isolated_world(
-             frame_id: frame.id,
-             grant_univeral_access: true,
-             world_name: name
-           )
-         end
+          *frames.map do |frame|
+            client.command Protocol::Page.create_isolated_world(
+              frame_id: frame.id,
+              grant_univeral_access: true,
+              world_name: name
+            )
+          end
         ).wait!
       end
 
       def on_frame_navigated(frame_payload)
-        is_main_frame = !frame_payload.has_key?("parentId")
+        is_main_frame = !frame_payload.key?("parentId")
         frame = is_main_frame ? @_main_frame : @_frames.fetch(frame_payload["id"])
         unless is_main_frame || frame
           raise 'We either navigate top level or have old version of the navigated frame'
         end
 
         # Detach all child frames first.
-        if (frame)
-          frame.child_frames.each do |child|
-            remove_frames_recursively child
-          end
+        frame&.child_frames&.each do |child|
+          remove_frames_recursively child
         end
 
         # Update or create main frame.
@@ -235,11 +235,11 @@ module Rammus
             frame = Frame.new self, client, nil, frame_payload["id"]
           end
           @_frames[frame_payload['id']] = frame
-          @_main_frame = frame;
+          @_main_frame = frame
         end
 
         # Update frame payload.
-        frame.send(:navigated, frame_payload);
+        frame.send(:navigated, frame_payload)
 
         emit :frame_navigated, frame
       end
@@ -248,15 +248,16 @@ module Rammus
       #
       def on_lifecycle_event(event)
         frame = @_frames.fetch event["frameId"]
-        frame.send(:on_lifecycle_event, event["loaderId"], event["name"]);
-        emit(FrameManager.LifecycleEvent, frame);
+        frame.send(:on_lifecycle_event, event["loaderId"], event["name"])
+        emit(FrameManager.lifecycle_event, frame)
       end
 
       # @param [String] frame_id
       # @param [String, nil] parent_frame_id
       #
       def on_frame_attached(frame_id, parent_frame_id)
-        return if @_frames.has_key? frame_id
+        return if @_frames.key? frame_id
+
         parent_frame = @_frames.fetch parent_frame_id
         frame = Frame.new(self, client, parent_frame, frame_id)
         @_frames[frame.id] = frame
@@ -266,7 +267,8 @@ module Rammus
       # @param [String] frame_id
       #
       def on_frame_stopped_loading(frame_id)
-        return unless frame = @_frames[frame_id]
+        return unless (frame = @_frames[frame_id])
+
         frame.send(:on_loading_stopped)
         emit :lifecycle_event, frame
       end
@@ -289,7 +291,7 @@ module Rammus
           @_isolated_worlds.add context_payload["name"]
         end
         context = ExecutionContext.new client, context_payload, world
-        world.send(:set_context, context) if world
+        world&.send(:set_context, context)
         @_execution_contexts[context_payload["id"]] = context
       end
 
@@ -297,14 +299,12 @@ module Rammus
       #
       def on_execution_context_destroyed(execution_context_id)
         context = @_execution_contexts.delete(execution_context_id)
-        if context.world
-          context.world.send(:set_context, nil)
-        end
+        context&.world&.send(:set_context, nil)
       end
 
       def on_execution_contexts_cleared(*)
         @_execution_contexts.values.each do |context|
-          context.world.send(:set_context, nil) if context.world
+          context&.world&.send(:set_context, nil)
         end
 
         @_execution_contexts.clear
@@ -331,7 +331,8 @@ module Rammus
       # @param {string} url
       #
       def on_frame_navigated_within_document(frame_id, url)
-        return unless frame = @_frames[frame_id]
+        return unless (frame = @_frames[frame_id])
+
         frame._navigated_within_document url
         emit :frame_navigated_within_document, frame
         emit :frame_navigated, frame

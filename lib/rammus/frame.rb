@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   # At every point of time, page exposes its current frame tree via the
   # {Page#main_frame} and {Frame#child_frames} methods.
@@ -127,16 +129,14 @@ module Rammus
       # @type {!Set<string>}
       @_lifecycle_events = Set.new
       # @type {!DOMWorld}
-      @main_world =  DOMWorld.new frame_manager, self, frame_manager.timeout_settings
+      @main_world = DOMWorld.new frame_manager, self, frame_manager.timeout_settings
       # @type {!DOMWorld}
       @secondary_world = DOMWorld.new frame_manager, self, frame_manager.timeout_settings
 
       # @type {!Set<!Frame>}
       @child_frames = Set.new
-      if parent_frame
-        # TODO
-        parent_frame.instance_variable_get(:@child_frames).add self
-      end
+      # TODO
+      parent_frame&.instance_variable_get(:@child_frames)&.add self
     end
 
     # {goto} will throw an error if:
@@ -337,6 +337,7 @@ module Rammus
     def wait_for_xpath(xpath, visible: nil, hidden: nil, timeout: nil)
       secondary_world.wait_for_xpath(xpath, visible: visible, hidden: hidden, timeout: timeout).then do |handle|
         next if handle.nil?
+
         result = main_world.execution_context._adopt_element_handle handle
         handle.dispose
         result
@@ -350,7 +351,7 @@ module Rammus
       main_world._detach
       secondary_world._detach
       # TODO
-      parent_frame.instance_variable_get(:@child_frames).delete self if parent_frame
+      parent_frame&.instance_variable_get(:@child_frames)&.delete self
       @parent_frame = nil
     end
 

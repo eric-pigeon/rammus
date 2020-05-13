@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class TestEmitter
   include Rammus::EventEmitter
 

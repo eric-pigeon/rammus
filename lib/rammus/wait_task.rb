@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   # @!visibility private
   class WaitTask
@@ -11,7 +13,7 @@ module Rammus
     #
     def initialize(dom_world, predicate_body, title, polling, timeout, *args)
       if polling.is_a? String
-        raise "Unknown polling option: #{polling}" unless polling == 'raf' || polling == 'mutation'
+        raise "Unknown polling option: #{polling}" unless ['raf', 'mutation'].include?(polling)
       elsif polling.is_a? Numeric
         raise "Cannot poll with non-positive interval: #{polling}" if polling.negative?
       else
@@ -24,7 +26,7 @@ module Rammus
       @_predicate_body = if args.empty?
                            "return (#{predicate_body})"
                          else
-                           "return (#{predicate_body})(...args)";
+                           "return (#{predicate_body})(...args)"
                          end
       @_args = args
       @_run_count = 0
@@ -38,10 +40,8 @@ module Rammus
       @_timeout_timer =
         if timeout && timeout != 0
           Concurrent::ScheduledTask.execute(timeout) do
-             terminate Errors::TimeoutError.new "waiting for #{title} failed: timeout #{timeout}s exeeded"
-           end
-        else
-          nil
+            terminate Errors::TimeoutError.new "waiting for #{title} failed: timeout #{timeout}s exeeded"
+          end
         end
       Concurrent.global_io_executor.post { rerun }
     end
@@ -72,9 +72,9 @@ module Rammus
           error = err
         end
 
-        #if (this._terminated || runCount !== this._runCount) {
+        # if (this._terminated || runCount !== this._runCount) {
         if @_terminated
-          success.dispose.wait! if success
+          success&.dispose&.wait!
 
           return
         end
@@ -82,7 +82,7 @@ module Rammus
         # Ignore timeouts in pageScript - we track timeouts ourselves.
         # If the frame's execution context has already changed, `frame.evaluate` will
         # throw an error - ignore this predicate run altogether.
-        if error.nil? && (dom_world.evaluate_function("s => !s", success).rescue { |err| true }).value!
+        if error.nil? && (dom_world.evaluate_function("s => !s", success).rescue { |_err| true }).value!
           success.dispose
           return
         end
@@ -108,104 +108,104 @@ module Rammus
     private
 
       WAIT_FOR_PREDICATE_PAGE_FUNCTION = <<~JAVASCRIPT
-      /**
-       * @param {string} predicateBody
-       * @param {string} polling
-       * @param {number} timeout
-       * @return {!Promise<*>}
-       */
-      async function waitForPredicatePageFunction(predicateBody, polling, timeout, ...args) {
-        const predicate = new Function('...args', predicateBody);
-        let timedOut = false;
-        if (timeout)
-          setTimeout(() => timedOut = true, timeout);
-        if (polling === 'raf')
-          return await pollRaf();
-        if (polling === 'mutation')
-          return await pollMutation();
-        if (typeof polling === 'number')
-          return await pollInterval(polling);
-
         /**
+         * @param {string} predicateBody
+         * @param {string} polling
+         * @param {number} timeout
          * @return {!Promise<*>}
          */
-        function pollMutation() {
-          const success = predicate.apply(null, args);
-          if (success)
-            return Promise.resolve(success);
+        async function waitForPredicatePageFunction(predicateBody, polling, timeout, ...args) {
+          const predicate = new Function('...args', predicateBody);
+          let timedOut = false;
+          if (timeout)
+            setTimeout(() => timedOut = true, timeout);
+          if (polling === 'raf')
+            return await pollRaf();
+          if (polling === 'mutation')
+            return await pollMutation();
+          if (typeof polling === 'number')
+            return await pollInterval(polling);
 
-          let fulfill;
-          const result = new Promise(x => fulfill = x);
-          const observer = new MutationObserver(mutations => {
-            if (timedOut) {
-              observer.disconnect();
-              fulfill();
-            }
-            const success = predicate.apply(null, args);
-            if (success) {
-              observer.disconnect();
-              fulfill(success);
-            }
-          });
-          observer.observe(document, {
-            childList: true,
-            subtree: true,
-            attributes: true
-          });
-          return result;
-        }
-
-        /**
-         * @return {!Promise<*>}
-         */
-        function pollRaf() {
-          let fulfill;
-          const result = new Promise(x => fulfill = x);
-          onRaf();
-          return result;
-
-          function onRaf() {
-            if (timedOut) {
-              fulfill();
-              return;
-            }
+          /**
+           * @return {!Promise<*>}
+           */
+          function pollMutation() {
             const success = predicate.apply(null, args);
             if (success)
-              fulfill(success);
-            else
-              requestAnimationFrame(onRaf);
+              return Promise.resolve(success);
+
+            let fulfill;
+            const result = new Promise(x => fulfill = x);
+            const observer = new MutationObserver(mutations => {
+              if (timedOut) {
+                observer.disconnect();
+                fulfill();
+              }
+              const success = predicate.apply(null, args);
+              if (success) {
+                observer.disconnect();
+                fulfill(success);
+              }
+            });
+            observer.observe(document, {
+              childList: true,
+              subtree: true,
+              attributes: true
+            });
+            return result;
           }
-        }
 
-        /**
-         * @param {number} pollInterval
-         * @return {!Promise<*>}
-         */
-        function pollInterval(pollInterval) {
-          let fulfill;
-          const result = new Promise(x => fulfill = x);
-          onTimeout();
-          return result;
+          /**
+           * @return {!Promise<*>}
+           */
+          function pollRaf() {
+            let fulfill;
+            const result = new Promise(x => fulfill = x);
+            onRaf();
+            return result;
 
-          function onTimeout() {
-            if (timedOut) {
-              fulfill();
-              return;
+            function onRaf() {
+              if (timedOut) {
+                fulfill();
+                return;
+              }
+              const success = predicate.apply(null, args);
+              if (success)
+                fulfill(success);
+              else
+                requestAnimationFrame(onRaf);
             }
-            const success = predicate.apply(null, args);
-            if (success)
-              fulfill(success);
-            else
-              setTimeout(onTimeout, pollInterval);
+          }
+
+          /**
+           * @param {number} pollInterval
+           * @return {!Promise<*>}
+           */
+          function pollInterval(pollInterval) {
+            let fulfill;
+            const result = new Promise(x => fulfill = x);
+            onTimeout();
+            return result;
+
+            function onTimeout() {
+              if (timedOut) {
+                fulfill();
+                return;
+              }
+              const success = predicate.apply(null, args);
+              if (success)
+                fulfill(success);
+              else
+                setTimeout(onTimeout, pollInterval);
+            }
           }
         }
-      }
       JAVASCRIPT
 
       def cleanup
         @_timeout_timer.cancel
         dom_world.wait_tasks.delete self
-        #this._runningTask = null;
+        # this._runningTask = null;
       end
   end
 end

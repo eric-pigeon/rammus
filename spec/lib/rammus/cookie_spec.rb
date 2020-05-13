@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   RSpec.describe 'Cookies', browser: true do
     before { @_context = browser.create_context }
@@ -14,24 +16,26 @@ module Rammus
       it 'should get a cookie' do
         page.goto(server.empty_page).wait!
         page.evaluate("document.cookie = 'username=John Doe';").wait!
-        expect(page.cookies).to eq([
-          {
-            "name" => 'username',
-            "value" => 'John Doe',
-            "domain" => 'localhost',
-            "path" => '/',
-            "expires" => -1,
-            "size" => 16,
-            "httpOnly" => false,
-            "secure" => false,
-            "session" => true,
-            "priority" => "Medium"
-          }
-        ])
+        expect(page.cookies).to eq(
+          [
+            {
+              "name" => 'username',
+              "value" => 'John Doe',
+              "domain" => 'localhost',
+              "path" => '/',
+              "expires" => -1,
+              "size" => 16,
+              "httpOnly" => false,
+              "secure" => false,
+              "session" => true,
+              "priority" => "Medium"
+            }
+          ]
+        )
       end
 
       it 'should report httpOnly' do
-        server.set_route '/empty.html' do |req, res|
+        server.set_route '/empty.html' do |_req, res|
           res.set_cookie 'http_cookie', value: 'test-cookie', http_only: true
           res.finish
         end
@@ -41,7 +45,7 @@ module Rammus
       end
 
       it 'should properly report "Strict" sameSite cookie' do
-        server.set_route '/empty.html' do |req, res|
+        server.set_route '/empty.html' do |_req, res|
           res.set_cookie 'cooky', same_site: :strict
           res.finish
         end
@@ -52,7 +56,7 @@ module Rammus
       end
 
       it 'should properly report "Lax" sameSite cookie' do
-        server.set_route '/empty.html' do |req, res|
+        server.set_route '/empty.html' do |_req, res|
           res.set_cookie 'cooky', same_site: :lax
           res.finish
         end
@@ -66,33 +70,35 @@ module Rammus
         page.goto(server.empty_page).wait!
 
         page.evaluate("document.cookie = 'username=John Doe'; document.cookie = 'password=1234';").wait!
-        cookies = page.cookies.sort { |a, b| a["name"] <=> b["name"] }
-        expect(cookies).to eq([
-          {
-            "name" => 'password',
-            "value" => '1234',
-            "domain" => 'localhost',
-            "path" => '/',
-            "expires" => -1,
-            "size" => 12,
-            "httpOnly" => false,
-            "secure" => false,
-            "session" => true,
-            "priority" => "Medium"
-          },
-          {
-            "name" => 'username',
-            "value" => 'John Doe',
-            "domain" => 'localhost',
-            "path" => '/',
-            "expires" => -1,
-            "size" => 16,
-            "httpOnly" => false,
-            "secure" => false,
-            "session" => true,
-            "priority" => "Medium"
-          }
-        ])
+        cookies = page.cookies.sort_by { |a| a["name"] }
+        expect(cookies).to eq(
+          [
+            {
+              "name" => 'password',
+              "value" => '1234',
+              "domain" => 'localhost',
+              "path" => '/',
+              "expires" => -1,
+              "size" => 12,
+              "httpOnly" => false,
+              "secure" => false,
+              "session" => true,
+              "priority" => "Medium"
+            },
+            {
+              "name" => 'username',
+              "value" => 'John Doe',
+              "domain" => 'localhost',
+              "path" => '/',
+              "expires" => -1,
+              "size" => 16,
+              "httpOnly" => false,
+              "secure" => false,
+              "session" => true,
+              "priority" => "Medium"
+            }
+          ]
+        )
       end
 
       it 'should get cookies from multiple urls' do
@@ -102,33 +108,35 @@ module Rammus
           { url: 'https://baz.com', name: 'birdo', value: 'tweets' }
         )
         cookies = page.cookies('https://foo.com', 'https://baz.com')
-        cookies.sort { |a, b| a["name"] <=> b["name"] }
-        expect(cookies).to eq([
-          {
-            "name" => 'birdo',
-            "value" => 'tweets',
-            "domain" => 'baz.com',
-            "path" => '/',
-            "expires" => -1,
-            "size" => 11,
-            "httpOnly" => false,
-            "secure" => true,
-            "session" => true,
-            "priority" => "Medium"
-          },
-          {
-            "name" => 'doggo',
-            "value" => 'woofs',
-            "domain" => 'foo.com',
-            "path" => '/',
-            "expires" => -1,
-            "size" => 10,
-            "httpOnly" => false,
-            "secure" => true,
-            "session" => true,
-            "priority" => "Medium"
-          }
-        ])
+        cookies.sort_by { |a| a["name"] }
+        expect(cookies).to eq(
+          [
+            {
+              "name" => 'birdo',
+              "value" => 'tweets',
+              "domain" => 'baz.com',
+              "path" => '/',
+              "expires" => -1,
+              "size" => 11,
+              "httpOnly" => false,
+              "secure" => true,
+              "session" => true,
+              "priority" => "Medium"
+            },
+            {
+              "name" => 'doggo',
+              "value" => 'woofs',
+              "domain" => 'foo.com',
+              "path" => '/',
+              "expires" => -1,
+              "size" => 10,
+              "httpOnly" => false,
+              "secure" => true,
+              "session" => true,
+              "priority" => "Medium"
+            }
+          ]
+        )
       end
     end
 
@@ -202,18 +210,20 @@ module Rammus
       it 'should set a cookie with a path' do
         page.goto(server.domain + 'grid.html').wait!
         page.set_cookie(name: 'gridcookie', value: 'GRID', path: '/grid.html')
-        expect(page.cookies).to eq([
-          "name" => 'gridcookie',
-          "value" => 'GRID',
-          "domain" => 'localhost',
-          "path" => '/grid.html',
-          "expires" => -1,
-          "size" => 14,
-          "httpOnly" => false,
-          "secure" => false,
-          "session" => true,
-          "priority" => "Medium"
-        ])
+        expect(page.cookies).to eq(
+          [
+            "name" => 'gridcookie',
+            "value" => 'GRID',
+            "domain" => 'localhost',
+            "path" => '/grid.html',
+            "expires" => -1,
+            "size" => 14,
+            "httpOnly" => false,
+            "secure" => false,
+            "session" => true,
+            "priority" => "Medium"
+          ]
+        )
         expect(page.evaluate('document.cookie').value!).to eq 'gridcookie=GRID'
         page.goto(server.empty_page).wait!
         expect(page.cookies).to eq []
@@ -225,8 +235,8 @@ module Rammus
       it 'should not set a cookie on a blank page' do
         page.goto('about:blank').wait!
 
-         expect {page.set_cookie({ name: 'example-cookie', value: 'best' }) }
-           .to raise_error Errors::ProtocolError, /At least one of the url and domain needs to be specified/
+        expect { page.set_cookie({ name: 'example-cookie', value: 'best' }) }
+          .to raise_error Errors::ProtocolError, /At least one of the url and domain needs to be specified/
       end
 
       it 'should not set a cookie with blank page URL' do
@@ -267,7 +277,7 @@ module Rammus
         page.set_cookie url: 'https://www.example.com', name: 'example-cookie', value: 'best'
         expect(page.evaluate('document.cookie').value!).to eq ''
         expect(page.cookies).to eq []
-        expect(page.cookies 'https://www.example.com').to eq [{
+        expect(page.cookies('https://www.example.com')).to eq [{
           "name" => 'example-cookie',
           "value" => 'best',
           "domain" => 'www.example.com',
@@ -298,10 +308,10 @@ module Rammus
         JAVASCRIPT
         await page.evaluate_function function, server.cross_process_domain
         page.set_cookie name: '127-cookie', value: 'worst', url: server.cross_process_domain
-        expect(await page.evaluate('document.cookie')).to eq 'localhost-cookie=best'
-        expect(await page.frames[1].evaluate('document.cookie')).to eq '127-cookie=worst'
+        expect(await(page.evaluate('document.cookie'))).to eq 'localhost-cookie=best'
+        expect(await(page.frames[1].evaluate('document.cookie'))).to eq '127-cookie=worst'
 
-        expect(page.cookies).to eq([{
+        expect(page.cookies).to eq [{
           "name" => 'localhost-cookie',
           "value" => 'best',
           "domain" => 'localhost',
@@ -311,9 +321,9 @@ module Rammus
           "httpOnly" => false,
           "secure" => false,
           "session" => true
-        }])
+        }]
 
-        expect(page.cookies(server.cross_process_domain)).to eq([{
+        expect(page.cookies(server.cross_process_domain)).to eq [{
           "name" => '127-cookie',
           "value" => 'worst',
           "domain" => '127.0.0.1',
@@ -323,7 +333,7 @@ module Rammus
           "httpOnly" => false,
           "secure" => false,
           "session" => true
-        }])
+        }]
       end
     end
 

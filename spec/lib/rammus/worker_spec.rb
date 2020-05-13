@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   RSpec.describe 'Workers', browser: true do
     before { @_context = browser.create_context }
@@ -41,15 +43,15 @@ module Rammus
         page.evaluate_function("() => new Worker(`data:text/javascript,console.log(1)`)")
       ).value!
       expect(message.text).to eq '1'
-      expect(message.location).to eq({
+      expect(message.location).to eq(
         url: 'data:text/javascript,console.log(1)',
         line_number: 0,
-        column_number: 8,
-      })
+        column_number: 8
+      )
     end
 
     it 'should have JSHandles for console logs' do
-      log_promise = Concurrent::Promises.resolvable_future.tap  do |future|
+      log_promise = Concurrent::Promises.resolvable_future.tap do |future|
         page.on :console, future.method(:fulfill)
       end
       page.evaluate_function("() => new Worker(`data:text/javascript,console.log(1,2,3,this)`)").wait!

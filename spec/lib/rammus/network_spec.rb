@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   RSpec.describe 'Screenshot', browser: true do
     before { @_context = browser.create_context }
@@ -8,8 +10,9 @@ module Rammus
     describe 'Page Events :request' do
       it 'should fire for navigation requests' do
         requests = []
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           next if is_favicon request
+
           requests << request
         end
         page.goto(server.empty_page).wait!
@@ -18,8 +21,9 @@ module Rammus
 
       it 'should fire for iframes' do
         requests = []
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           next if is_favicon request
+
           requests << request
         end
         page.goto(server.empty_page).wait!
@@ -29,8 +33,9 @@ module Rammus
 
       it 'should fire for fetches' do
         requests = []
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           next if is_favicon request
+
           requests << request
         end
         page.goto(server.empty_page).wait!
@@ -42,8 +47,9 @@ module Rammus
     describe 'Request#frame' do
       it 'should work for main frame navigation request' do
         requests = []
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           next if is_favicon request
+
           requests << request
         end
         page.goto(server.empty_page).wait!
@@ -54,8 +60,9 @@ module Rammus
       it 'should work for subframe navigation request' do
         page.goto(server.empty_page).wait!
         requests = []
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           next if is_favicon request
+
           requests << request
         end
         attach_frame(page, 'frame1', server.empty_page).wait!
@@ -66,8 +73,9 @@ module Rammus
       it 'should work for fetch requests' do
         page.goto(server.empty_page).wait!
         requests = []
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           next if is_favicon request
+
           requests << request
         end
         page.evaluate_function("() => fetch('/digits/1.png')").wait!
@@ -85,7 +93,7 @@ module Rammus
 
     describe 'Response#headers' do
       it 'should work' do
-        server.set_route '/empty.html' do |req, res|
+        server.set_route '/empty.html' do |_req, res|
           res.header['foo'] = 'bar'
           res.finish
         end
@@ -102,8 +110,9 @@ module Rammus
 
       it 'should work' do
         responses = {}
-        page.on :response, -> (request) do
+        page.on :response, ->(request) do
           next if is_favicon request
+
           responses[request.url.split('/').pop] = request
         end
 
@@ -127,13 +136,14 @@ module Rammus
 
       it 'Response#from_service_worker' do
         responses = {}
-        page.on :response, -> (request) do
+        page.on :response, ->(request) do
           next if is_favicon request
+
           responses[request.url.split('/').pop] = request
         end
 
         # Load and re-load to make sure serviceworker is installed and running.
-        page.goto(server.domain + 'serviceworkers/fetch/sw.html',  wait_until: :networkidle2).wait!
+        page.goto(server.domain + 'serviceworkers/fetch/sw.html', wait_until: :networkidle2).wait!
         page.evaluate_function('async() => await window.activationPromise').wait!
         page.reload.wait!
 
@@ -149,7 +159,7 @@ module Rammus
       it 'should work' do
         page.goto(server.empty_page).wait!
         request = nil
-        page.on :request, -> (r) { request = r }
+        page.on :request, ->(r) { request = r }
         page.evaluate_function("() => fetch('./post', { method: 'POST', body: JSON.stringify({foo: 'bar'})})").wait!
         expect(request).not_to be_nil
         expect(request.post_data).to eq '{"foo":"bar"}'
@@ -190,7 +200,7 @@ module Rammus
         page.goto(server.empty_page).wait!
         # Setup server to trap request.
         server_response = nil
-        server.set_route '/get' do |req, res|
+        server.set_route '/get' do |_req, res|
           # In Firefox, |fetch| will be hanging until it receives |Content-Type| header
           # from server.
           res.header['Content-Type'] = 'text/plain; charset=utf-8'
@@ -200,7 +210,7 @@ module Rammus
         end
         # Setup page to trap response.
         request_finished = false
-        page.on :request_Finished, -> (r) { request_finished = request_finished || r.url.include?('/get') }
+        page.on :request_Finished, ->(r) { request_finished ||= r.url.include?('/get') }
         # send request and wait for server response
         page_response, _ = Concurrent::Promises.zip(
           page.wait_for_response { |r| !is_favicon r.request },
@@ -259,7 +269,7 @@ module Rammus
     describe 'Network Events' do
       it 'Page.Events.Request' do
         requests = []
-        page.on :request, -> (request) { requests << request }
+        page.on :request, ->(request) { requests << request }
         page.goto(server.empty_page).wait!
         expect(requests.length).to eq 1
         expect(requests[0].url).to eq server.empty_page
@@ -272,7 +282,7 @@ module Rammus
 
       it 'Page.Events.Response' do
         responses = []
-        page.on :response, -> (response) { responses << response }
+        page.on :response, ->(response) { responses << response }
         page.goto(server.empty_page).wait!
         expect(responses.length).to eq 1
         expect(responses[0].url).to eq server.empty_page
@@ -287,7 +297,7 @@ module Rammus
 
       it 'Page.Events.RequestFailed' do
         page.set_request_interception true
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           if request.url.end_with? 'css'
             request.abort
           else
@@ -295,7 +305,7 @@ module Rammus
           end
         end
         failed_requests = []
-        page.on :request_failed, -> (request) {failed_requests << request }
+        page.on :request_failed, ->(request) { failed_requests << request }
         page.goto(server.domain + 'one-style.html').wait!
         expect(failed_requests.length).to eq 1
         expect(failed_requests[0].url).to include 'one-style.css'
@@ -307,7 +317,7 @@ module Rammus
 
       it 'Page.Events.RequestFinished' do
         requests = []
-        page.on :request_finished, -> (request) { requests << request }
+        page.on :request_finished, ->(request) { requests << request }
         page.goto(server.empty_page).wait!
         expect(requests.length).to eq 1
         expect(requests[0].url).to eq server.empty_page
@@ -318,35 +328,35 @@ module Rammus
 
       it 'should fire events in proper order' do
         events = []
-        page.on :request, -> (request) { events << 'request' }
-        page.on :response, -> (response) { events << 'response' }
-        page.on :request_finished, -> (request) { events << 'requestfinished' }
+        page.on :request, ->(_request) { events << 'request' }
+        page.on :response, ->(_response) { events << 'response' }
+        page.on :request_finished, ->(_request) { events << 'requestfinished' }
         page.goto(server.empty_page).wait!
         expect(events).to eq ['request', 'response', 'requestfinished']
       end
 
       it 'should support redirects' do
         events = []
-        page.on :request, -> (request) { events << "#{request.method} #{request.url}" }
-        page.on :response, -> (response) { events << "#{response.status} #{response.url}" }
-        page.on :request_finished, -> (request) { events << "DONE #{request.url}" }
-        page.on :request_failed, -> (request) { events <<  "FAIL #{request.url}" }
+        page.on :request, ->(request) { events << "#{request.method} #{request.url}" }
+        page.on :response, ->(response) { events << "#{response.status} #{response.url}" }
+        page.on :request_finished, ->(request) { events << "DONE #{request.url}" }
+        page.on :request_failed, ->(request) { events << "FAIL #{request.url}" }
         server.set_redirect '/foo.html', '/empty.html'
         foo_url = server.domain + 'foo.html'
         response = page.goto(foo_url).value!
-        expect(events).to eq([
+        expect(events).to eq [
           "GET #{foo_url}",
           "302 #{foo_url}",
           "DONE #{foo_url}",
           "GET #{server.empty_page}",
           "200 #{server.empty_page}",
           "DONE #{server.empty_page}"
-        ]);
+        ]
 
         # Check redirect chain
         redirect_chain = response.request.redirect_chain
         expect(redirect_chain.length).to eq 1
-        expect(redirect_chain[0].url).to include  '/foo.html'
+        expect(redirect_chain[0].url).to include '/foo.html'
         expect(redirect_chain[0].response.remote_address[:port]).to eq server.port
       end
     end
@@ -354,7 +364,7 @@ module Rammus
     describe 'Request#is_navigation_Request' do
       it 'should work' do
         requests = {}
-        page.on :request, -> (request) { requests[request.url.split('/').pop] = request }
+        page.on :request, ->(request) { requests[request.url.split('/').pop] = request }
         server.set_redirect '/rrredirect', '/frames/one-frame.html'
         page.goto(server.domain + 'rrredirect').wait!
         expect(requests['rrredirect'].is_navigation_request).to eq true
@@ -366,7 +376,7 @@ module Rammus
 
       it 'should work with request interception' do
         requests = {}
-        page.on :request, -> (request) do
+        page.on :request, ->(request) do
           requests[request.url.split('/').pop] = request
           request.continue
         end
@@ -382,7 +392,7 @@ module Rammus
 
       it 'should work when navigating to image' do
         requests = []
-        page.on :request, -> (request) { requests << request }
+        page.on :request, ->(request) { requests << request }
         page.goto(server.domain + 'pptr.png').wait!
         expect(requests[0].is_navigation_request).to eq true
       end

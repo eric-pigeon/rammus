@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   RSpec.describe Mouse, browser: true do
     before { @_context = browser.create_context }
@@ -7,34 +9,34 @@ module Rammus
 
     let(:dimensions) do
       <<~JAVASCRIPT
-      () => {
-        const rect = document.querySelector('textarea').getBoundingClientRect();
-        return {
-          x: rect.left,
-          y: rect.top,
-          width: rect.width,
-          height: rect.height
-        };
-      }
+        () => {
+          const rect = document.querySelector('textarea').getBoundingClientRect();
+          return {
+            x: rect.left,
+            y: rect.top,
+            width: rect.width,
+            height: rect.height
+          };
+        }
       JAVASCRIPT
     end
 
     it 'should click the document' do
       javascript = <<~JAVASCRIPT
-      () => {
-        window.clickPromise = new Promise(resolve => {
-          document.addEventListener('click', event => {
-            resolve({
-              type: event.type,
-              detail: event.detail,
-              clientX: event.clientX,
-              clientY: event.clientY,
-              isTrusted: event.isTrusted,
-              button: event.button
+        () => {
+          window.clickPromise = new Promise(resolve => {
+            document.addEventListener('click', event => {
+              resolve({
+                type: event.type,
+                detail: event.detail,
+                clientX: event.clientX,
+                clientY: event.clientY,
+                isTrusted: event.isTrusted,
+                button: event.button
+              });
             });
           });
-        });
-      }
+        }
       JAVASCRIPT
       page.evaluate_function(javascript).wait!
       page.mouse.click 50, 60
@@ -78,10 +80,10 @@ module Rammus
       page.mouse.move 100, 100
       page.mouse.up
       function = <<~JAVASCRIPT
-      () => {
-        const textarea = document.querySelector('textarea');
-        return textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
-      }
+        () => {
+          const textarea = document.querySelector('textarea');
+          return textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
+        }
       JAVASCRIPT
       expect(page.evaluate_function(function).value!).to eq text
     end
@@ -120,7 +122,7 @@ module Rammus
         page.keyboard.up modifier
       end
       page.click '#button-3'
-      modifiers.each do |modifier, key|
+      modifiers.each do |_modifier, key|
         expect(page.evaluate_function("mod => window.lastEvent[mod]", key).value!).to eq false
       end
     end
@@ -128,12 +130,12 @@ module Rammus
     it 'should tween mouse movement' do
       page.mouse.move 100, 100
       function = <<~JAVASCRIPT
-      () => {
-        window.result = [];
-        document.addEventListener('mousemove', event => {
-          window.result.push([event.clientX, event.clientY]);
-        });
-      }
+        () => {
+          window.result = [];
+          document.addEventListener('mousemove', event => {
+            window.result.push([event.clientX, event.clientY]);
+          });
+        }
       JAVASCRIPT
       page.evaluate_function(function).wait!
       page.mouse.move 200, 300, steps: 5

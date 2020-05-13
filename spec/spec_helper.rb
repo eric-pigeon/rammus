@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 if ENV['TRAVIS']
   require 'coveralls'
   Coveralls.wear! do
@@ -77,14 +79,14 @@ module SeverHelper
   def attach_frame(page, frame_id, url)
     Concurrent::Promises.future do
       function = <<~JAVASCRIPT
-      async function attachFrame(frameId, url) {
-        const frame = document.createElement('iframe');
-        frame.src = url;
-        frame.id = frameId;
-        document.body.appendChild(frame);
-        await new Promise(x => frame.onload = x);
-        return frame;
-      }
+        async function attachFrame(frameId, url) {
+          const frame = document.createElement('iframe');
+          frame.src = url;
+          frame.id = frameId;
+          document.body.appendChild(frame);
+          await new Promise(x => frame.onload = x);
+          return frame;
+        }
       JAVASCRIPT
       page
         .evaluate_handle_function(function, frame_id, url)
@@ -112,7 +114,7 @@ module SeverHelper
     predicate ||= block || ->(_) { true }
 
     Concurrent::Promises.resolvable_future.tap do |future|
-      listener = -> (event) do
+      listener = ->(event) do
         next unless predicate.(event)
 
         emitter.remove_listener event_name, listener

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'websocket/driver'
 require 'socket'
 
@@ -37,7 +39,7 @@ module Rammus
 
       def setup_driver
         driver.on(:message) do |event|
-          on_message.call event.data if on_message
+          on_message&.call(event.data)
         end
 
         driver.on(:error) { |e| raise e.message }
@@ -61,10 +63,8 @@ module Rammus
 
       def start_listener_thread
         @listener_thread = Thread.new do
-          begin
-            loop { parse_input }
-          rescue EOFError, IOError, Errno::ECONNRESET
-          end
+          loop { parse_input }
+        rescue EOFError, IOError, Errno::ECONNRESET
         end.tap { |thread| thread.abort_on_exception = true }
       end
   end

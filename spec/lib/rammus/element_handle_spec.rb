@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   RSpec.describe ElementHandle, browser: true do
     before { @_context = browser.create_context }
@@ -17,8 +19,8 @@ module Rammus
       it 'should handle nested frames' do
         page.set_viewport width: 500, height: 500
         page.goto(server.domain + 'frames/nested-frames.html').wait!
-        nestedFrame = page.frames[1].child_frames[1]
-        element_handle = nestedFrame.query_selector 'div'
+        nested_frame = page.frames[1].child_frames[1]
+        element_handle = nested_frame.query_selector 'div'
         box = element_handle.bounding_box
         expect(box).to eq(x: 28, y: 260, width: 264, height: 18)
       end
@@ -40,18 +42,18 @@ module Rammus
 
       it 'should work with SVG nodes' do
         content = <<~HTML
-        <svg xmlns="http://www.w3.org/2000/svg" width="500" height="500">
-          <rect id="theRect" x="30" y="50" width="200" height="300"></rect>
-        </svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="500" height="500">
+            <rect id="theRect" x="30" y="50" width="200" height="300"></rect>
+          </svg>
         HTML
         page.set_content(content).wait!
         element = page.query_selector '#therect'
         pptr_bounding_box = element.bounding_box
         function = <<~JAVASCRIPT
-        e => {
-          const rect = e.getBoundingClientRect();
-          return {x: rect.x, y: rect.y, width: rect.width, height: rect.height};
-        }
+          e => {
+            const rect = e.getBoundingClientRect();
+            return {x: rect.x, y: rect.y, width: rect.width, height: rect.height};
+          }
         JAVASCRIPT
         web_bounding_box = page.evaluate_function(function, element).value!
         web_bounding_box = web_bounding_box.map { |k, v| [k.to_sym, v] }.to_h
@@ -66,36 +68,36 @@ module Rammus
         # Step 1: Add Frame and position it absolutely.
         attach_frame(page, 'frame1', server.domain + 'resetcss.html').wait!
         function = <<~JAVASCRIPT
-        () => {
-          const frame = document.querySelector('#frame1');
-          frame.style = `
-            position: absolute;
-            left: 1px;
-            top: 2px;
-          `;
-        }
+          () => {
+            const frame = document.querySelector('#frame1');
+            frame.style = `
+              position: absolute;
+              left: 1px;
+              top: 2px;
+            `;
+          }
         JAVASCRIPT
         page.evaluate_function(function).wait!
 
         # Step 2: Add div and position it absolutely inside frame.
         frame = page.frames[1]
         function = <<~JAVASCRIPT
-        () => {
-          const div = document.createElement('div');
-          document.body.appendChild(div);
-          div.style = `
-            box-sizing: border-box;
-            position: absolute;
-            border-left: 1px solid black;
-            padding-left: 2px;
-            margin-left: 3px;
-            left: 4px;
-            top: 5px;
-            width: 6px;
-            height: 7px;
-          `;
-          return div;
-        }
+          () => {
+            const div = document.createElement('div');
+            document.body.appendChild(div);
+            div.style = `
+              box-sizing: border-box;
+              position: absolute;
+              border-left: 1px solid black;
+              padding-left: 2px;
+              margin-left: 3px;
+              left: 4px;
+              top: 5px;
+              width: 6px;
+              height: 7px;
+            `;
+            return div;
+          }
         JAVASCRIPT
         div_handle = frame.evaluate_handle_function(function).value!.as_element
 
@@ -103,22 +105,22 @@ module Rammus
         box = div_handle.box_model
         expect(box[:width]).to eq 6
         expect(box[:height]).to eq 7
-        expect(box[:margin][0]).to eq({
+        expect(box[:margin][0]).to eq(
           x: 1 + 4, # frame.left + div.left
-          y: 2 + 5,
-        })
-        expect(box[:border][0]).to eq({
+          y: 2 + 5
+        )
+        expect(box[:border][0]).to eq(
           x: 1 + 4 + 3, # frame.left + div.left + div.margin-left
-          y: 2 + 5,
-        })
-        expect(box[:padding][0]).to eq({
+          y: 2 + 5
+        )
+        expect(box[:padding][0]).to eq(
           x: 1 + 4 + 3 + 1, # frame.left + div.left + div.marginLeft + div.borderLeft
-          y: 2 + 5,
-        })
-        expect(box[:content][0]).to eq({
+          y: 2 + 5
+        )
+        expect(box[:content][0]).to eq(
           x: 1 + 4 + 3 + 1 + 2, # frame.left + div.left + div.marginLeft + div.borderLeft + dif.paddingLeft
-          y: 2 + 5,
-        })
+          y: 2 + 5
+        )
       end
 
       it 'should return null for invisible elements' do

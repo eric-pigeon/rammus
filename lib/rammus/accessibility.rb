@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rammus/ax_node'
 
 module Rammus
@@ -60,36 +62,34 @@ module Rammus
       Accessibility.serialize_tree(needle, interesting_nodes)[0]
     end
 
-    private
-
-      # @param node [Rammus::AXNode]
-      # @param whitelisted_nodes [Set<AXNode>]
-      #
-      # @return [Array<SerializedAXNode>]
-      #
-      def self.serialize_tree(node, whitelisted_nodes = nil)
-        # @type {!Array<!SerializedAXNode>}
-        children = node.children.flat_map do |child|
-          Accessibility.serialize_tree child, whitelisted_nodes
-        end
-
-        if whitelisted_nodes && !whitelisted_nodes.include?(node)
-          return children
-        end
-
-        serialized_node = node.serialize
-        serialized_node[:children] = children unless children.length.zero?
-        [serialized_node]
+    # @param node [Rammus::AXNode]
+    # @param whitelisted_nodes [Set<AXNode>]
+    #
+    # @return [Array<SerializedAXNode>]
+    #
+    def self.serialize_tree(node, whitelisted_nodes = nil)
+      # @type {!Array<!SerializedAXNode>}
+      children = node.children.flat_map do |child|
+        Accessibility.serialize_tree child, whitelisted_nodes
       end
 
-      def self.collect_interesting_nodes(collection, node, inside_control)
-        collection << node if node.is_interesting inside_control
-
-        return if node.is_leaf_node
-
-        inside_control ||= node.is_control
-
-        node.children.each { |child| Accessibility.collect_interesting_nodes collection, child, inside_control }
+      if whitelisted_nodes && !whitelisted_nodes.include?(node)
+        return children
       end
+
+      serialized_node = node.serialize
+      serialized_node[:children] = children unless children.length.zero?
+      [serialized_node]
+    end
+
+    def self.collect_interesting_nodes(collection, node, inside_control)
+      collection << node if node.interesting? inside_control
+
+      return if node.leaf_node?
+
+      inside_control ||= node.control?
+
+      node.children.each { |child| Accessibility.collect_interesting_nodes collection, child, inside_control }
+    end
   end
 end

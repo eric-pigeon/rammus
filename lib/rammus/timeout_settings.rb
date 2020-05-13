@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   # @!visibility private
   class TimeoutSettings
@@ -16,8 +18,7 @@ module Rammus
       @_navigation_timeout || timeout || DEFAULT_TIMEOUT
     end
 
-    private
-
-      DEFAULT_TIMEOUT = 2
+    DEFAULT_TIMEOUT = 2
+    private_constant :DEFAULT_TIMEOUT
   end
 end

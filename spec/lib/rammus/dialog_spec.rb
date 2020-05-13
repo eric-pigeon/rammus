@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   RSpec.describe 'Dialog', browser: true do
     before { @_context = browser.create_context }
@@ -27,9 +29,7 @@ module Rammus
     end
 
     it 'should dismiss the prompt' do
-      page.on :dialog do |dialog|
-        dialog.dismiss
-      end
+      page.on(:dialog, &:dismiss)
       result = page.evaluate_function("() => prompt('question?')").value!
       expect(result).to eq nil
     end

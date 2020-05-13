@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   RSpec.describe 'Click', browser: true do
     before { @_context = browser.create_context }
@@ -86,10 +88,10 @@ module Rammus
       page.click 'textarea', click_count: 2
       page.click 'textarea', click_count: 3
       function = <<~JAVASCRIPT
-      () => {
-        const textarea = document.querySelector('textarea');
-        return textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
-      }
+        () => {
+          const textarea = document.querySelector('textarea');
+          return textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
+        }
       JAVASCRIPT
       expect(page.evaluate_function(function).value!).to eq text
     end
@@ -97,7 +99,7 @@ module Rammus
     it 'should click offscreen buttons' do
       page.goto(server.domain + 'offscreenbuttons.html').wait!
       messages = []
-      page.on :console, -> (msg) { messages << msg.text }
+      page.on :console, ->(msg) { messages << msg.text }
       11.times do |i|
         # We might've scrolled to click a button - reset to (0, 0).
         page.evaluate_function("() => window.scrollTo(0, 0)").wait!
@@ -137,7 +139,7 @@ module Rammus
         'mouseup',
         'click',
         'input',
-        'change',
+        'change'
       ]
       page.click 'input#agree'
       expect(page.evaluate('result.check').value!).to eq false
@@ -151,7 +153,7 @@ module Rammus
       expect(page.evaluate('result.events').value!).to eq [
         'click',
         'input',
-        'change',
+        'change'
       ]
       page.click 'label[for="agree"]'
       expect(page.evaluate('result.check').value!).to eq false
@@ -182,13 +184,13 @@ module Rammus
     it 'should double click the button' do
       page.goto(server.domain + 'input/button.html').wait!
       function = <<~JAVASCRIPT
-      () => {
-        window.double = false;
-        const button = document.querySelector('button');
-        button.addEventListener('dblclick', event => {
-          window.double = true;
-        });
-      }
+        () => {
+          window.double = false;
+          const button = document.querySelector('button');
+          button.addEventListener('dblclick', event => {
+            window.double = true;
+          });
+        }
       JAVASCRIPT
       page.evaluate_function(function).wait!
       button = page.query_selector 'button'
@@ -200,12 +202,12 @@ module Rammus
     it 'should click a partially obscured button' do
       page.goto(server.domain + 'input/button.html').wait!
       function = <<~JAVASCRIPT
-      () => {
-        const button = document.querySelector('button');
-        button.textContent = 'Some really long text that will go offscreen';
-        button.style.position = 'absolute';
-        button.style.left = '368px';
-      }
+        () => {
+          const button = document.querySelector('button');
+          button.textContent = 'Some really long text that will go offscreen';
+          button.style.position = 'absolute';
+          button.style.left = '368px';
+        }
       JAVASCRIPT
       page.evaluate_function(function).wait!
       page.click 'button'
@@ -243,7 +245,7 @@ module Rammus
 
     # TODO
     # @see https://github.com/GoogleChrome/puppeteer/issues/4110
-    #xit('should click the button with fixed position inside an iframe', async({page, server}) => {
+    # xit('should click the button with fixed position inside an iframe', async({page, server}) => {
     #  await page.goto(server.EMPTY_PAGE);
     #  await page.setViewport({width: 500, height: 500});
     #  await page.setContent('<div style="width:100px;height:2000px">spacer</div>');
@@ -252,7 +254,7 @@ module Rammus
     #  await frame.$eval('button', button => button.style.setProperty('position', 'fixed'));
     #  await frame.click('button');
     #  expect(await frame.evaluate(() => window.result)).toBe('Clicked');
-    #});
+    # });
 
     it 'should click the button with device_scale_factor set' do
       page.set_viewport width: 400, height: 400, device_scale_factor: 5

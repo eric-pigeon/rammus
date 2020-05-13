@@ -45,15 +45,15 @@ module Rammus
       @initialized_promise = initialized_promise.then do |success|
         next false unless success
 
-        # if (!opener || !opener._page_promise || type != 'page')
-        if (!opener || !opener._page || type != 'page')
+        if !opener || !opener._page || type != 'page'
           next true
         end
 
         opener_page = opener._page
 
         next true if opener_page.listener_count(:popup).zero?
-        popup_page = self.page
+
+        popup_page = page
         opener_page.emit :popup, popup_page
         true
       end
@@ -69,7 +69,7 @@ module Rammus
     # @return [Target, nil]
     #
     def opener
-      return unless opener_id = target_info["openerId"]
+      return unless (opener_id = target_info["openerId"])
 
       # TODO
       browser.instance_variable_get(:@_targets)[opener_id]
@@ -120,7 +120,7 @@ module Rammus
     #
     def worker
       return if type != 'service_worker' || type != 'shared_worker'
-      #if (!this._workerPromise) {
+      # if (!this._workerPromise) {
       #  this._workerPromise = this._sessionFactory().then(async client => {
       #    // Top level workers have a fake page wrapping the actual worker.
       #    const [targetAttached] = await Promise.all([
@@ -131,8 +131,8 @@ module Rammus
       #    // TODO(einbinder): Make workers send their console logs.
       #    return new Worker(session, this._targetInfo.url, () => {} /* consoleAPICalled */, () => {} /* exceptionThrown */);
       #  });
-      #}
-      #return this._workerPromise;
+      # }
+      # return this._workerPromise;
     end
 
     def inspect
@@ -146,10 +146,10 @@ module Rammus
       def target_info_changed(target_info)
         @target_info = target_info
 
-        if !initialized && (target_info["type"] != "page" || target_info["url"] != "")
-          @initialized = true
-          @initialized_callback.(true)
-        end
+        return unless !initialized && (target_info["type"] != "page" || target_info["url"] != "")
+
+        @initialized = true
+        @initialized_callback.(true)
       end
   end
 end

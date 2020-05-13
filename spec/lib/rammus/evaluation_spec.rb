@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   RSpec.describe 'Evaluation', browser: true do
     before { @_context = browser.create_context }
@@ -34,7 +36,7 @@ module Rammus
 
       it 'should transfer arrays' do
         result = page.evaluate_function("a => a", [1, 2, 3]).value!
-        expect(result).to eq [1,2,3]
+        expect(result).to eq [1, 2, 3]
       end
 
       it 'should transfer arrays as arrays, not objects' do
@@ -77,13 +79,13 @@ module Rammus
 
       xit 'should work right after framenavigated' do
         frame_evaluation = nil
-        page.on :frame_navigated, -> (frame) do
+        page.on :frame_navigated, ->(frame) do
           # need to make this async otherwise #evaluate_function will block the event loop waiting
           # for the execution context to be created from
-          await Promise.resolve(nil).then { frame_evaluation = frame.evaluate_function "() => 6 * 7" }
+          Concurrent::Promises.future { frame_evaluation = frame.evaluate_function "() => 6 * 7" }.wait!
         end
         await page.goto server.empty_page
-        expect(await frame_evaluation).to eq 42
+        expect(await(frame_evaluation)).to eq 42
       end
 
       it 'should work from-inside an exposed function' do
@@ -257,10 +259,7 @@ module Rammus
         expect(page.evaluate_function("() => window.injected").value!).to eq 123
 
         # Make sure CSP works.
-        begin
-          page.add_script_tag(content: 'window.e = 10;')
-        rescue => _err
-        end
+        page.add_script_tag(content: 'window.e = 10;')
         expect(page.evaluate_function('() => window.e').value!).to be nil
       end
     end

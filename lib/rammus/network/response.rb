@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   module Network
     class Response
@@ -7,7 +9,7 @@ module Rammus
       def initialize(client, request, response_payload)
         @client = client
         @request = request
-        #this._contentPromise = null;
+        # this._contentPromise = null;
 
         @_body_loaded_promise = Concurrent::Promises.resolvable_future
         @body_loaded_promise_fulfill = @_body_loaded_promise.method(:fulfill)
@@ -24,13 +26,13 @@ module Rammus
         @_headers = response_payload.fetch("headers", {}).map do |name, value|
           [name.downcase, value]
         end.to_h
-        #this._securityDetails = responsePayload.securityDetails ? new SecurityDetails(responsePayload.securityDetails) : null;
+        # this._securityDetails = responsePayload.securityDetails ? new SecurityDetails(responsePayload.securityDetails) : null;
       end
 
       # @return {boolean}
       #
       def ok?
-        status == 0 || status >= 200 && status <= 299
+        status.zero? || status >= 200 && status <= 299
       end
 
       # @return {!Object}
@@ -41,9 +43,9 @@ module Rammus
 
       # * @return {?SecurityDetails}
       # */
-      #securityDetails() {
+      # securityDetails() {
       #  return this._securityDetails;
-      #}
+      # }
 
       def buffer
         @_buffer ||= @_body_loaded_promise.then do |error|
@@ -59,7 +61,6 @@ module Rammus
       end
       alias text buffer
 
-
       def json
         text.then { |content| JSON.parse content }
       end
@@ -72,9 +73,9 @@ module Rammus
 
       # * @return {boolean}
       # */
-      #fromServiceWorker() {
+      # fromServiceWorker() {
       #  return this._fromServiceWorker;
-      #}
+      # }
 
       # @return {?Puppeteer.Frame}
       #

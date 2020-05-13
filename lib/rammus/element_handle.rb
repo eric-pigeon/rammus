@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rammus/js_handle'
 
 module Rammus
@@ -38,9 +40,9 @@ module Rammus
     # @return [Rammus::Frame, nil]
     #
     def content_frame
-      node_info = client.command(Protocol::DOM.describe_node(
-        object_id: remote_object["objectId"]
-      )).value
+      node_info = client.command(
+        Protocol::DOM.describe_node(object_id: remote_object["objectId"])
+      ).value
       return unless node_info.dig("node", "frameId").is_a? String
 
       frame_manager.frame node_info.dig("node", "frameId")
@@ -137,17 +139,17 @@ module Rammus
     # @return {!Promise<?{x: number, y: number, width: number, height: number}>}
     #
     def bounding_box
-     result = get_box_model
+      result = get_box_model
 
-     return if result.nil?
+      return if result.nil?
 
-     quad = result.dig "model", "border"
-     x = [quad[0], quad[2], quad[4], quad[6]].min
-     y = [quad[1], quad[3], quad[5], quad[7]].min
-     width = [quad[0], quad[2], quad[4], quad[6]].max - x
-     height = [quad[1], quad[3], quad[5], quad[7]].max - y
+      quad = result.dig "model", "border"
+      x = [quad[0], quad[2], quad[4], quad[6]].min
+      y = [quad[1], quad[3], quad[5], quad[7]].min
+      width = [quad[0], quad[2], quad[4], quad[6]].max - x
+      height = [quad[1], quad[3], quad[5], quad[7]].max - y
 
-     { x: x, y: y, width: width, height: height }
+      { x: x, y: y, width: width, height: height }
     end
 
     # @return {!Promise<?BoxModel>}
@@ -182,7 +184,7 @@ module Rammus
       if viewport && bounding_box[:width] > viewport[:width] || bounding_box[:height] > viewport[:height]
         new_viewport = {
           width: [viewport[:width], bounding_box[:width].ceil].max,
-          height: [viewport[:height], bounding_box[:height].ceil].max,
+          height: [viewport[:height], bounding_box[:height].ceil].max
         }
         page.set_viewport viewport.merge(new_viewport)
 
@@ -263,6 +265,7 @@ module Rammus
       if element_handle.nil?
         raise "Error: failed to find element matching selector '#{selector}'"
       end
+
       result = execution_context.evaluate_function page_function, element_handle, *args
       element_handle.dispose
       result
@@ -290,15 +293,15 @@ module Rammus
     #
     def xpath(expression)
       function = <<~JAVASCRIPT
-      (element, expression) => {
-        const document = element.ownerDocument || element;
-        const iterator = document.evaluate(expression, element, null, XPathResult.ORDERED_NODE_ITERATOR_TYPE);
-        const array = [];
-        let item;
-        while ((item = iterator.iterateNext()))
-          array.push(item);
-        return array;
-      }
+        (element, expression) => {
+          const document = element.ownerDocument || element;
+          const iterator = document.evaluate(expression, element, null, XPathResult.ORDERED_NODE_ITERATOR_TYPE);
+          const array = [];
+          let item;
+          while ((item = iterator.iterateNext()))
+            array.push(item);
+          return array;
+        }
       JAVASCRIPT
       array_handle = execution_context.evaluate_handle_function(function, self, expression).value
 
@@ -318,16 +321,16 @@ module Rammus
     #
     def is_intersecting_viewport
       function = <<~JAVASCRIPT
-      async element => {
-        const visibleRatio = await new Promise(resolve => {
-          const observer = new IntersectionObserver(entries => {
-            resolve(entries[0].intersectionRatio);
-            observer.disconnect();
+        async element => {
+          const visibleRatio = await new Promise(resolve => {
+            const observer = new IntersectionObserver(entries => {
+              resolve(entries[0].intersectionRatio);
+              observer.disconnect();
+            });
+            observer.observe(element);
           });
-          observer.observe(element);
-        });
-        return visibleRatio > 0;
-      }
+          return visibleRatio > 0;
+        }
       JAVASCRIPT
       execution_context.evaluate_function(function, self).value
     end
@@ -366,7 +369,7 @@ module Rammus
       #
       def clickable_point
         result, layout_metrics = Concurrent::Promises.zip(
-          client.command(Protocol::DOM.get_content_quads object_id: remote_object["objectId"]).rescue { |error| Util.debug_error error },
+          client.command(Protocol::DOM.get_content_quads(object_id: remote_object["objectId"])).rescue { |error| Util.debug_error error },
           client.command(Protocol::Page.get_layout_metrics)
         ).value!
 
@@ -426,11 +429,11 @@ module Rammus
       def compute_quad_area(quad)
         # Compute sum of all directed areas of adjacent triangles
         # https://en.wikipedia.org/wiki/Polygon#Simple_polygons
-        area = 0;
+        area = 0
         quad.length.times do |i|
-          p1 = quad[i]
-          p2 = quad[(i + 1) % quad.length]
-          area += (p1[:x] * p2[:y] - p2[:x] * p1[:y]) / 2;
+          p_1 = quad[i]
+          p_2 = quad[(i + 1) % quad.length]
+          area += (p_1[:x] * p_2[:y] - p_2[:x] * p_1[:y]) / 2
         end
         area.abs
       end
@@ -438,9 +441,9 @@ module Rammus
       # @return {!Promise<void|Protocol.DOM.getBoxModelReturnValue>}
       #
       def get_box_model
-        client.command(Protocol::DOM.get_box_model(
-          object_id: remote_object["objectId"]
-        )).rescue { |error| Util.debug_error error }.value
+        client.command(
+          Protocol::DOM.get_box_model(object_id: remote_object["objectId"])
+        ).rescue { |error| Util.debug_error error }.value
       end
   end
 end

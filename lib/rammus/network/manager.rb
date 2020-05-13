@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   module Network
     # @!visibility private
@@ -62,9 +64,9 @@ module Rammus
       # @return [nil]
       #
       def authenticate(username: nil, password: nil)
-         @_credentials = { username: username, password: password }
-         update_protocol_request_interception
-         nil
+        @_credentials = { username: username, password: password }
+        update_protocol_request_interception
+        nil
       end
 
       # The extra HTTP headers will be sent with every request the page
@@ -82,6 +84,7 @@ module Rammus
       def set_extra_http_headers(extra_http_headers)
         @_extra_http_headers = extra_http_headers.map do |key, value|
           raise "Expected value of header '#{key}' to be String, but '#{value.class}' is found." unless value.is_a? String
+
           [key.downcase, value]
         end.to_h
         client.command(Protocol::Network.set_extra_http_headers(headers: @_extra_http_headers)).wait!
@@ -100,6 +103,7 @@ module Rammus
       #
       def set_offline_mode(value)
         return if @_offline == value
+
         @_offline = value
 
         # values of 0 remove any active throttling. crbug.com/456324#c9
@@ -173,7 +177,7 @@ module Rammus
               on_request event, interception_id
               @_request_id_to_interception_id.delete request_id
             else
-              @_request_id_to_request_will_be_sent_event[event["requestId"]]= event
+              @_request_id_to_request_will_be_sent_event[event["requestId"]] = event
             end
             return
           end
@@ -205,6 +209,7 @@ module Rammus
           request = @_request_id_to_request[event["requestId"]]
           # FileUpload sends a response without a matching request.
           return if request.nil?
+
           response = Response.new client, request, event["response"]
           request._response = response
           emit :response, response
@@ -220,9 +225,7 @@ module Rammus
 
           # Under certain conditions we never get the Network.responseReceived
           # event from protocol. @see https://crbug.com/883475
-          unless request.response.nil?
-            request.response.body_loaded_promise_fulfill.call(nil)
-          end
+          request&.response&.body_loaded_promise_fulfill&.call(nil)
           @_request_id_to_request.delete(request.request_id)
           @_attempted_authentications.delete request.interception_id
           emit :request_finished, request
@@ -243,7 +246,7 @@ module Rammus
           request._response = response
           request.redirect_chain << request
 
-          response.body_loaded_promise_fulfill.(StandardError.new 'Response body is unavailable for redirect responses')
+          response.body_loaded_promise_fulfill.(StandardError.new('Response body is unavailable for redirect responses'))
           @_request_id_to_request.delete(request.request_id)
           @_attempted_authentications.delete request.interception_id
           emit :response, response
@@ -309,10 +312,12 @@ module Rammus
 
           username ||= @_credentials[:username]
           password ||= @_credentials[:password]
-          client.command(Protocol::Fetch.continue_with_auth(
-            request_id: event["requestId"],
-            auth_challenge_response: { response: response, username: username, password: password }.compact
-          )).rescue { |error| Util.debug_error error }
+          client.command(
+            Protocol::Fetch.continue_with_auth(
+              request_id: event["requestId"],
+              auth_challenge_response: { response: response, username: username, password: password }.compact
+            )
+          ).rescue { |error| Util.debug_error error }
         end
 
         # @param {!Protocol.Network.loadingFailedPayload} event
@@ -322,9 +327,10 @@ module Rammus
           # For certain requestIds we never receive requestWillBeSent event.
           # @see https://crbug.com/750469
           return if request.nil?
+
           request.failure_text = event["errorText"]
           response = request.response
-          response.body_loaded_promise_fulfill.(nil) if response
+          response&.body_loaded_promise_fulfill&.(nil)
           @_request_id_to_request.delete request.request_id
           @_attempted_authentications.delete request.interception_id
           emit :request_failed, request

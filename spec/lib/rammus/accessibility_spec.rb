@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   RSpec.describe Accessibility, browser: true do
     before { @_context = browser.create_context }
@@ -16,27 +18,28 @@ module Rammus
     end
 
     it 'returns accessibility tree' do
-      page.set_content(<<~CONTENT
-      <head>
-        <title>Accessibility Test</title>
-      </head>
-      <body>
-        <div>Hello World</div>
-        <h1>Inputs</h1>
-        <input placeholder="Empty input" autofocus />
-        <input placeholder="readonly input" readonly />
-        <input placeholder="disabled input" disabled />
-        <input aria-label="Input with whitespace" value="  " />
-        <input value="value only" />
-        <input aria-placeholder="placeholder" value="and a value" />
-        <div aria-hidden="true" id="desc">This is a description!</div>
-        <input aria-placeholder="placeholder" value="and a value" aria-describedby="desc" />
-        <select>
-          <option>First Option</option>
-          <option>Second Option</option>
-        </select>
-      </body>
-      CONTENT
+      page.set_content(
+        <<~CONTENT
+          <head>
+            <title>Accessibility Test</title>
+          </head>
+          <body>
+            <div>Hello World</div>
+            <h1>Inputs</h1>
+            <input placeholder="Empty input" autofocus />
+            <input placeholder="readonly input" readonly />
+            <input placeholder="disabled input" disabled />
+            <input aria-label="Input with whitespace" value="  " />
+            <input value="value only" />
+            <input aria-placeholder="placeholder" value="and a value" />
+            <div aria-hidden="true" id="desc">This is a description!</div>
+            <input aria-placeholder="placeholder" value="and a value" aria-describedby="desc" />
+            <select>
+              <option>First Option</option>
+              <option>Second Option</option>
+            </select>
+          </body>
+        CONTENT
       ).wait!
       page.focus('[placeholder="Empty input"]')
 
@@ -54,9 +57,14 @@ module Rammus
           { role: 'textbox', name: 'placeholder', value: 'and a value' },
           # { role: "text", name: "This is a description!" },
           { role: 'textbox', name: 'placeholder', value: 'and a value', description: 'This is a description!' },
-          { role: 'combobox', name: '', value: 'First Option', children: [
-            { role: 'menuitem', name: 'First Option', selected: true },
-            { role: 'menuitem', name: 'Second Option' }]
+          {
+            role: 'combobox',
+            name: '',
+            value: 'First Option',
+            children: [
+              { role: 'menuitem', name: 'First Option', selected: true },
+              { role: 'menuitem', name: 'Second Option' }
+            ]
           }
         ]
       }
@@ -82,7 +90,7 @@ module Rammus
           }]
         }]
       }
-      expect(find_focused_node(page.accessibility.snapshot interesting_only: false)).to eq expected
+      expect(find_focused_node(page.accessibility.snapshot(interesting_only: false))).to eq expected
     end
 
     it 'returns roledescription' do
@@ -118,10 +126,10 @@ module Rammus
     context 'filtering child of leaf nodes' do
       it 'should not report text nodes inside controls' do
         content = <<~HTML
-        <div role="tablist">
-          <div role="tab" aria-selected="true"><b>Tab1</b></div>
-          <div role="tab">Tab2</div>
-        </div>
+          <div role="tablist">
+            <div role="tab" aria-selected="true"><b>Tab1</b></div>
+            <div role="tab">Tab2</div>
+          </div>
         HTML
         page.set_content(content).wait!
         expected = {
@@ -137,9 +145,9 @@ module Rammus
 
       it 'rich text editable fields should have children' do
         content = <<~HTML
-        <div contenteditable="true">
-          Edit this image: <img src="fakeimage.png" alt="my fake image">
-        </div>
+          <div contenteditable="true">
+            Edit this image: <img src="fakeimage.png" alt="my fake image">
+          </div>
         HTML
         page.set_content(content).wait!
 
@@ -158,9 +166,9 @@ module Rammus
 
       it 'rich text editable fields with role should have children' do
         content = <<~HTML
-        <div contenteditable="true" role='textbox'>
-          Edit this image: <img src="fakeimage.png" alt="my fake image">
-        </div>
+          <div contenteditable="true" role='textbox'>
+            Edit this image: <img src="fakeimage.png" alt="my fake image">
+          </div>
         HTML
         page.set_content(content).wait!
         expected = {
@@ -211,10 +219,10 @@ module Rammus
 
       it 'non editable textbox with role and tabIndex and label should not have children' do
         content = <<~HTML
-        <div role="textbox" tabIndex=0 aria-checked="true" aria-label="my favorite textbox">
-          this is the inner content
-          <img alt="yo" src="fakeimg.png">
-        </div>
+          <div role="textbox" tabIndex=0 aria-checked="true" aria-label="my favorite textbox">
+            this is the inner content
+            <img alt="yo" src="fakeimg.png">
+          </div>
         HTML
         page.set_content(content).wait!
         expected = {
@@ -228,10 +236,10 @@ module Rammus
 
       it 'checkbox with and tabIndex and label should not have children' do
         content = <<~HTML
-        <div role="checkbox" tabIndex=0 aria-checked="true" aria-label="my favorite checkbox">
-          this is the inner content
-          <img alt="yo" src="fakeimg.png">
-        </div>
+          <div role="checkbox" tabIndex=0 aria-checked="true" aria-label="my favorite checkbox">
+            this is the inner content
+            <img alt="yo" src="fakeimg.png">
+          </div>
         HTML
         page.set_content(content).wait!
         expected = {
@@ -246,10 +254,10 @@ module Rammus
 
       it 'checkbox without label should not have children' do
         content = <<~HTML
-        <div role="checkbox" aria-checked="true">
-          this is the inner content
-          <img alt="yo" src="fakeimg.png">
-        </div>
+          <div role="checkbox" aria-checked="true">
+            this is the inner content
+            <img alt="yo" src="fakeimg.png">
+          </div>
         HTML
         page.set_content(content).wait!
         expected = {
@@ -266,7 +274,7 @@ module Rammus
           page.set_content("<button>My Button</button>").wait!
 
           button = page.query_selector 'button'
-          expect(page.accessibility.snapshot root: button).to eq(role: 'button', name: 'My Button')
+          expect(page.accessibility.snapshot(root: button)).to eq(role: 'button', name: 'My Button')
         end
 
         it 'should work an input' do
@@ -278,24 +286,26 @@ module Rammus
 
         it 'should work a menu' do
           content = <<~HTML
-          <div role="menu" title="My Menu">
-            <div role="menuitem">First Item</div>
-            <div role="menuitem">Second Item</div>
-            <div role="menuitem">Third Item</div>
-          </div>
+            <div role="menu" title="My Menu">
+              <div role="menuitem">First Item</div>
+              <div role="menuitem">Second Item</div>
+              <div role="menuitem">Third Item</div>
+            </div>
           HTML
           page.set_content(content).wait!
 
           menu = page.query_selector 'div[role="menu"]'
-          expect(page.accessibility.snapshot(root: menu)).to eq({
-            role: 'menu',
-            name: 'My Menu',
-            children: [
-              { role: 'menuitem', name: 'First Item' },
-              { role: 'menuitem', name: 'Second Item' },
-              { role: 'menuitem', name: 'Third Item' }
-            ]
-          })
+          expect(page.accessibility.snapshot(root: menu)).to eq(
+            {
+              role: 'menu',
+              name: 'My Menu',
+              children: [
+                { role: 'menuitem', name: 'First Item' },
+                { role: 'menuitem', name: 'Second Item' },
+                { role: 'menuitem', name: 'Third Item' }
+              ]
+            }
+          )
         end
 
         it 'should return null when the element is no longer in DOM' do
@@ -309,15 +319,17 @@ module Rammus
           page.set_content("<div><button>My Button</button></div>").wait!
           div = page.query_selector 'div'
           expect(page.accessibility.snapshot(root: div)).to eq nil
-          expect(page.accessibility.snapshot(root: div, interesting_only: false)).to eq({
-            role: 'generic',
-            name: '',
-            children: [{
-              role: 'button',
-              name: 'My Button',
-              children: [{ role: 'text', name: 'My Button' }],
-            }]
-          })
+          expect(page.accessibility.snapshot(root: div, interesting_only: false)).to eq(
+            {
+              role: 'generic',
+              name: '',
+              children: [{
+                role: 'button',
+                name: 'My Button',
+                children: [{ role: 'text', name: 'My Button' }]
+              }]
+            }
+          )
         end
       end
     end

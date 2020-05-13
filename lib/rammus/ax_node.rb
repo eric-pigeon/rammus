@@ -1,9 +1,11 @@
+# frozen_string_literal: true
+
 module Rammus
   # @!visibility private
   class AXNode
     def self.create_tree(payloads)
       node_by_id = payloads.each_with_object({}) do |payload, memo|
-        memo[payload["nodeId"]] = AXNode.new payload;
+        memo[payload["nodeId"]] = AXNode.new payload
       end
 
       node_by_id.values.each do |node|
@@ -45,7 +47,7 @@ module Rammus
     end
 
     def find(&predicate)
-      return self if predicate.(self)
+      return self if predicate.call(self)
 
       children.each do |child|
         result = child.find(&predicate)
@@ -55,7 +57,7 @@ module Rammus
       nil
     end
 
-    def is_leaf_node
+    def leaf_node?
       return true if children.length.zero?
 
       # These types of objects may have children that we use as internal
@@ -71,14 +73,15 @@ module Rammus
       return true if ['doc-cover', 'graphics-symbol', 'img', 'Meter', 'scrollbar', 'slider', 'separator', 'progressbar'].include? @_role
 
       # Here and below: Android heuristics
-      return false if has_focusable_child?
+      return false if focusable_child?
       return true if focusable && @_name != ""
       return true if @_role == 'heading' && @_name
+
       false
     end
 
-    def is_control
-      control_roles =  [
+    def control?
+      control_roles = [
         'button', 'checkbox', 'ColorWell', 'combobox', 'DisclosureTriangle',
         'listbox', 'menu', 'menubar', 'menuitem', 'menuitemcheckbox',
         'menuitemradio', 'radio', 'scrollbar', 'searchbox', 'slider',
@@ -88,18 +91,18 @@ module Rammus
       control_roles.include? @_role
     end
 
-    def is_interesting(inside_control)
+    def interesting?(inside_control)
       return false if @_role == 'Ignored'
 
       return true if focusable || @_richly_editable
 
       # If it's not focusable but has a control role, then it's interesting.
-      return true if is_control
+      return true if control?
 
       # A non focusable child of a control is not interesting
       return false if inside_control
 
-      is_leaf_node && !!@_name
+      leaf_node? && !@_name.nil?
     end
 
     def serialize
@@ -119,12 +122,12 @@ module Rammus
         node[user_string_property.to_sym] = properties[user_string_property]
       end
 
-      BOOLEAN_PROPERTIEs.each do |boolean_property|
+      BOOLEAN_PROPERTIES.each do |boolean_property|
         #  WebArea's treat focus differently than other nodes. They report whether their frame  has focus,
         #  not whether focus is specifically on the root node.
         next if boolean_property == "focused" && @_role == "WebArea"
 
-        next unless value = properties[boolean_property]
+        next unless (value = properties[boolean_property])
 
         node[boolean_property.to_sym] = value
       end
@@ -152,14 +155,15 @@ module Rammus
         value = properties[token_property]
 
         next if value.nil? || value == "false"
+
         node[token_property.to_sym] = value
       end
 
       node
     end
 
-    def has_focusable_child?
-      @_has_focusable_child ||= children.any? { |child| child.focusable || child.has_focusable_child? }
+    def focusable_child?
+      @_focusable_child ||= children.any? { |child| child.focusable || child.focusable_child? }
     end
 
     private
@@ -170,10 +174,10 @@ module Rammus
         'description',
         'keyshortcuts',
         'roledescription',
-        'valuetext',
-      ]
+        'valuetext'
+      ].freeze
 
-      BOOLEAN_PROPERTIEs = [
+      BOOLEAN_PROPERTIES = [
         'disabled',
         'expanded',
         'focused',
@@ -182,18 +186,19 @@ module Rammus
         'multiselectable',
         'readonly',
         'required',
-        'selected',
-      ]
+        'selected'
+      ].freeze
 
-      TRISTATE_PROPERTIES = ['checked', 'pressed']
+      TRISTATE_PROPERTIES = ['checked', 'pressed'].freeze
 
-      NUMERICAL_PROPERTIES = ['level', 'valuemax', 'valuemin']
+      NUMERICAL_PROPERTIES = ['level', 'valuemax', 'valuemin'].freeze
 
-      TOKEN_PROPERTIES = ['autocomplete', 'haspopup', 'invalid', 'orientation']
+      TOKEN_PROPERTIES = ['autocomplete', 'haspopup', 'invalid', 'orientation'].freeze
 
       def plain_text_field?
         return false if @_richly_editable
         return true if @_editable
+
         ['textbox', 'ComboBox', 'searchbox'].include? @_role
       end
 

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rammus/wait_task'
 
 module Rammus
@@ -40,6 +42,7 @@ module Rammus
     #
     def execution_context
       raise "Execution Context is not available in detached frame \"#{frame.url}\" (are you trying to evaluate?)" if @_detached
+
       @_context_promise.value
     end
 
@@ -158,14 +161,14 @@ module Rammus
     #
     def content
       function = <<~JAVASCRIPT
-      () => {
-        let retVal = '';
-        if (document.doctype)
-          retVal = new XMLSerializer().serializeToString(document.doctype);
-        if (document.documentElement)
-          retVal += document.documentElement.outerHTML;
-        return retVal;
-      }
+        () => {
+          let retVal = '';
+          if (document.doctype)
+            retVal = new XMLSerializer().serializeToString(document.doctype);
+          if (document.documentElement)
+            retVal += document.documentElement.outerHTML;
+          return retVal;
+        }
       JAVASCRIPT
       evaluate_function(function).value
     end
@@ -195,11 +198,11 @@ module Rammus
 
       watcher = LifecycleWatcher.new frame_manager: frame_manager, frame: frame, wait_until: wait_until, timeout: timeout
       function = <<~JAVASCRIPT
-      html => {
-        document.open();
-        document.write(html);
-        document.close();
-      }
+        html => {
+          document.open();
+          document.write(html);
+          document.close();
+        }
       JAVASCRIPT
       evaluate_function(function, html).wait!
 
@@ -210,6 +213,7 @@ module Rammus
         ).value
         watcher.dispose
         raise error if error
+
         nil
       end
     end
@@ -229,22 +233,22 @@ module Rammus
       # return [Promise<HTMLElement>]
       #
       add_script_url = <<~JAVASCRIPT
-      async function addScriptUrl(url, type) {
-        const script = document.createElement('script');
-        script.src = url;
-        if (type)
-          script.type = type;
-        const promise = new Promise((res, rej) => {
-          script.onload = res;
-          script.onerror = rej;
-        });
-        document.head.appendChild(script);
-        await promise;
-        return script;
-      }
+        async function addScriptUrl(url, type) {
+          const script = document.createElement('script');
+          script.src = url;
+          if (type)
+            script.type = type;
+          const promise = new Promise((res, rej) => {
+            script.onload = res;
+            script.onerror = rej;
+          });
+          document.head.appendChild(script);
+          await promise;
+          return script;
+        }
       JAVASCRIPT
 
-      if url != nil
+      unless url.nil?
         begin
           return execution_context.evaluate_handle_function(add_script_url, url, type).value.as_element
         rescue => _error
@@ -258,26 +262,26 @@ module Rammus
       # @return [HTMLElement]
       #
       add_script_content = <<~JAVASCRIPT
-      function addScriptContent(content, type = 'text/javascript') {
-        const script = document.createElement('script');
-        script.type = type;
-        script.text = content;
-        let error = null;
-        script.onerror = e => error = e;
-        document.head.appendChild(script);
-        if (error)
-          throw error;
-        return script;
-      }
+        function addScriptContent(content, type = 'text/javascript') {
+          const script = document.createElement('script');
+          script.type = type;
+          script.text = content;
+          let error = null;
+          script.onerror = e => error = e;
+          document.head.appendChild(script);
+          if (error)
+            throw error;
+          return script;
+        }
       JAVASCRIPT
 
-      if path != nil
+      unless path.nil?
         contents = File.read path
-        contents += '//# sourceURL=' + path.gsub(/\n/, '')
+        contents += '//# sourceURL=' + path.delete("\n")
         return execution_context.evaluate_handle_function(add_script_content, contents, type).value.as_element
       end
 
-      if content != nil
+      unless content.nil?
         return execution_context.evaluate_handle_function(add_script_content, content, type).value.as_element
       end
 
@@ -299,18 +303,18 @@ module Rammus
       # @return [Promise<HTMLElement>]
       #
       add_style_url = <<~JAVASCRIPT
-      async function addStyleUrl(url) {
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = url;
-        const promise = new Promise((res, rej) => {
-          link.onload = res;
-          link.onerror = rej;
-        });
-        document.head.appendChild(link);
-        await promise;
-        return link;
-      }
+        async function addStyleUrl(url) {
+          const link = document.createElement('link');
+          link.rel = 'stylesheet';
+          link.href = url;
+          const promise = new Promise((res, rej) => {
+            link.onload = res;
+            link.onerror = rej;
+          });
+          document.head.appendChild(link);
+          await promise;
+          return link;
+        }
       JAVASCRIPT
 
       # @param content [String]
@@ -318,18 +322,18 @@ module Rammus
       # @return [Promise<HTMLElement>]
       #
       add_style_content = <<~JAVASCRIPT
-      async function addStyleContent(content) {
-        const style = document.createElement('style');
-        style.type = 'text/css';
-        style.appendChild(document.createTextNode(content));
-        const promise = new Promise((res, rej) => {
-          style.onload = res;
-          style.onerror = rej;
-        });
-        document.head.appendChild(style);
-        await promise;
-        return style;
-      }
+        async function addStyleContent(content) {
+          const style = document.createElement('style');
+          style.type = 'text/css';
+          style.appendChild(document.createTextNode(content));
+          const promise = new Promise((res, rej) => {
+            style.onload = res;
+            style.onerror = rej;
+          });
+          document.head.appendChild(style);
+          await promise;
+          return style;
+        }
       JAVASCRIPT
 
       unless url.nil?
@@ -342,7 +346,7 @@ module Rammus
 
       unless path.nil?
         contents = File.read path
-        contents += '//# sourceURL=' + path.gsub(/\n/, '')
+        contents += '//# sourceURL=' + path.delete("\n")
         return execution_context.evaluate_handle_function(add_style_content, contents).value!.as_element
       end
 
@@ -378,6 +382,7 @@ module Rammus
     def click(selector, button: Mouse::Button::LEFT, click_count: 1, delay: 0)
       handle = query_selector selector
       raise "No node found for selector: #{selector}" if handle.nil?
+
       handle.click button: button, delay: delay, click_count: click_count
       handle.dispose
       nil
@@ -412,6 +417,7 @@ module Rammus
     def hover(selector)
       handle = query_selector selector
       raise "No node found for selector: #{selector}" if handle.nil?
+
       handle.hover
       handle.dispose
     end
@@ -438,21 +444,21 @@ module Rammus
       values.each { |value| raise "Values must be strings. Found value '#{value}' of type '#{value.class}'" unless value.is_a? String }
 
       select_values = <<~JAVASCRIPT
-      (element, values) => {
-        if (element.nodeName.toLowerCase() !== 'select')
-          throw new Error('Element is not a <select> element.');
+        (element, values) => {
+          if (element.nodeName.toLowerCase() !== 'select')
+            throw new Error('Element is not a <select> element.');
 
-        const options = Array.from(element.options);
-        element.value = undefined;
-        for (const option of options) {
-          option.selected = values.includes(option.value);
-          if (option.selected && !element.multiple)
-            break;
+          const options = Array.from(element.options);
+          element.value = undefined;
+          for (const option of options) {
+            option.selected = values.includes(option.value);
+            if (option.selected && !element.multiple)
+              break;
+          }
+          element.dispatchEvent(new Event('input', { 'bubbles': true }));
+          element.dispatchEvent(new Event('change', { 'bubbles': true }));
+          return options.filter(option => option.selected).map(option => option.value);
         }
-        element.dispatchEvent(new Event('input', { 'bubbles': true }));
-        element.dispatchEvent(new Event('change', { 'bubbles': true }));
-        return options.filter(option => option.selected).map(option => option.value);
-      }
       JAVASCRIPT
 
       query_selector_evaluate_function(selector, select_values, values).value!
@@ -472,6 +478,7 @@ module Rammus
     def touchscreen_tap(selector)
       handle = query_selector selector
       raise "No node found for selector: #{selector}" if handle.nil?
+
       handle.tap
       handle.dispose
       nil
@@ -499,6 +506,7 @@ module Rammus
     def type(selector, text, delay: nil)
       handle = query_selector selector
       raise "No node found for selector: #{selector}" if handle.nil?
+
       handle.type text, delay: delay
       handle.dispose
       nil
@@ -582,7 +590,7 @@ module Rammus
         if context
           @_context_resolve_callback.(context)
           @_context_resolve_callback = nil
-          wait_tasks.each { |wait_task| wait_task.rerun }
+          wait_tasks.each(&:rerun)
         else
           @_context_promise = Concurrent::Promises.resolvable_future
           @_context_resolve_callback = @_context_promise.method(:fulfill)
@@ -598,29 +606,29 @@ module Rammus
       # return [?Node,Boolean]
       #
       PREDICATE = <<~JAVASCRIPT
-      function predicate(selectorOrXPath, isXPath, waitForVisible, waitForHidden) {
-        const node = isXPath
-          ? document.evaluate(selectorOrXPath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue
-          : document.querySelector(selectorOrXPath);
-        if (!node)
-          return waitForHidden;
-        if (!waitForVisible && !waitForHidden)
-          return node;
-        const element = /** @type {Element} */ (node.nodeType === Node.TEXT_NODE ? node.parentElement : node);
+        function predicate(selectorOrXPath, isXPath, waitForVisible, waitForHidden) {
+          const node = isXPath
+            ? document.evaluate(selectorOrXPath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue
+            : document.querySelector(selectorOrXPath);
+          if (!node)
+            return waitForHidden;
+          if (!waitForVisible && !waitForHidden)
+            return node;
+          const element = /** @type {Element} */ (node.nodeType === Node.TEXT_NODE ? node.parentElement : node);
 
-        const style = window.getComputedStyle(element);
-        const isVisible = style && style.visibility !== 'hidden' && hasVisibleBoundingBox();
-        const success = (waitForVisible === isVisible || waitForHidden === !isVisible);
-        return success ? node : null;
+          const style = window.getComputedStyle(element);
+          const isVisible = style && style.visibility !== 'hidden' && hasVisibleBoundingBox();
+          const success = (waitForVisible === isVisible || waitForHidden === !isVisible);
+          return success ? node : null;
 
-        /**
-         * @return {boolean}
-         */
-        function hasVisibleBoundingBox() {
-          const rect = element.getBoundingClientRect();
-          return !!(rect.top || rect.bottom || rect.width || rect.height);
+          /**
+           * @return {boolean}
+           */
+          function hasVisibleBoundingBox() {
+            const rect = element.getBoundingClientRect();
+            return !!(rect.top || rect.bottom || rect.width || rect.height);
+          }
         }
-      }
       JAVASCRIPT
 
       # @param selector_or_xpath [String]
@@ -635,14 +643,14 @@ module Rammus
         wait_for_hidden = hidden == true
         wait_for_visible = visible == true
         timeout ||= timeout_settings.timeout
-        polling = (wait_for_visible || wait_for_hidden) ? 'raf' : 'mutation'
+        polling = wait_for_visible || wait_for_hidden ? 'raf' : 'mutation'
         title = "#{is_xpath ? 'XPath' : 'selector'} \"#{selector_or_xpath}\"#{wait_for_hidden ? ' to be hidden' : ''}"
         wait_task = WaitTask.new(self, PREDICATE, title, polling, timeout, selector_or_xpath, is_xpath, wait_for_visible, wait_for_hidden)
 
         Concurrent::Promises.future do
           handle = wait_task.promise.value!
 
-          if !handle.as_element
+          unless handle.as_element
             handle.dispose
             next nil
           end

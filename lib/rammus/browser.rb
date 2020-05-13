@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'forwardable'
 
 module Rammus
@@ -21,13 +23,17 @@ module Rammus
       @_ignore_https_errors = ignore_https_errors
       @_default_viewport = default_viewport
       @contexts = {}
+      context_ids.each do |context_id|
+        @contexts[context_id] = BrowserContext.new(client: client, browser: self, id: context_id)
+      end
+
       @default_context = BrowserContext.new(client: client, browser: self)
       @_close_callback = close_callback
       @_targets = Concurrent::Hash.new
       client.on Protocol::Target.target_created, method(:target_created)
       client.on Protocol::Target.target_destroyed, method(:target_destroyed)
       client.on Protocol::Target.target_info_changed, method(:target_info_changed)
-      client.command(Protocol::Target.set_discover_targets discover: true).wait!
+      client.command(Protocol::Target.set_discover_targets(discover: true)).wait!
     end
 
     # Creates a new incognito browser context. This won't share cookies/cache
@@ -110,12 +116,10 @@ module Rammus
       on :target_changed, check
 
       Concurrent::Promises.future do
-        begin
-          Util.wait_with_timeout(target_promise, "target", timeout).value!
-        ensure
-          remove_listener :target_created, check
-          remove_listener :target_changed, check
-        end
+        Util.wait_with_timeout(target_promise, "target", timeout).value!
+      ensure
+        remove_listener :target_created, check
+        remove_listener :target_changed, check
       end
     end
 
@@ -185,7 +189,7 @@ module Rammus
       def target_created(event)
         target_info = event["targetInfo"]
         browser_context_id = target_info["browserContextId"]
-        context = if browser_context_id && @contexts.has_key?(browser_context_id)
+        context = if browser_context_id && @contexts.key?(browser_context_id)
                     @contexts[browser_context_id]
                   else
                     default_context
@@ -222,10 +226,10 @@ module Rammus
         was_initialized = target.initialized
         target.send(:target_info_changed, event["targetInfo"])
 
-        if was_initialized && previous_url != target.url
-          emit :target_changed, target
-          target.browser_context.emit :target_changed, target
-        end
+        return unless was_initialized && previous_url != target.url
+
+        emit :target_changed, target
+        target.browser_context.emit :target_changed, target
       end
   end
 end

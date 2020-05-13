@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   RSpec.describe Touchscreen, browser: true do
     before { @_context = browser.create_context }

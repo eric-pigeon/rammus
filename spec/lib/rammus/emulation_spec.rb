@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   RSpec.describe 'Emulation', browser: true do
     before { @_context = browser.create_context }
@@ -30,23 +32,22 @@ module Rammus
         page.set_viewport iPhone[:viewport]
         expect(page.evaluate_function("() => 'ontouchstart' in window").value!).to eq true
         dispatch_touch = <<~JAVASCRIPT
-        function dispatchTouch() {
-          let fulfill;
-          const promise = new Promise(x => fulfill = x);
-          window.ontouchstart = function(e) {
-            fulfill('Received touch');
-          };
-          window.dispatchEvent(new Event('touchstart'));
+          function dispatchTouch() {
+            let fulfill;
+            const promise = new Promise(x => fulfill = x);
+            window.ontouchstart = function(e) {
+              fulfill('Received touch');
+            };
+            window.dispatchEvent(new Event('touchstart'));
 
-          fulfill('Did not receive touch');
+            fulfill('Did not receive touch');
 
-          return promise;
-        }
+            return promise;
+          }
         JAVASCRIPT
         expect(page.evaluate_function(dispatch_touch).value!).to eq 'Received touch'
         page.set_viewport width: 100, height: 100
         expect(page.evaluate_function("() => 'ontouchstart' in window").value!).to eq false
-
       end
 
       it 'should be detectable by Modernizr' do

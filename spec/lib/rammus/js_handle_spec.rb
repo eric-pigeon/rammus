@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   RSpec.describe JSHandle, browser: true do
     before { @_context = browser.create_context }
@@ -157,7 +159,7 @@ module Rammus
         expect(page.evaluate_handle('12').value!.to_s).to eq 'JSHandle:12'
         expect(page.evaluate_handle('true').value!.to_s).to eq 'JSHandle:true'
         # TODO
-        #expect((await page.evaluate_handle('undefined')).to_s).to eq 'JSHandle:undefined'
+        # expect((await page.evaluate_handle('undefined')).to_s).to eq 'JSHandle:undefined'
         expect(page.evaluate_handle('"foo"').value!.to_s).to eq 'JSHandle:foo'
         expect(page.evaluate_handle('Symbol()').value!.to_s).to eq 'JSHandle@symbol'
         expect(page.evaluate_handle('new Map()').value!.to_s).to eq 'JSHandle@map'

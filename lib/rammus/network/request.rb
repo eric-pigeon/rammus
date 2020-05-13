@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rammus
   module Network
     # Whenever the page sends a request, such as for a network resource, the
@@ -143,6 +145,7 @@ module Rammus
       #
       def failure
         return if failure_text.nil?
+
         { error_text: failure_text }
       end
 
@@ -178,15 +181,18 @@ module Rammus
         return if self.url.start_with? 'data:'
         raise 'Request Interception is not enabled!' unless @_allow_interception
         raise 'Request is already handled!' if @_interception_handled
+
         @_interception_handled = true
 
-        client.command(Protocol::Fetch.continue_request(
-          request_id: interception_id,
-          url: url,
-          method: method,
-          post_data: post_data,
-          headers: headers_array(headers)
-        )).rescue do |error|
+        client.command(
+          Protocol::Fetch.continue_request(
+            request_id: interception_id,
+            url: url,
+            method: method,
+            post_data: post_data,
+            headers: headers_array(headers)
+          )
+        ).rescue do |error|
           # In certain cases, protocol will return error if the request was already canceled
           # or the page was closed. We should tolerate these errors.
         end.value!
@@ -221,9 +227,10 @@ module Rammus
       #
       def respond(status: nil, headers: {}, content_type: nil, body: nil)
         # Mocking responses for dataURL requests is not currently supported.
-        return if self.url.start_with? 'data:'
+        return if url.start_with? 'data:'
         raise 'Request Interception is not enabled!' unless @_allow_interception
         raise 'Request is already handled!' if @_interception_handled
+
         @_interception_handled = true
 
         # @type {!Object<string, string>}
@@ -232,13 +239,15 @@ module Rammus
         response_headers['content-length'] ||= body.bytesize.to_s unless body.nil?
         status ||= 200
 
-        client.command(Protocol::Fetch.fulfill_request(
-          request_id: interception_id,
-          response_code: status,
-          response_phrase: STATUS_TEXTS[status],
-          response_headers: headers_array(response_headers),
-          body: Base64.strict_encode64(body || '')
-        )).rescue do |error|
+        client.command(
+          Protocol::Fetch.fulfill_request(
+            request_id: interception_id,
+            response_code: status,
+            response_phrase: STATUS_TEXTS[status],
+            response_headers: headers_array(response_headers),
+            body: Base64.strict_encode64(body || '')
+          )
+        ).rescue do |error|
           # In certain cases, protocol will return error if the request was already canceled
           # or the page was closed. We should tolerate these errors.
           Util.debug_error error
@@ -288,16 +297,20 @@ module Rammus
       #
       def abort(error_code = :failed)
         # Request interception is not supported for data: urls.
-        return if self.url.start_with? 'data:'
+        return if url.start_with? 'data:'
+
         error_reason = ERROR_REASONS[error_code]
         raise "Unknown error code: #{error_code}" if error_reason.nil?
         raise 'Request Interception is not enabled!' unless @_allow_interception
         raise 'Request is already handled!' if @_interception_handled
+
         @_interception_handled = true
-        client.command(Protocol::Fetch.fail_request(
-          request_id: interception_id,
-          error_reason: error_reason
-        )).rescue do |error|
+        client.command(
+          Protocol::Fetch.fail_request(
+            request_id: interception_id,
+            error_reason: error_reason
+          )
+        ).rescue do |error|
           # In certain cases, protocol will return error if the request was already canceled
           # or the page was closed. We should tolerate these errors.
           Util.debug_error error
@@ -307,9 +320,7 @@ module Rammus
 
       # @!visibility private
       #
-      def _response=(response)
-        @_response = response
-      end
+      attr_writer :_response
 
       private
 
@@ -329,8 +340,8 @@ module Rammus
           internet_disconnected: 'InternetDisconnected',
           name_not_resolved: 'NameNotResolved',
           timed_out: 'TimedOut',
-          failed: 'Failed',
-        }
+          failed: 'Failed'
+        }.freeze
 
         def headers_array(headers = {})
           return if headers.nil?
@@ -404,7 +415,7 @@ module Rammus
           508 => 'Loop Detected',
           510 => 'Not Extended',
           511 => 'Network Authentication Required'
-        }
+        }.freeze
     end
   end
 end

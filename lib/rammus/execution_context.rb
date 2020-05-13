@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rammus/js_handle'
 require 'rammus/element_handle'
 
@@ -14,10 +16,10 @@ module Rammus
   class ExecutionContext
     # @!visibility private
     #
-    EVALUATION_SCRIPT_URL = '__puppeteer_evaluation_script__';
+    EVALUATION_SCRIPT_URL = '__puppeteer_evaluation_script__'
     # @!visibility private
     #
-    SOURCE_URL_REGEX = /^[\040\t]*\/\/[@#] sourceURL=\s*(\S*?)\s*$/m;
+    SOURCE_URL_REGEX = %r{^[\040\t]*//[@#] sourceURL=\s*(\S*?)\s*$}m.freeze
     # @!visibility private
     #
     SUFFIX = "//# sourceURL=#{EVALUATION_SCRIPT_URL}"
@@ -135,7 +137,8 @@ module Rammus
     def query_objects(prototype_handle)
       raise 'Prototype JSHandle is disposed!' if prototype_handle.disposed?
       raise 'Prototype JSHandle must not be referencing primitive value' if prototype_handle.remote_object["objectId"].nil?
-      response = client.command(Protocol::Runtime.query_objects prototype_object_id: prototype_handle.remote_object["objectId"]).value!
+
+      response = client.command(Protocol::Runtime.query_objects(prototype_object_id: prototype_handle.remote_object["objectId"])).value!
       JSHandle.create_js_handle self, response["objects"]
     end
 
@@ -148,8 +151,8 @@ module Rammus
     def _adopt_element_handle(element_handle)
       'Cannot adopt handle that already belongs to this execution context' if element_handle.execution_context == self
       'Cannot adopt handle without DOMWorld' if world.nil?
-      node_info = client.command(Protocol::DOM.describe_node object_id: element_handle.remote_object["objectId"]).value!
-      object = client.command(Protocol::DOM.resolve_node backend_node_id: node_info["node"]["backendNodeId"], execution_context_id: context_id).value!
+      node_info = client.command(Protocol::DOM.describe_node(object_id: element_handle.remote_object["objectId"])).value!
+      object = client.command(Protocol::DOM.resolve_node(backend_node_id: node_info["node"]["backendNodeId"], execution_context_id: context_id)).value!
       JSHandle.create_js_handle self, object["object"]
     end
 
@@ -157,17 +160,19 @@ module Rammus
 
       def evaluate_internal(return_by_value, expression)
         expression = SOURCE_URL_REGEX.match?(expression) ? expression : "#{expression}\n#{SUFFIX}"
-        evaluate_promise = client.command(Protocol::Runtime.evaluate(
-          expression: expression,
-          context_id: context_id,
-          return_by_value: return_by_value,
-          await_promise: true,
-          user_gesture: true
-        )).rescue(&method(:rewrite_error))
+        evaluate_promise = client.command(
+          Protocol::Runtime.evaluate(
+            expression: expression,
+            context_id: context_id,
+            return_by_value: return_by_value,
+            await_promise: true,
+            user_gesture: true
+          )
+        ).rescue(&method(:rewrite_error))
 
         evaluate_promise.then do |response|
           if response["exceptionDetails"]
-            raise "Evaluation failed: #{Util.get_exception_message response["exceptionDetails"]}"
+            raise "Evaluation failed: #{Util.get_exception_message response['exceptionDetails']}"
           end
 
           if return_by_value
@@ -181,14 +186,16 @@ module Rammus
       def evaluate_function_internal(return_by_value, function_text, *args)
         call_function_on_promise =
           begin
-             client.command(Protocol::Runtime.call_function_on(
-              function_declaration: function_text + "\n" + SUFFIX + "\n",
-              execution_context_id: context_id,
-              arguments: args.map { |arg| convert_argument arg },
-              return_by_value: return_by_value,
-              await_promise: true,
-              user_gesture: true
-             )).rescue(&method(:rewrite_error))
+            client.command(
+              Protocol::Runtime.call_function_on(
+                function_declaration: function_text + "\n" + SUFFIX + "\n",
+                execution_context_id: context_id,
+                arguments: args.map { |arg| convert_argument arg },
+                return_by_value: return_by_value,
+                await_promise: true,
+                user_gesture: true
+              )
+            ).rescue(&method(:rewrite_error))
           rescue => err
             #  if (err instanceof TypeError && err.message === 'Converting circular structure to JSON')
             #    err.message += ' Are you passing a nested JSHandle?';
@@ -197,7 +204,7 @@ module Rammus
 
         call_function_on_promise.then do |response|
           if response["exceptionDetails"]
-            raise "Evaluation failed: #{Util.get_exception_message response["exceptionDetails"]}"
+            raise "Evaluation failed: #{Util.get_exception_message response['exceptionDetails']}"
           end
 
           if return_by_value
@@ -209,7 +216,7 @@ module Rammus
       end
 
       def convert_argument(arg)
-        #if (typeof arg === 'bigint') // eslint-disable-line valid-typeof
+        # if (typeof arg === 'bigint') // eslint-disable-line valid-typeof
         #  return { unserializableValue: `${arg.toString()}n` };
         if arg == Float::INFINITY
           return { unserializableValue: 'Infinity' }
@@ -220,10 +227,11 @@ module Rammus
         if arg.is_a?(Float) && arg.nan?
           return { unserializableValue: 'NaN' }
         end
-        object_handle = arg && arg.is_a?(JSHandle) ? arg : nil
+
+        object_handle = arg&.is_a?(JSHandle) ? arg : nil
         if object_handle
           if object_handle.context != self
-           raise 'JSHandles can be evaluated only in the context they were created!'
+            raise 'JSHandles can be evaluated only in the context they were created!'
           end
           if object_handle.disposed?
             raise 'JSHandle is disposed!'
@@ -231,9 +239,10 @@ module Rammus
           if object_handle.remote_object["unserializableValue"]
             return { unserializableValue: object_handle.remote_object["unserializableValue"] }
           end
-          if !object_handle.remote_object["objectId"]
+          unless object_handle.remote_object["objectId"]
             return { value: object_handle.remote_object["value"] }
           end
+
           return { objectId: object_handle.remote_object["objectId"] }
         end
         { value: arg }

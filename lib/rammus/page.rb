@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rammus/accessibility'
 require 'rammus/keyboard'
 require 'rammus/mouse'
@@ -239,9 +241,9 @@ module Rammus
       new(target, ignore_https_errors: ignore_https_errors).tap do |page|
         Concurrent::Promises.zip(
           page.frame_manager.start,
-          target.session.command(Protocol::Target.set_auto_attach auto_attach: true, wait_for_debugger_on_start: false, flatten: true),
+          target.session.command(Protocol::Target.set_auto_attach(auto_attach: true, wait_for_debugger_on_start: false, flatten: true)),
           target.session.command(Protocol::Performance.enable),
-          target.session.command(Protocol::Log.enable),
+          target.session.command(Protocol::Log.enable)
         ).wait!
         page.set_viewport default_viewport if default_viewport
       end
@@ -271,8 +273,8 @@ module Rammus
       @_viewport = nil
 
       # Map<String, Rammus::Worker>
-      @_workers = Hash.new
-      client.on Protocol::Target.attached_to_target, -> (event) do
+      @_workers = {}
+      client.on Protocol::Target.attached_to_target, ->(event) do
         if event.dig("targetInfo", "type") != 'worker'
           # If we don't detach from service workers, they will never die.
           client.command Protocol::Target.detach_from_target session_id: event["sessionId"]
@@ -285,23 +287,24 @@ module Rammus
         emit :worker_created, worker
       end
 
-      client.on Protocol::Target.detached_from_target, -> (event) do
-        next unless worker = @_workers[event["sessionId"]]
+      client.on Protocol::Target.detached_from_target, ->(event) do
+        next unless (worker = @_workers[event["sessionId"]])
+
         emit :worker_destroyed, worker
         @_workers.delete event["sessionId"]
       end
 
-      frame_manager.on :frame_attached, -> (event) { emit :frame_attached, event }
-      frame_manager.on :frame_detached, -> (event) { emit :frame_detached, event }
-      frame_manager.on :frame_navigated, -> (event) { emit :frame_navigated, event }
+      frame_manager.on :frame_attached, ->(event) { emit :frame_attached, event }
+      frame_manager.on :frame_detached, ->(event) { emit :frame_detached, event }
+      frame_manager.on :frame_navigated, ->(event) { emit :frame_navigated, event }
 
-      network_manager.on :request, -> (event) { emit :request, event }
-      network_manager.on :response, -> (event) { emit :response, event }
-      network_manager.on :request_failed, -> (event) { emit :request_failed, event }
-      network_manager.on :request_finished, -> (event) { emit :request_finished, event }
+      network_manager.on :request, ->(event) { emit :request, event }
+      network_manager.on :response, ->(event) { emit :response, event }
+      network_manager.on :request_failed, ->(event) { emit :request_failed, event }
+      network_manager.on :request_finished, ->(event) { emit :request_finished, event }
 
-      client.on Protocol::Page.dom_content_event_fired, -> (event) { emit :dom_content_loaded }
-      client.on Protocol::Page.load_event_fired, -> (_event) { emit :load }
+      client.on Protocol::Page.dom_content_event_fired, ->(_event) { emit :dom_content_loaded }
+      client.on Protocol::Page.load_event_fired, ->(_event) { emit :load }
       client.on Protocol::Runtime.console_api_called, method(:on_console_api)
       client.on Protocol::Runtime.binding_called, method(:on_binding_called)
       client.on Protocol::Page.javascript_dialog_opening, method(:on_dialog)
@@ -386,13 +389,14 @@ module Rammus
       page_url = url
       cookies.each do |cookie|
         cookie ||= {}
-        if !cookie.has_key?(:url) && page_url.start_with?("http")
+        if !cookie.key?(:url) && page_url.start_with?("http")
           cookie[:url] = page_url
         end
         # TODO Hash#transform_keys was added in ruby 2.5
         cookie = cookie.map do |key, value|
           key = key.to_sym rescue key
           next unless [:name, :url, :domain, :path].include? key
+
           [key, value]
         end.compact.to_h
         client.command(Protocol::Network.delete_cookies(cookie)).wait!
@@ -450,6 +454,7 @@ module Rammus
     #
     def emulate_media(media_type = nil)
       raise "Unsupported media type: #{media_type}" unless ['screen', 'print', nil].include? media_type
+
       client.command(Protocol::Emulation.set_emulated_media(media: media_type || '')).wait!
       nil
     end
@@ -527,26 +532,27 @@ module Rammus
     #
     def expose_function(name, function = nil, &block)
       function ||= block
-      raise "Failed to add page binding with name #{name}: window['#{name}'] already exists!" if @_page_bindings.has_key? name
+      raise "Failed to add page binding with name #{name}: window['#{name}'] already exists!" if @_page_bindings.key? name
+
       @_page_bindings[name] = function
 
       add_page_binding = <<~JAVASCRIPT
-      function addPageBinding(bindingName) {
-        const binding = window[bindingName];
-        window[bindingName] = (...args) => {
-          const me = window[bindingName];
-          let callbacks = me['callbacks'];
-          if (!callbacks) {
-            callbacks = new Map();
-            me['callbacks'] = callbacks;
-          }
-          const seq = (me['lastSeq'] || 0) + 1;
-          me['lastSeq'] = seq;
-          const promise = new Promise((resolve, reject) => callbacks.set(seq, {resolve, reject}));
-          binding(JSON.stringify({name: bindingName, seq, args}));
-          return promise;
-        };
-      }
+        function addPageBinding(bindingName) {
+          const binding = window[bindingName];
+          window[bindingName] = (...args) => {
+            const me = window[bindingName];
+            let callbacks = me['callbacks'];
+            if (!callbacks) {
+              callbacks = new Map();
+              me['callbacks'] = callbacks;
+            }
+            const seq = (me['lastSeq'] || 0) + 1;
+            me['lastSeq'] = seq;
+            const promise = new Promise((resolve, reject) => callbacks.set(seq, {resolve, reject}));
+            binding(JSON.stringify({name: bindingName, seq, args}));
+            return promise;
+          };
+        }
       JAVASCRIPT
 
       expression = "(#{add_page_binding})(\"#{name}\")"
@@ -563,7 +569,7 @@ module Rammus
     # @param timeout [Integer] Maximum time in milliseconds for resources to
     #   load, defaults to 2 seconds, pass 0 to disable timeout. The default
     #   value can be changed by using the
-    #   {Page#set_default_navigation_timeout} or {Page#set_default_timeout}
+    #   {Page#set_default_navigation_timeout} or {Page#default_timeout=}
     #   methods
     # @param wait_until [Array<Symbol>, Symbol] When to consider setting markup
     #   succeeded, defaults to load. Given an array of event strings, setting
@@ -587,7 +593,7 @@ module Rammus
     # @param timeout [Integer] Maximum time in milliseconds for resources to
     #   load, defaults to 2 seconds, pass 0 to disable timeout. The default
     #   value can be changed by using the
-    #   {Page#set_default_navigation_timeout} or {Page#set_default_timeout}
+    #   {Page#set_default_navigation_timeout} or {Page#default_timeout=}
     #   methods
     # @param wait_until [Array<Symbol>, Symbol] When to consider setting markup
     #   succeeded, defaults to load. Given an array of event strings, setting
@@ -626,10 +632,10 @@ module Rammus
 
       if format
         # TODO
-        #const format = Page.PaperFormats[options.format.toLowerCase()];
-        #assert(format, 'Unknown paper format: ' + options.format);
-        #paperWidth = format.width;
-        #paperHeight = format.height;
+        # const format = Page.PaperFormats[options.format.toLowerCase()];
+        # assert(format, 'Unknown paper format: ' + options.format);
+        # paperWidth = format.width;
+        # paperHeight = format.height;
       else
         paper_width = Page.convert_print_parameter_to_inches(width || paper_width)
         paper_height = Page.convert_print_parameter_to_inches(height || paper_height)
@@ -640,22 +646,24 @@ module Rammus
       margin_bottom = Page.convert_print_parameter_to_inches(margin[:bottom]) || 0
       margin_right = Page.convert_print_parameter_to_inches(margin[:right]) || 0
 
-      result = client.command(Protocol::Page.print_to_pdf(
-        landscape: landscape,
-        display_header_footer: display_header_footer,
-        header_template: header_template,
-        footer_template: footer_template,
-        print_background: print_background,
-        scale: scale,
-        paper_width: paper_width,
-        paper_height: paper_height,
-        margin_top: margin_top,
-        margin_bottom: margin_bottom,
-        margin_left: margin_left,
-        margin_right: margin_right,
-        page_ranges: page_ranges,
-        prefer_css_page_size: prefer_css_page_size
-      )).value!
+      result = client.command(
+        Protocol::Page.print_to_pdf(
+          landscape: landscape,
+          display_header_footer: display_header_footer,
+          header_template: header_template,
+          footer_template: footer_template,
+          print_background: print_background,
+          scale: scale,
+          paper_width: paper_width,
+          paper_height: paper_height,
+          margin_top: margin_top,
+          margin_bottom: margin_bottom,
+          margin_left: margin_left,
+          margin_right: margin_right,
+          page_ranges: page_ranges,
+          prefer_css_page_size: prefer_css_page_size
+        )
+      ).value!
       buffer = Base64.decode64(result["data"])
 
       File.open(path, 'wb') { |file| file.puts buffer } if path
@@ -674,7 +682,7 @@ module Rammus
     # @param timeout [Integer] Maximum time in milliseconds for resources to
     #   load, defaults to 2 seconds, pass 0 to disable timeout. The default
     #   value can be changed by using the
-    #   {Page#set_default_navigation_timeout} or {Page#set_default_timeout}
+    #   {Page#set_default_navigation_timeout} or {Page#default_timeout=}
     #   methods
     # @param wait_until [Array<Symbol>, Symbol] When to consider setting markup
     #   succeeded, defaults to load. Given an array of event strings, setting
@@ -728,15 +736,16 @@ module Rammus
       # because it may be a 0-length file with no extension created beforehand (i.e. as a temp file).
       if type
         raise "Unknown type value: #{type}" unless ['png', 'jpeg'].include? type
+
         screenshot_type = type
       elsif path
-        #TODO
-        #const mimeType = mime.getType(options.path);
-        #if (mimeType === 'image/png')
+        # TODO
+        # const mimeType = mime.getType(options.path);
+        # if (mimeType === 'image/png')
         #  screenshotType = 'png';
-        #else if (mimeType === 'image/jpeg')
+        # else if (mimeType === 'image/jpeg')
         #  screenshotType = 'jpeg';
-        #assert(screenshotType, 'Unsupported screenshot mime type: ' + mimeType);
+        # assert(screenshotType, 'Unsupported screenshot mime type: ' + mimeType);
       end
 
       screenshot_type ||= 'png'
@@ -749,16 +758,16 @@ module Rammus
         # assert(options.quality >= 0 && options.quality <= 100, 'Expected options.quality to be between 0 and 100 (inclusive), got ' + options.quality);
       end
       # TODO
-      #assert(!options.clip || !options.fullPage, 'options.clip and options.fullPage are exclusive');
-      #if (options.clip) {
+      # assert(!options.clip || !options.fullPage, 'options.clip and options.fullPage are exclusive');
+      # if (options.clip) {
       #  assert(typeof options.clip.x === 'number', 'Expected options.clip.x to be a number but found ' + (typeof options.clip.x));
       #  assert(typeof options.clip.y === 'number', 'Expected options.clip.y to be a number but found ' + (typeof options.clip.y));
       #  assert(typeof options.clip.width === 'number', 'Expected options.clip.width to be a number but found ' + (typeof options.clip.width));
       #  assert(typeof options.clip.height === 'number', 'Expected options.clip.height to be a number but found ' + (typeof options.clip.height));
       #  assert(options.clip.width !== 0, 'Expected options.clip.width not to be 0.');
       #  assert(options.clip.height !== 0, 'Expected options.clip.width not to be 0.');
-      #}
-      #return this._screenshotTaskQueue.postTask(this._screenshotTask.bind(this, screenshotType, options));
+      # }
+      # return this._screenshotTaskQueue.postTask(this._screenshotTask.bind(this, screenshotType, options));
       screenshot_task screenshot_type, path: path, quality: quality, full_page: full_page, omit_background: omit_background, encoding: encoding, clip: clip
     end
 
@@ -795,21 +804,23 @@ module Rammus
       page_url = url
       starts_with_http = page_url.start_with? 'http'
       cookies = cookies.map do |cookie|
-        if !cookie.has_key?(:url) && starts_with_http
+        if !cookie.key?(:url) && starts_with_http
           cookie[:url] = page_url
         end
         if cookie[:url] == "about:blank"
           raise "Blank page can not have cookie \"#{cookie[:name]}\""
         end
-        if cookie[:url] && cookie[:url].start_with?("data:")
+        if cookie[:url]&.start_with?("data:")
           raise "Data URL can not have cookie \"#{cookie[:name]}\""
         end
+
         cookie
       end
       delete_cookie(*cookies)
-      if cookies.length
-        client.command(Protocol::Network.set_cookies(cookies: cookies)).wait!
-      end
+
+      return unless cookies.length
+
+      client.command(Protocol::Network.set_cookies(cookies: cookies)).wait!
     end
 
     # This setting will change the default maximum navigation time for the
@@ -822,7 +833,7 @@ module Rammus
     # * {Page#wait_for_navigation}
     #
     # @note {set_default_navigation_timeout} takes priority over
-    #   {set_default_timeout}
+    #   {default_timeout=}
     #
     # @param timeout [Integer] Maximum navigation time in seconds
     #
@@ -851,7 +862,7 @@ module Rammus
     #
     # @return [nil]
     #
-    def set_default_timeout(timeout)
+    def default_timeout=(timeout)
       @_timeout_settings.timeout = timeout
       nil
     end
@@ -867,7 +878,7 @@ module Rammus
     def set_geolocation(longitude:, latitude:, accuracy: 0)
       raise "Invalid longitude '#{longitude}': precondition -180 <= LONGITUDE <= 180 failed." if longitude < -180 || longitude > 180
       raise "Invalid latitude '#{latitude}': precondition -90 <= LATITUDE <= 90 failed." if latitude < -90 || latitude > 90
-      raise "Invalid accuracy '#{accuracy}': precondition 0 <= ACCURACY failed." if accuracy < 0
+      raise "Invalid accuracy '#{accuracy}': precondition 0 <= ACCURACY failed." if accuracy.negative?
 
       client.command(Protocol::Emulation.set_geolocation_override(longitude: longitude, latitude: latitude, accuracy: accuracy)).wait!
       nil
@@ -947,7 +958,7 @@ module Rammus
     # @param url_or_predicate [String, #call] A URL or predicate to wait for.
     # @param timeout [Numberic] Maximum wait time in seconds, defaults to 2
     #   seconds, pass 0 to disable the timeout. The default value can be changed
-    #   by using the {Page#set_default_timeout} method.
+    #   by using the {Page#default_timeout=} method.
     #
     # @return [Promise<Request>] Promise which resolves to the matched request.
     #
@@ -961,6 +972,7 @@ module Rammus
         if url_or_predicate.respond_to?(:call)
           next !!url_or_predicate.call(request)
         end
+
         false
       end
     end
@@ -968,7 +980,7 @@ module Rammus
     # @param url_or_predicate [String, #call] A URL or predicate to wait for.
     # @param timeout [Numeric] Maximum wait time in seconds, defaults to 2
     #   seconds, pass 0 to disable the timeout. The default value can be changed
-    #   by using the {Page#set_default_timeout} method.
+    #   by using the {Page#default_timeout=} method.
     #
     # @return [Promise<Response>] Promise which resolves to the matched response.
     #
@@ -982,6 +994,7 @@ module Rammus
         if url_or_predicate.respond_to?(:call)
           next !!url_or_predicate.call(response)
         end
+
         false
       end
     end
@@ -999,6 +1012,41 @@ module Rammus
 
     def inspect
       "#<#{self.class}:0x#{object_id} #{viewport}>"
+    end
+
+    # @!visibility: private
+    #
+    # @param parameter [String, Numeric, nil]
+    #
+    # @return [Numeric, nil]
+    #
+    def self.convert_print_parameter_to_inches(parameter)
+      return if parameter.nil?
+
+      pixels = nil
+      if parameter.is_a? Numeric
+        # Treat numbers as pixel values to be aligned with phantom's paperSize.
+        pixels = parameter
+      elsif parameter.is_a? String
+        text = parameter
+        unit = text[-2..-1]
+        value_text = ''
+        if UNIT_TO_PIXELS.key? unit
+          value_text = text[0..-3]
+        else
+          # In case of unknown unit try to parse the whole parameter as number of pixels.
+          # This is consistent with phantom's paperSize behavior.
+          unit = 'px'
+          value_text = text
+        end
+        value = value_text.to_i
+        "Failed to parse parameter value: #{text}" if value.zero?
+        pixels = value * UNIT_TO_PIXELS[unit]
+      else
+        raise "page.pdf() Cannot handle parameter type: #{parameter.class}"
+      end
+
+      pixels.to_f / 96
     end
 
     private
@@ -1022,9 +1070,10 @@ module Rammus
         url = event["entry"]["url"]
         line_number = event["entry"]["line_number"]
         args.map { |arg| Util.release_object client, arg } if event.dig "entry", "args"
-        if event.dig("entry", "source") != 'worker'
-          emit :console, ConsoleMessage.new(level, text, [], url: url, line_number: line_number)
-        end
+
+        return unless event.dig("entry", "source") != 'worker'
+
+        emit :console, ConsoleMessage.new(level, text, [], url: url, line_number: line_number)
       end
 
       def on_dialog(event)
@@ -1035,7 +1084,7 @@ module Rammus
           when 'prompt' then Dialog::PROMPT
           when 'beforeunload' then Dialog::BEFORE_UNLOAD
           else
-            raise "Unknown javascript dialog type: #{event["type"]}"
+            raise "Unknown javascript dialog type: #{event['type']}"
           end
         dialog = Dialog.new client, dialog_type, event["message"], event["defaultPrompt"]
 
@@ -1049,7 +1098,7 @@ module Rammus
       end
 
       def on_console_api(event)
-        if event["executionContextId"] == 0
+        if event["executionContextId"].zero?
           # DevTools protocol stores the last 1000 console messages. These
           # messages are always reported even for removed execution contexts. In
           # this case, they are marked with executionContextId = 0 and are
@@ -1065,6 +1114,7 @@ module Rammus
           # @see https://github.com/GoogleChrome/puppeteer/issues/3865
           return
         end
+
         context = frame_manager.execution_context_by_id event["executionContextId"]
         values = event["args"].map { |arg| JSHandle.create_js_handle context, arg }
         add_console_message event["type"], values, event["stackTrace"]
@@ -1072,7 +1122,7 @@ module Rammus
 
       def add_console_message(type, args, stack_trace)
         if listener_count(:console).zero?
-          args.each  { |arg| arg.dispose }
+          args.each(&:dispose)
           return
         end
         text_tokens = args.map do |arg|
@@ -1083,15 +1133,16 @@ module Rammus
             Util.value_from_remote_object remote_object
           end
         end
-        location = if stack_trace && stack_trace["callFrames"].length
-                    {
-                      url: stack_trace.dig("callFrames", 0, "url"),
-                      line_number: stack_trace.dig("callFrames", 0, "lineNumber"),
-                      column_number: stack_trace.dig("callFrames", 0, "columnNumber")
-                    }
-                   else
-                     {}
-                   end
+        location =
+          if stack_trace && stack_trace["callFrames"].length
+            {
+              url: stack_trace.dig("callFrames", 0, "url"),
+              line_number: stack_trace.dig("callFrames", 0, "lineNumber"),
+              column_number: stack_trace.dig("callFrames", 0, "columnNumber")
+            }
+          else
+            {}
+          end
         message = ConsoleMessage.new type, text_tokens.join(' '), args, location
         emit(:console, message)
       end
@@ -1100,9 +1151,10 @@ module Rammus
         history = client.command(Protocol::Page.get_navigation_history).value!
         entry = history["entries"][history["currentIndex"] + delta]
         return if entry.nil?
+
         response, _ = Concurrent::Promises.zip(
-         wait_for_navigation(timeout: timeout, wait_until: wait_until),
-         client.command(Protocol::Page.navigate_to_history_entry entry_id: entry["id"])
+          wait_for_navigation(timeout: timeout, wait_until: wait_until),
+          client.command(Protocol::Page.navigate_to_history_entry(entry_id: entry["id"]))
         ).value!
         response
       end
@@ -1120,12 +1172,13 @@ module Rammus
         'ScriptDuration',
         'TaskDuration',
         'JSHeapUsedSize',
-        'JSHeapTotalSize',
-      ]
+        'JSHeapTotalSize'
+      ].freeze
 
       def build_metrics_object(metrics = [])
         metrics.map do |metric|
           next unless SUPPORTED_METRICS.include? metric["name"]
+
           [metric["name"], metric["value"]]
         end.compact.to_h
       end
@@ -1148,10 +1201,10 @@ module Rammus
         # @param {*} result
         #
         deliver_result = <<~JAVASCRIPT
-        function deliverResult(name, seq, result) {
-          window[name]['callbacks'].get(seq).resolve(result);
-          window[name]['callbacks'].delete(seq);
-        }
+          function deliverResult(name, seq, result) {
+            window[name]['callbacks'].get(seq).resolve(result);
+            window[name]['callbacks'].delete(seq);
+          }
         JAVASCRIPT
 
         expression =
@@ -1166,12 +1219,12 @@ module Rammus
             # @param {string} stack
             #
             deliver_error = <<~JAVASCRIPT
-            function deliverError(name, seq, message, stack) {
-              const error = new Error(message);
-              error.stack = stack;
-              window[name]['callbacks'].get(seq).reject(error);
-              window[name]['callbacks'].delete(seq);
-            }
+              function deliverError(name, seq, message, stack) {
+                const error = new Error(message);
+                error.stack = stack;
+                window[name]['callbacks'].get(seq).reject(error);
+                window[name]['callbacks'].delete(seq);
+              }
             JAVASCRIPT
 
             Util.evaluation_string deliver_error, name, seq, error.message, error.backtrace
@@ -1184,40 +1237,7 @@ module Rammus
         'in' => 96,
         'cm' => 37.8,
         'mm' => 3.78
-      }
-
-      # @param parameter [String, Numeric, nil]
-      #
-      # @return [Numeric, nil]
-      #
-      def self.convert_print_parameter_to_inches(parameter)
-        return if parameter.nil?
-
-        pixels = nil
-        if parameter.is_a? Numeric
-          # Treat numbers as pixel values to be aligned with phantom's paperSize.
-          pixels = parameter
-        elsif parameter.is_a? String
-          text = parameter
-          unit = text[-2..-1]
-          value_text = ''
-          if UNIT_TO_PIXELS.has_key? unit
-            value_text = text[0..-3]
-          else
-            # In case of unknown unit try to parse the whole parameter as number of pixels.
-            # This is consistent with phantom's paperSize behavior.
-            unit = 'px'
-            value_text = text
-          end
-          value = value_text.to_i
-          "Failed to parse parameter value: #{text}" if value.zero?
-          pixels = value * UNIT_TO_PIXELS[unit]
-        else
-          raise "page.pdf() Cannot handle parameter type: #{parameter.class}"
-        end
-
-        pixels.to_f / 96
-      end
+      }.freeze
 
       def screenshot_task(format, clip: nil, quality: nil, full_page: false, omit_background: false, encoding: 'binary', path: nil)
         client.command(Protocol::Target.activate_target(target_id: target.target_id)).wait!
@@ -1242,13 +1262,15 @@ module Rammus
           is_landscape = @_viewport.fetch :is_landscape, false
           # @type {!Protocol.Emulation.ScreenOrientation}
           screen_orientation = is_landscape ? { angle: 90, type: 'landscapePrimary' } : { angle: 0, type: 'portraitPrimary' }
-          client.command(Protocol::Emulation.set_device_metrics_override(
-            mobile: is_mobile,
-            width: width,
-            height: height,
-            device_scale_factor: device_scale_factor,
-            screen_orientation: screen_orientation
-          )).wait!
+          client.command(
+            Protocol::Emulation.set_device_metrics_override(
+              mobile: is_mobile,
+              width: width,
+              height: height,
+              device_scale_factor: device_scale_factor,
+              screen_orientation: screen_orientation
+            )
+          ).wait!
         end
 
         should_set_default_background = omit_background && format == 'png'
@@ -1274,7 +1296,7 @@ module Rammus
 
       def session_closed_future
         @_session_closed_future ||= Concurrent::Promises.resolvable_future.tap do |future|
-          client.once :cdp_session_disconnected, -> (_event) { future.fulfill(StandardError.new('Target closed')) }
+          client.once :cdp_session_disconnected, ->(_event) { future.fulfill(StandardError.new('Target closed')) }
         end
       end
   end
